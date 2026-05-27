@@ -13,6 +13,8 @@ class ApiException implements Exception {
 }
 
 class AppApiClient {
+  static const _requestTimeout = Duration(seconds: 12);
+
   final String baseUrl;
   final http.Client _httpClient;
   String? _token;
@@ -33,10 +35,12 @@ class AppApiClient {
   bool isNetworkError(Object error) => error is! ApiException;
 
   Future<Map<String, dynamic>> getJson(String path) async {
-    final response = await _httpClient.get(
-      Uri.parse('$baseUrl$path'),
-      headers: _headers(),
-    );
+    final response = await _httpClient
+        .get(
+          Uri.parse('$baseUrl$path'),
+          headers: _headers(),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
@@ -44,11 +48,13 @@ class AppApiClient {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final response = await _httpClient.post(
-      Uri.parse('$baseUrl$path'),
-      headers: _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await _httpClient
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: _headers(),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
@@ -56,19 +62,23 @@ class AppApiClient {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final response = await _httpClient.patch(
-      Uri.parse('$baseUrl$path'),
-      headers: _headers(),
-      body: jsonEncode(body),
-    );
+    final response = await _httpClient
+        .patch(
+          Uri.parse('$baseUrl$path'),
+          headers: _headers(),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
   Future<void> postEmpty(String path) async {
-    final response = await _httpClient.post(
-      Uri.parse('$baseUrl$path'),
-      headers: _headers(),
-    );
+    final response = await _httpClient
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: _headers(),
+        )
+        .timeout(_requestTimeout);
     if (response.statusCode >= 400) {
       throw ApiException(response.statusCode, _parseError(response.body));
     }
