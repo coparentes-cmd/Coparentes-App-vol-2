@@ -1,0 +1,31 @@
+name: coparentes
+description: coparentes - AI-first co-parenting app for Poland
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  provider: 6.1.5+1
+  shared_preferences: 2.5.3
+  flutter_secure_storage: ^9.2.4
+  http: 1.5.0
+  table_calendar: ^3.2.0
+  fl_chart: 0.69.0
+  cupertino_icons: 1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/branding/

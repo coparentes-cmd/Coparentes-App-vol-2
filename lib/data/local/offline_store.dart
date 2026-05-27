@@ -1,0 +1,187 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class OfflineStore extends ChangeNotifier {
+  static const _sessionPayloadKey = 'coparentes_cached_session_payload_v1';
+  static const _threadsKey = 'coparentes_cached_threads_v1';
+  static const _exportsKey = 'coparentes_cached_exports_v1';
+  static const _calendarKey = 'coparentes_cached_calendar_v1';
+  static const _financesKey = 'coparentes_cached_finances_v1';
+  static const _documentsKey = 'coparentes_cached_documents_v1';
+  static const _pendingActionsKey = 'coparentes_pending_actions_v1';
+  static const _exportDownloadPrefix = 'coparentes_cached_export_download_';
+  static const _messagingThreadIdMapKey = 'coparentes_messaging_thread_id_map_v1';
+  static const _financeExpenseIdMapKey = 'coparentes_finance_expense_id_map_v1';
+
+  final SharedPreferences _preferences;
+
+  OfflineStore({required SharedPreferences preferences})
+      : _preferences = preferences;
+
+  Map<String, dynamic>? getSessionPayload() => _decodeMap(
+        _preferences.getString(_sessionPayloadKey),
+      );
+
+  Future<void> saveSessionPayload(Map<String, dynamic> payload) async {
+    await _preferences.setString(_sessionPayloadKey, jsonEncode(payload));
+    notifyListeners();
+  }
+
+  Future<void> clearSessionPayload() async {
+    await _preferences.remove(_sessionPayloadKey);
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> getThreads() => _decodeList(
+        _preferences.getString(_threadsKey),
+      );
+
+  Future<void> saveThreads(List<Map<String, dynamic>> threads) async {
+    await _preferences.setString(_threadsKey, jsonEncode(threads));
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> getExports() => _decodeList(
+        _preferences.getString(_exportsKey),
+      );
+
+  Future<void> saveExports(List<Map<String, dynamic>> jobs) async {
+    await _preferences.setString(_exportsKey, jsonEncode(jobs));
+    notifyListeners();
+  }
+
+  Map<String, dynamic>? getCalendarSnapshot() => _decodeMap(
+        _preferences.getString(_calendarKey),
+      );
+
+  Future<void> saveCalendarSnapshot(Map<String, dynamic> payload) async {
+    await _preferences.setString(_calendarKey, jsonEncode(payload));
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> getFinancesExpenses() => _decodeList(
+        _preferences.getString(_financesKey),
+      );
+
+  Future<void> saveFinancesExpenses(List<Map<String, dynamic>> expenses) async {
+    await _preferences.setString(_financesKey, jsonEncode(expenses));
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> getDocuments() => _decodeList(
+        _preferences.getString(_documentsKey),
+      );
+
+  Future<void> saveDocuments(List<Map<String, dynamic>> documents) async {
+    await _preferences.setString(_documentsKey, jsonEncode(documents));
+    notifyListeners();
+  }
+
+  Map<String, dynamic>? getExportDownload(String exportId) => _decodeMap(
+        _preferences.getString('$_exportDownloadPrefix$exportId'),
+      );
+
+  Future<void> saveExportDownload(
+    String exportId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _preferences.setString(
+      '$_exportDownloadPrefix$exportId',
+      jsonEncode(payload),
+    );
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> getPendingActions() => _decodeList(
+        _preferences.getString(_pendingActionsKey),
+      );
+
+  Future<void> savePendingActions(List<Map<String, dynamic>> actions) async {
+    await _preferences.setString(_pendingActionsKey, jsonEncode(actions));
+    notifyListeners();
+  }
+
+  Future<void> appendPendingAction(Map<String, dynamic> action) async {
+    final actions = getPendingActions()..add(action);
+    await savePendingActions(actions);
+  }
+
+  Map<String, String> getMessagingThreadIdMap() {
+    final raw = _decodeMap(_preferences.getString(_messagingThreadIdMapKey));
+    if (raw == null) {
+      return {};
+    }
+
+    return raw.map((key, value) => MapEntry(key, value as String));
+  }
+
+  Future<void> saveMessagingThreadIdMap(Map<String, String> map) async {
+    await _preferences.setString(_messagingThreadIdMapKey, jsonEncode(map));
+    notifyListeners();
+  }
+
+  Map<String, String> getFinanceExpenseIdMap() {
+    final raw = _decodeMap(_preferences.getString(_financeExpenseIdMapKey));
+    if (raw == null) {
+      return {};
+    }
+
+    return raw.map((key, value) => MapEntry(key, value as String));
+  }
+
+  Future<void> saveFinanceExpenseIdMap(Map<String, String> map) async {
+    await _preferences.setString(_financeExpenseIdMapKey, jsonEncode(map));
+    notifyListeners();
+  }
+
+  int pendingActionCount() => getPendingActions().length;
+
+  Future<void> clearSessionScopedData() async {
+    final keys = _preferences.getKeys();
+    for (final key in keys) {
+      if (key.startsWith(_exportDownloadPrefix)) {
+        await _preferences.remove(key);
+      }
+    }
+
+    await _preferences.remove(_sessionPayloadKey);
+    await _preferences.remove(_threadsKey);
+    await _preferences.remove(_exportsKey);
+    await _preferences.remove(_calendarKey);
+    await _preferences.remove(_financesKey);
+    await _preferences.remove(_documentsKey);
+    await _preferences.remove(_pendingActionsKey);
+    await _preferences.remove(_messagingThreadIdMapKey);
+    await _preferences.remove(_financeExpenseIdMapKey);
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> _decodeList(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return const [];
+    }
+
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Map<String, dynamic>? _decodeMap(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+}
