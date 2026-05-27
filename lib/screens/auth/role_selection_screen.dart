@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_environment.dart';
+import '../../data/api/app_api_client.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
@@ -24,6 +26,32 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
+  bool? _backendReachable;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBackendReachability());
+  }
+
+  Future<void> _checkBackendReachability() async {
+    final client = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
+    try {
+      final ok = await client.pingHealth();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _backendReachable = ok);
+      if (!ok) {
+        _showMessage(
+          'Backend niedostępny pod adresem ${AppEnvironment.apiBaseUrl}. '
+          'Sprawdź Netlify → COPARENTES_API_BASE_URL.',
+        );
+      }
+    } finally {
+      client.dispose();
+    }
+  }
 
   @override
   void dispose() {
@@ -82,6 +110,29 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                                 const SizedBox(height: 20),
+                                if (_backendReachable == false) ...[
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.warningColor.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: AppTheme.warningColor.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). '
+                                      'Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
+                                      style: const TextStyle(
+                                        color: AppTheme.warningColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 if (_mode != _AuthMode.login)
                                   _Field(
                                     controller: _nameController,
@@ -306,6 +357,30 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     if (password.length < 10) {
       _showMessage('Hasło musi mieć co najmniej 10 znaków.');
       return;
+    }
+
+    if (_mode == _AuthMode.register || _mode == _AuthMode.join) {
+      final name = _nameController.text.trim();
+      if (name.length < 2) {
+        _showMessage('Imię i nazwisko musi mieć co najmniej 2 znaki.');
+        return;
+      }
+    }
+
+    if (_mode == _AuthMode.register) {
+      final workspaceName = _workspaceController.text.trim();
+      if (workspaceName.length < 2) {
+        _showMessage('Nazwa przestrzeni musi mieć co najmniej 2 znaki.');
+        return;
+      }
+    }
+
+    if (_mode == _AuthMode.join) {
+      final inviteCode = _inviteCodeController.text.trim();
+      if (inviteCode.length < 6) {
+        _showMessage('Kod zaproszenia musi mieć co najmniej 6 znaków.');
+        return;
+      }
     }
 
     setState(() => _submitting = true);

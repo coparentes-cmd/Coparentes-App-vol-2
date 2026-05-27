@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../config/country_profiles.dart';
 import '../data/api/app_api_client.dart';
@@ -158,6 +159,52 @@ class AppProvider extends ChangeNotifier {
   Color get primaryColor => _colorScheme.primary;
   Color get primaryLight => _colorScheme.light;
 
+  String _mapAuthError(Object error, {required String fallback}) {
+    if (error is ApiException) {
+      switch (error.message) {
+        case 'email_in_use':
+          return 'Ten e-mail jest już zarejestrowany. Spróbuj się zalogować.';
+        case 'invalid_request':
+          return 'Sprawdź dane: hasło min. 10 znaków, imię i nazwa przestrzeni min. 2 znaki.';
+        case 'invalid_credentials':
+          return 'Nieprawidłowy e-mail lub hasło.';
+        case 'not_found':
+          return 'Nie znaleziono API backendu. W Netlify ustaw COPARENTES_API_BASE_URL z końcówką /api.';
+        case 'internal_server_error':
+          return 'Błąd serwera podczas zapisu konta. Spróbuj ponownie za chwilę.';
+        case 'invalid_invite':
+          return 'Nieprawidłowy kod zaproszenia.';
+        case 'cors_not_allowed':
+          return 'Serwer odrzucił połączenie (CORS). Skontaktuj się z administratorem.';
+        case 'Too many requests, try again later':
+          return 'Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.';
+        default:
+          break;
+      }
+
+      if (error.statusCode == 429) {
+        return 'Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.';
+      }
+      if (error.statusCode >= 500) {
+        return 'Błąd serwera. Spróbuj ponownie za chwilę.';
+      }
+    }
+
+    if (error is TimeoutException) {
+      return 'Serwer nie odpowiada. Sprawdź internet i spróbuj ponownie.';
+    }
+
+    if (error is http.ClientException) {
+      return 'Brak połączenia z serwerem API. Sprawdź Netlify → COPARENTES_API_BASE_URL.';
+    }
+
+    if (error is FormatException) {
+      return 'Serwer zwrócił nieprawidłową odpowiedź. Sprawdź adres API (/api na końcu).';
+    }
+
+    return fallback;
+  }
+
   Future<void> bootstrap() async {
     _isInitializing = true;
     notifyListeners();
@@ -188,7 +235,10 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (error) {
-      _authError = 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.';
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.',
+      );
       notifyListeners();
       return false;
     }
@@ -214,7 +264,10 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (error) {
-      _authError = 'Nie udało się utworzyć konta i workspace.';
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się utworzyć konta i workspace.',
+      );
       notifyListeners();
       return false;
     }
@@ -334,7 +387,10 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (error) {
-      _authError = 'Nie udało się dołączyć do workspace.';
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się dołączyć do workspace.',
+      );
       notifyListeners();
       return false;
     }

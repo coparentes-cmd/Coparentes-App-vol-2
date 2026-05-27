@@ -16,6 +16,16 @@ case "$COPARENTES_API_BASE_URL" in
     ;;
 esac
 
+case "$COPARENTES_API_BASE_URL" in
+  */api) ;;
+  *)
+    echo "ERROR: COPARENTES_API_BASE_URL must end with /api"
+    echo "Example: https://coparentes-backend-production.up.railway.app/api"
+    echo "Current value: $COPARENTES_API_BASE_URL"
+    exit 1
+    ;;
+esac
+
 export FLUTTER_HOME="$HOME/flutter-sdk"
 export PATH="$FLUTTER_HOME/bin:$PATH"
 
