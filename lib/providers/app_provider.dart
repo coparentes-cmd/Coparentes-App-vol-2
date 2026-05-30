@@ -798,11 +798,11 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   MessageThread? getCategoryChannel(String category) {
-    return findCategoryChannel(_threads, category);
+    return findCategoryThreadFallback(_threads, category);
   }
 
   Future<MessageThread?> openCategoryChannel(String category) async {
-    final existing = findCategoryChannel(_threads, category);
+    final existing = findCategoryThreadFallback(_threads, category);
     if (existing != null) {
       return existing;
     }

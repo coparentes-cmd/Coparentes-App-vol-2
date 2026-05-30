@@ -389,14 +389,30 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
 
   Future<void> _ensureThread() async {
     final messaging = context.read<MessagingProvider>();
-    final thread = await messaging.openCategoryChannel(widget.category);
+    final appProvider = context.read<AppProvider>();
+
+    if (messaging.threads.isEmpty) {
+      await messaging.loadThreads(
+        viewerUserId: appProvider.currentUser?.id,
+        notifyEnabled: false,
+      );
+    }
+
+    var thread = messaging.getCategoryChannel(widget.category);
+    thread ??= await messaging.openCategoryChannel(widget.category);
+
     if (!mounted) {
       return;
     }
 
+    if (thread == null) {
+      setState(() => _initializing = false);
+      return;
+    }
+
     final userId = context.read<AppProvider>().currentUser?.id;
-    if (thread != null && userId != null) {
-      _threadId = thread.id;
+    _threadId = thread.id;
+    if (userId != null) {
       await messaging.markThreadRead(thread.id, viewerUserId: userId);
     }
 

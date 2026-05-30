@@ -25,6 +25,27 @@ MessageThread? findCategoryChannel(
   return null;
 }
 
+MessageThread? findCategoryThreadFallback(
+  List<MessageThread> threads,
+  String category,
+) {
+  final canonical = findCategoryChannel(threads, category);
+  if (canonical != null) {
+    return canonical;
+  }
+
+  MessageThread? newest;
+  for (final thread in threads) {
+    if (thread.category != category) {
+      continue;
+    }
+    if (newest == null || thread.lastActivity.isAfter(newest.lastActivity)) {
+      newest = thread;
+    }
+  }
+  return newest;
+}
+
 String categoryChannelSubtitle(String category) {
   switch (category) {
     case 'Szkoła':
