@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../providers/exports_provider.dart';
 import '../../services/ai_guidance_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/messaging_helpers.dart';
 import '../../widgets/common_widgets.dart';
 
 class MessagingScreen extends StatefulWidget {
@@ -27,9 +28,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
         return;
       }
       final messaging = context.read<MessagingProvider>();
-      if (messaging.threads.isEmpty && !messaging.isLoading) {
-        messaging.loadThreads();
-      }
+      _loadThreads(context);
     });
 
     if (widget.openThreadId != null) {
@@ -48,6 +47,14 @@ class _MessagingScreenState extends State<MessagingScreen> {
         );
       });
     }
+  }
+
+  void _loadThreads(BuildContext context) {
+    final appProvider = context.read<AppProvider>();
+    context.read<MessagingProvider>().loadThreads(
+          viewerUserId: appProvider.currentUser?.id,
+          notifyEnabled: appProvider.notifyMessages,
+        );
   }
 
   @override
@@ -72,6 +79,11 @@ class _MessagingScreenState extends State<MessagingScreen> {
       appBar: AppBar(
         title: const Text('Wiadomości'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Odśwież wiadomości',
+            onPressed: () => _loadThreads(context),
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => _showSearch(context),
@@ -144,21 +156,36 @@ class _MessagingScreenState extends State<MessagingScreen> {
             ),
           // Threads list
           Expanded(
-            child: messaging.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : visibleThreads.isEmpty
-                ? const EmptyState(
-                    icon: Icons.chat_bubble_outline,
-                    title: 'Brak wyników',
-                    subtitle: 'Zmień filtr albo rozpocznij nowy wątek tematyczny',
-                  )
-                : ListView.builder(
-                    itemCount: visibleThreads.length,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemBuilder: (ctx, i) {
-                      return _ThreadTile(thread: visibleThreads[i]);
-                    },
-                  ),
+            child: RefreshIndicator(
+              onRefresh: () async => _loadThreads(context),
+              child: messaging.isLoading && messaging.threads.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : visibleThreads.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 120),
+                            EmptyState(
+                              icon: Icons.chat_bubble_outline,
+                              title: 'Brak wyników',
+                              subtitle:
+                                  'Zmień filtr albo rozpocznij nowy wątek tematyczny',
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: visibleThreads.length,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemBuilder: (ctx, i) {
+                            final viewerId = user?.id;
+                            return _ThreadTile(
+                              thread: visibleThreads[i],
+                              viewerUserId: viewerId,
+                            );
+                          },
+                        ),
+            ),
           ),
         ],
       ),
@@ -269,7 +296,19 @@ class _CategoryChip extends StatelessWidget {
 
 class _ThreadTile extends StatelessWidget {
   final MessageThread thread;
-  const _ThreadTile({required this.thread});
+  final String? viewerUserId;
+
+  const _ThreadTile({
+    required this.thread,
+    this.viewerUserId,
+  });
+
+  bool get _hasUnread {
+    if (viewerUserId == null) {
+      return thread.hasUnread;
+    }
+    return threadHasUnreadForViewer(thread, viewerUserId!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +358,7 @@ class _ThreadTile extends StatelessWidget {
                               thread.subject,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: thread.hasUnread
+                                fontWeight: _hasUnread
                                     ? FontWeight.w700
                                     : FontWeight.w500,
                                 color: AppTheme.textPrimary,
@@ -379,7 +418,7 @@ class _ThreadTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 Column(
                   children: [
-                    if (thread.hasUnread)
+                    if (_hasUnread)
                       Container(
                         width: 10,
                         height: 10,
@@ -430,6 +469,24 @@ class _ThreadScreenState extends State<ThreadScreen> {
   MessageTone _analyzedTone = MessageTone.neutral;
   bool _showAiSuggestion = false;
   String _aiSuggestion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final userId = context.read<AppProvider>().currentUser?.id;
+      if (userId == null) {
+        return;
+      }
+      context.read<MessagingProvider>().markThreadRead(
+            widget.threadId,
+            viewerUserId: userId,
+          );
+    });
+  }
 
   @override
   void dispose() {

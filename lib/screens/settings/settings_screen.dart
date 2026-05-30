@@ -156,6 +156,16 @@ class SettingsScreen extends StatelessWidget {
                       value: workspace?.name ?? '—',
                       isDark: isDark,
                     ),
+                    if (workspace != null && workspace.members.isNotEmpty) ...[
+                      _Divider(),
+                      _InfoTile(
+                        icon: Icons.people_outline,
+                        label: 'Członkowie rodziny',
+                        value:
+                            '${workspace.members.length} (${workspace.members.map((m) => m.name.split(' ').first).join(', ')})',
+                        isDark: isDark,
+                      ),
+                    ],
                     if (canShowInviteCode) ...[
   _Divider(),
   _ActionTile(

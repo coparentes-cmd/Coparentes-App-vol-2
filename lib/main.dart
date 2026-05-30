@@ -25,6 +25,7 @@ import 'screens/child/child_dashboard.dart';
 import 'screens/dashboard/parent_dashboard.dart';
 import 'screens/observer/observer_dashboard.dart';
 import 'theme/app_theme.dart';
+import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
 
 Future<void> main() async {
@@ -125,7 +126,11 @@ class CoparentesApp extends StatelessWidget {
             documentsRepository: documentsRepository,
             offlineStore: offlineStore,
             refreshData: () async {
-              await context.read<MessagingProvider>().loadThreads();
+              final appProvider = context.read<AppProvider>();
+              await context.read<MessagingProvider>().loadThreads(
+                    viewerUserId: appProvider.currentUser?.id,
+                    notifyEnabled: appProvider.notifyMessages,
+                  );
               await context.read<ExportsProvider>().loadExports();
               await context.read<CalendarProvider>().load();
               await context.read<FinanceProvider>().load();
@@ -155,14 +160,16 @@ class CoparentesApp extends StatelessWidget {
             theme: AppTheme.buildLight(ap.colorScheme.primary),
             darkTheme: AppTheme.buildDark(ap.colorScheme.primary),
             builder: (context, child) {
-              return Stack(
-                children: [
-                  Positioned.fill(child: child ?? const SizedBox.shrink()),
-                  const Align(
-                    alignment: Alignment.topCenter,
-                    child: OfflineStatusBanner(),
-                  ),
-                ],
+              return MessageNotificationListener(
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: child ?? const SizedBox.shrink()),
+                    const Align(
+                      alignment: Alignment.topCenter,
+                      child: OfflineStatusBanner(),
+                    ),
+                  ],
+                ),
               );
             },
             home: const _AppGate(),
@@ -245,7 +252,11 @@ class _AppGateState extends State<_AppGate> {
         messagingProvider.initializeSampleData();
         exportsProvider.initializeSampleData();
       } else {
-        await messagingProvider.loadThreads();
+        final appProvider = context.read<AppProvider>();
+        await messagingProvider.loadThreads(
+          viewerUserId: appProvider.currentUser?.id,
+          notifyEnabled: appProvider.notifyMessages,
+        );
         await exportsProvider.loadExports();
         await offlineProvider.refreshStatus();
         await calendarProvider.load();

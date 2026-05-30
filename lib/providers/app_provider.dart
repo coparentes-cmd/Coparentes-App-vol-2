@@ -9,6 +9,7 @@ import '../data/models/auth_session.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../models/models.dart';
+import '../utils/messaging_helpers.dart';
 
 export 'calendar_provider.dart';
 export 'finance_provider.dart';
@@ -619,18 +620,47 @@ class MessagingProvider extends ChangeNotifier {
   final List<MessageThread> _threads = [];
   bool _isLoading = false;
   String? _error;
+  bool _snapshotSeeded = false;
+  final Map<String, Set<String>> _knownMessageIds = {};
+  String? _pendingNewMessageAlert;
 
   List<MessageThread> get threads => _threads;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get pendingNewMessageAlert => _pendingNewMessageAlert;
 
-  Future<void> loadThreads() async {
+  void clearPendingNotification() {
+    _pendingNewMessageAlert = null;
+  }
+
+  Future<void> loadThreads({
+    String? viewerUserId,
+    bool notifyEnabled = false,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       final threads = await _repository.getThreads();
+
+      if (!_snapshotSeeded) {
+        syncKnownMessageIds(threads, _knownMessageIds);
+        _snapshotSeeded = true;
+      } else if (notifyEnabled && viewerUserId != null) {
+        final incoming = findNewIncomingMessage(
+          threads,
+          viewerUserId,
+          _knownMessageIds,
+        );
+        if (incoming != null) {
+          _pendingNewMessageAlert = formatMessageNotification(incoming);
+        }
+        syncKnownMessageIds(threads, _knownMessageIds);
+      } else {
+        syncKnownMessageIds(threads, _knownMessageIds);
+      }
+
       _threads
         ..clear()
         ..addAll(threads);
@@ -640,6 +670,58 @@ class MessagingProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> markThreadRead(String threadId, {required String viewerUserId}) async {
+    final updated = await _repository.markThreadRead(threadId);
+    if (updated != null) {
+      final index = _threads.indexWhere((thread) => thread.id == threadId);
+      if (index >= 0) {
+        _threads[index] = updated;
+      }
+      syncKnownMessageIds(_threads, _knownMessageIds);
+      notifyListeners();
+      return;
+    }
+
+    final index = _threads.indexWhere((thread) => thread.id == threadId);
+    if (index < 0) {
+      return;
+    }
+
+    final thread = _threads[index];
+    final readMessages = thread.messages
+        .map(
+          (message) => message.senderId == viewerUserId
+              ? message
+              : Message(
+                  id: message.id,
+                  threadId: message.threadId,
+                  senderId: message.senderId,
+                  senderName: message.senderName,
+                  content: message.content,
+                  tone: message.tone,
+                  attachments: message.attachments,
+                  sentAt: message.sentAt,
+                  isDelivered: message.isDelivered,
+                  isRead: true,
+                  hash: message.hash,
+                  isShielded: message.isShielded,
+                ),
+        )
+        .toList();
+
+    _threads[index] = MessageThread(
+      id: thread.id,
+      subject: thread.subject,
+      category: thread.category,
+      childId: thread.childId,
+      lastActivity: thread.lastActivity,
+      hasUnread: false,
+      messages: readMessages,
+    );
+    syncKnownMessageIds(_threads, _knownMessageIds);
+    notifyListeners();
   }
 
   void initializeSampleData() {
@@ -745,6 +827,16 @@ class MessagingProvider extends ChangeNotifier {
       } else {
         _threads.insert(0, updatedThread);
       }
+
+      final lastMessage = updatedThread.messages.isNotEmpty
+          ? updatedThread.messages.last
+          : null;
+      if (lastMessage != null &&
+          (lastMessage.id.startsWith('local_msg_') || !lastMessage.isDelivered)) {
+        _error =
+            'Wiadomość zapisana tylko na tym urządzeniu. Użyj „Synchronizuj” u góry ekranu.';
+      }
+
       notifyListeners();
       return updatedThread;
     } catch (error) {
@@ -758,6 +850,9 @@ class MessagingProvider extends ChangeNotifier {
     _threads.clear();
     _error = null;
     _isLoading = false;
+    _snapshotSeeded = false;
+    _knownMessageIds.clear();
+    _pendingNewMessageAlert = null;
     notifyListeners();
   }
 }

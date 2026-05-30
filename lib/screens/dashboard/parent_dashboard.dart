@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/messaging_helpers.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/brand_widgets.dart';
 import '../messaging/messaging_screen.dart';
@@ -78,10 +79,14 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   Positioned(
                     right: 0,
                     top: 0,
-                    child: Consumer<MessagingProvider>(
-                      builder: (_, mp, __) {
+                    child: Consumer2<MessagingProvider, AppProvider>(
+                      builder: (_, mp, ap, __) {
+                        final userId = ap.currentUser?.id;
+                        if (userId == null) {
+                          return const SizedBox.shrink();
+                        }
                         final unread =
-                            mp.threads.where((t) => t.hasUnread).length;
+                            countUnreadThreadsForViewer(mp.threads, userId);
                         if (unread == 0) return const SizedBox.shrink();
                         return Container(
                           width: 8,
@@ -148,8 +153,9 @@ class _DashboardHome extends StatelessWidget {
     final pendingSwaps = calendar.swapRequests
         .where((s) => s.status == SwapStatus.pending)
         .length;
-    final unreadMessages =
-        messaging.threads.where((t) => t.hasUnread).length;
+    final unreadMessages = user?.id == null
+        ? 0
+        : countUnreadThreadsForViewer(messaging.threads, user!.id);
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -377,7 +383,12 @@ class _DashboardHome extends StatelessWidget {
                 const SizedBox(height: 10),
                 ...messaging.threads
                     .take(3)
-                    .map((t) => _MessageThreadPreview(thread: t)),
+                    .map(
+                      (t) => _MessageThreadPreview(
+                        thread: t,
+                        viewerUserId: user?.id,
+                      ),
+                    ),
 
                 const SizedBox(height: 20),
 
@@ -676,8 +687,19 @@ class _StatCard extends StatelessWidget {
 
 class _MessageThreadPreview extends StatelessWidget {
   final MessageThread thread;
+  final String? viewerUserId;
 
-  const _MessageThreadPreview({required this.thread});
+  const _MessageThreadPreview({
+    required this.thread,
+    this.viewerUserId,
+  });
+
+  bool get _hasUnread {
+    if (viewerUserId == null) {
+      return thread.hasUnread;
+    }
+    return threadHasUnreadForViewer(thread, viewerUserId!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -726,7 +748,7 @@ class _MessageThreadPreview extends StatelessWidget {
                             thread.subject,
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight: thread.hasUnread
+                              fontWeight: _hasUnread
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                               color: AppTheme.textPrimary,
@@ -749,10 +771,10 @@ class _MessageThreadPreview extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color: thread.hasUnread
+                            color: _hasUnread
                                 ? AppTheme.textPrimary
                                 : AppTheme.textSecondary,
-                            fontWeight: thread.hasUnread
+                            fontWeight: _hasUnread
                                 ? FontWeight.w500
                                 : FontWeight.normal,
                           ),
@@ -760,7 +782,7 @@ class _MessageThreadPreview extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (thread.hasUnread) ...[
+                if (_hasUnread) ...[
                   const SizedBox(width: 8),
                   Container(
                     width: 8,

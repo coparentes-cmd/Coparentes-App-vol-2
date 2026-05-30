@@ -158,6 +158,17 @@ class MessagingRepository {
     }
   }
 
+  Future<MessageThread?> markThreadRead(String threadId) async {
+    try {
+      final payload = await _apiClient.postJson('/threads/$threadId/read', {});
+      final thread = messageThreadFromJson(payload);
+      await _upsertThread(thread);
+      return thread;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> syncPendingActions() async {
     final actions = _offlineStore.getPendingActions();
     if (actions.isEmpty) {
@@ -218,6 +229,20 @@ class MessagingRepository {
         if (error.statusCode >= 500) {
           rethrow;
         }
+
+        if (error.statusCode == 404 && type == 'messaging.sendMessage') {
+          final payload = Map<String, dynamic>.from(action['payload'] as Map);
+          final requestedThreadId = payload['threadId'] as String;
+          final resolvedThreadId =
+              localThreadIdMap[requestedThreadId] ?? requestedThreadId;
+          if (requestedThreadId.startsWith('local_') &&
+              resolvedThreadId == requestedThreadId) {
+            rewrittenQueue.add(action);
+            continue;
+          }
+        }
+
+        rewrittenQueue.add(action);
       } catch (_) {
         networkFailed = true;
         rewrittenQueue.add(action);

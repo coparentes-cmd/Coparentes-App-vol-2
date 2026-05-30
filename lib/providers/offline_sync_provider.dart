@@ -102,6 +102,14 @@ class OfflineSyncProvider extends ChangeNotifier {
       return;
     }
 
+    if (_isOnline && _refreshData != null) {
+      try {
+        await _refreshData!.call();
+      } catch (_) {
+        // Keep polling on transient API errors.
+      }
+    }
+
     if (previousOnline != _isOnline || previousPendingCount != _pendingCount) {
       notifyListeners();
     }
