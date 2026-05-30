@@ -46,9 +46,12 @@ fi
 
 flutter pub get
 
+PUBLIC_URL="${COPARENTES_PUBLIC_URL:-https://getcoparentes.app}"
+
 flutter build web \
   --release \
-  --dart-define=COPARENTES_API_BASE_URL="$COPARENTES_API_BASE_URL"
+  --dart-define=COPARENTES_API_BASE_URL="$COPARENTES_API_BASE_URL" \
+  --dart-define=COPARENTES_PUBLIC_URL="$PUBLIC_URL"
 
 if [ ! -f build/web/index.html ]; then
   echo "ERROR: Flutter web build failed - build/web/index.html not found."

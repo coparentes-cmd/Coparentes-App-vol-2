@@ -7,6 +7,18 @@
   NODE_VERSION = "22"
 
 [[redirects]]
+  from = "https://aquamarine-florentine-7c7edc.netlify.app/*"
+  to = "https://getcoparentes.app/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.getcoparentes.app/*"
+  to = "https://getcoparentes.app/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

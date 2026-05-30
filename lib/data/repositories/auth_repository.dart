@@ -60,12 +60,12 @@ class AuthRepository {
         return null;
       }
 
-      if (cachedPayload != null) {
+      if (cachedPayload != null && kDebugMode) {
         return authSessionFromJson(cachedPayload);
       }
       return null;
     } catch (_) {
-      if (cachedPayload != null) {
+      if (cachedPayload != null && kDebugMode) {
         return authSessionFromJson(cachedPayload);
       }
       return null;
