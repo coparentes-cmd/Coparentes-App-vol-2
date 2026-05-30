@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/exports_provider.dart';
+import '../../providers/offline_sync_provider.dart';
 import '../../services/ai_guidance_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/messaging_helpers.dart';
@@ -469,6 +472,16 @@ class _ThreadScreenState extends State<ThreadScreen> {
   MessageTone _analyzedTone = MessageTone.neutral;
   bool _showAiSuggestion = false;
   String _aiSuggestion = '';
+  Timer? _livePollTimer;
+
+  void _pollThreadMessages() {
+    final appProvider = context.read<AppProvider>();
+    context.read<MessagingProvider>().loadThreads(
+          viewerUserId: appProvider.currentUser?.id,
+          notifyEnabled: false,
+          silent: true,
+        );
+  }
 
   @override
   void initState() {
@@ -485,11 +498,24 @@ class _ThreadScreenState extends State<ThreadScreen> {
             widget.threadId,
             viewerUserId: userId,
           );
+      _pollThreadMessages();
+      context.read<OfflineSyncProvider>().pollMessagingNow();
     });
+
+    _livePollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) {
+        if (!mounted) {
+          return;
+        }
+        _pollThreadMessages();
+      },
+    );
   }
 
   @override
   void dispose() {
+    _livePollTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

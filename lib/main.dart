@@ -25,6 +25,7 @@ import 'screens/child/child_dashboard.dart';
 import 'screens/dashboard/parent_dashboard.dart';
 import 'screens/observer/observer_dashboard.dart';
 import 'theme/app_theme.dart';
+import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
 
@@ -125,12 +126,15 @@ class CoparentesApp extends StatelessWidget {
             financeRepository: financeRepository,
             documentsRepository: documentsRepository,
             offlineStore: offlineStore,
-            refreshData: () async {
+            refreshMessaging: () async {
               final appProvider = context.read<AppProvider>();
               await context.read<MessagingProvider>().loadThreads(
                     viewerUserId: appProvider.currentUser?.id,
                     notifyEnabled: appProvider.notifyMessages,
+                    silent: true,
                   );
+            },
+            refreshData: () async {
               await context.read<ExportsProvider>().loadExports();
               await context.read<CalendarProvider>().load();
               await context.read<FinanceProvider>().load();
@@ -160,15 +164,17 @@ class CoparentesApp extends StatelessWidget {
             theme: AppTheme.buildLight(ap.colorScheme.primary),
             darkTheme: AppTheme.buildDark(ap.colorScheme.primary),
             builder: (context, child) {
-              return MessageNotificationListener(
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: child ?? const SizedBox.shrink()),
-                    const Align(
-                      alignment: Alignment.topCenter,
-                      child: OfflineStatusBanner(),
-                    ),
-                  ],
+              return AppLifecycleRefresher(
+                child: MessageNotificationListener(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: child ?? const SizedBox.shrink()),
+                      const Align(
+                        alignment: Alignment.topCenter,
+                        child: OfflineStatusBanner(),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

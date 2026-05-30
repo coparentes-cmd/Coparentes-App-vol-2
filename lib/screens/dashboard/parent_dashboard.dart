@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../widgets/common_widgets.dart';
@@ -53,7 +54,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (i) => setState(() => _selectedIndex = i),
+          onTap: (i) {
+            setState(() => _selectedIndex = i);
+            if (i == 1) {
+              context.read<OfflineSyncProvider>().pollMessagingNow();
+            }
+          },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: isParentA

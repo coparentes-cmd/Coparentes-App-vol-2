@@ -14,7 +14,9 @@ class MessagingRepository {
         _offlineStore = offlineStore;
 
   Future<List<MessageThread>> getThreads() async {
-    await syncPendingActions();
+    if (_offlineStore.getPendingActions().isNotEmpty) {
+      await syncPendingActions();
+    }
 
     try {
       final payload = await _apiClient.getJson('/threads');

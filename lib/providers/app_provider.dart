@@ -636,10 +636,13 @@ class MessagingProvider extends ChangeNotifier {
   Future<void> loadThreads({
     String? viewerUserId,
     bool notifyEnabled = false,
+    bool silent = false,
   }) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+    if (!silent) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       final threads = await _repository.getThreads();
@@ -665,9 +668,13 @@ class MessagingProvider extends ChangeNotifier {
         ..clear()
         ..addAll(threads);
     } catch (error) {
-      _error = 'Nie udało się pobrać wiadomości.';
+      if (!silent) {
+        _error = 'Nie udało się pobrać wiadomości.';
+      }
     } finally {
-      _isLoading = false;
+      if (!silent) {
+        _isLoading = false;
+      }
       notifyListeners();
     }
   }
