@@ -21,6 +21,7 @@ class MessagingScreen extends StatefulWidget {
 }
 
 class _MessagingScreenState extends State<MessagingScreen> {
+  String _selectedCategory = 'Szkoła';
   String _searchQuery = '';
 
   @override
@@ -78,21 +79,23 @@ class _MessagingScreenState extends State<MessagingScreen> {
             (message) => message.content.toLowerCase().contains(query),
           );
     }).toList();
+    final showInlineChat = _selectedCategory != 'Wszystkie';
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
       appBar: AppBar(
-        title: const Text('Wiadomości'),
+        title: Text(showInlineChat ? _selectedCategory : 'Wiadomości'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Odśwież wiadomości',
             onPressed: () => _loadThreads(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => _showSearch(context),
-          ),
+          if (!showInlineChat)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () => _showSearch(context),
+            ),
           if (!isReadOnly)
             IconButton(
               icon: const Icon(Icons.edit_note),
@@ -101,104 +104,148 @@ class _MessagingScreenState extends State<MessagingScreen> {
             ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => _loadThreads(context),
-        child: messaging.isLoading && messaging.threads.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.only(bottom: 88),
-                children: [
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                    child: Text(
-                      'Rozmowy tematyczne',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textSecondary.withValues(alpha: 0.9),
-                      ),
+      body: Column(
+        children: [
+          SizedBox(
+            height: 50,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              children: [
+                'Wszystkie',
+                ...messagingCategoryChannels,
+              ]
+                  .map(
+                    (cat) => _CategoryChip(
+                      category: cat,
+                      selected: _selectedCategory == cat,
+                      onTap: () => setState(() => _selectedCategory = cat),
                     ),
-                  ),
-                  ...messagingCategoryChannels.map(
-                    (category) => _CategoryChannelTile(
-                      category: category,
-                      thread: messaging.getCategoryChannel(category),
-                      viewerUserId: user?.id,
-                      onTap: () => _openCategoryChannel(context, category),
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.immutableBadge.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.lock, size: 14, color: AppTheme.immutableBadge),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Wiadomości po wysłaniu są niezmienialnie archiwizowane (hash SHA-256)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.immutableBadge,
+                  )
+                  .toList(),
+            ),
+          ),
+          if (showInlineChat)
+            Expanded(
+              child: _InlineCategoryChatPanel(
+                key: ValueKey(_selectedCategory),
+                category: _selectedCategory,
+              ),
+            )
+          else
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => _loadThreads(context),
+                child: messaging.isLoading && messaging.threads.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 24),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                            child: Text(
+                              'Rozmowy tematyczne',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textSecondary.withValues(
+                                  alpha: 0.9,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!isReadOnly)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
+                          ...messagingCategoryChannels.map(
+                            (category) => _CategoryChannelTile(
+                              category: category,
+                              thread: messaging.getCategoryChannel(category),
+                              viewerUserId: user?.id,
+                              onTap: () => setState(
+                                () => _selectedCategory = category,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.immutableBadge.withValues(
+                                alpha: 0.08,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.lock,
+                                  size: 14,
+                                  color: AppTheme.immutableBadge,
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Wiadomości po wysłaniu są niezmienialnie archiwizowane (hash SHA-256)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.immutableBadge,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isReadOnly)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              child: AiContextualTip(
+                                tips: AiTips.messaging,
+                                intervalSeconds: 7,
+                              ),
+                            ),
+                          if (customThreads.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                              child: Text(
+                                'Wątki z własnym tematem',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textSecondary.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            ...customThreads.map(
+                              (thread) => _ThreadTile(
+                                thread: thread,
+                                viewerUserId: user?.id,
+                              ),
+                            ),
+                          ] else if (_searchQuery.trim().isNotEmpty) ...[
+                            const SizedBox(height: 24),
+                            const EmptyState(
+                              icon: Icons.search_off,
+                              title: 'Brak wyników',
+                              subtitle: 'Spróbuj innej frazy wyszukiwania',
+                            ),
+                          ],
+                        ],
                       ),
-                      child: AiContextualTip(
-                        tips: AiTips.messaging,
-                        intervalSeconds: 7,
-                      ),
-                    ),
-                  if (customThreads.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Text(
-                        'Wątki z własnym tematem',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textSecondary.withValues(alpha: 0.9),
-                        ),
-                      ),
-                    ),
-                    ...customThreads.map(
-                      (thread) => _ThreadTile(
-                        thread: thread,
-                        viewerUserId: user?.id,
-                      ),
-                    ),
-                  ] else if (_searchQuery.trim().isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    const EmptyState(
-                      icon: Icons.search_off,
-                      title: 'Brak wyników',
-                      subtitle: 'Spróbuj innej frazy wyszukiwania',
-                    ),
-                  ],
-                ],
               ),
+            ),
+        ],
       ),
-      floatingActionButton: isReadOnly
+      floatingActionButton: isReadOnly || showInlineChat
           ? null
           : FloatingActionButton.extended(
               onPressed: () => _newThread(context),
@@ -206,29 +253,6 @@ class _MessagingScreenState extends State<MessagingScreen> {
               label: const Text('Własny temat'),
             ),
     );
-  }
-
-  Future<void> _openCategoryChannel(
-    BuildContext context,
-    String category,
-  ) async {
-    final thread = await context.read<MessagingProvider>().openCategoryChannel(
-          category,
-        );
-    if (!context.mounted || thread == null) {
-      return;
-    }
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ThreadScreen(threadId: thread.id),
-      ),
-    );
-
-    if (context.mounted) {
-      _loadThreads(context);
-    }
   }
 
   void _showSearch(BuildContext context) {
@@ -284,6 +308,300 @@ class _MessagingScreenState extends State<MessagingScreen> {
       MaterialPageRoute(
         builder: (_) => ThreadScreen(threadId: thread.id),
       ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(category),
+        selected: selected,
+        onSelected: (_) => onTap(),
+        backgroundColor: Colors.white,
+        selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
+        checkmarkColor: AppTheme.primaryTeal,
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: selected ? AppTheme.primaryTeal : AppTheme.textSecondary,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: selected ? AppTheme.primaryTeal : AppTheme.dividerColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineCategoryChatPanel extends StatefulWidget {
+  final String category;
+
+  const _InlineCategoryChatPanel({super.key, required this.category});
+
+  @override
+  State<_InlineCategoryChatPanel> createState() =>
+      _InlineCategoryChatPanelState();
+}
+
+class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  MessageTone _analyzedTone = MessageTone.neutral;
+  Timer? _livePollTimer;
+  String? _threadId;
+  bool _initializing = true;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureThread());
+    _livePollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _pollMessages(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _livePollTimer?.cancel();
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _ensureThread() async {
+    final messaging = context.read<MessagingProvider>();
+    final thread = await messaging.openCategoryChannel(widget.category);
+    if (!mounted) {
+      return;
+    }
+
+    final userId = context.read<AppProvider>().currentUser?.id;
+    if (thread != null && userId != null) {
+      _threadId = thread.id;
+      await messaging.markThreadRead(thread.id, viewerUserId: userId);
+    }
+
+    setState(() => _initializing = false);
+    _scrollToBottom();
+    context.read<OfflineSyncProvider>().pollMessagingNow();
+  }
+
+  void _pollMessages() {
+    if (!mounted) {
+      return;
+    }
+    final appProvider = context.read<AppProvider>();
+    context.read<MessagingProvider>().loadThreads(
+          viewerUserId: appProvider.currentUser?.id,
+          notifyEnabled: false,
+          silent: true,
+        );
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final content = _controller.text.trim();
+    if (content.isEmpty || _threadId == null || _sending) {
+      return;
+    }
+
+    setState(() => _sending = true);
+    final sent = await context.read<MessagingProvider>().sendMessage(
+          threadId: _threadId!,
+          content: content,
+          tone: _analyzedTone,
+        );
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _sending = false;
+      if (sent != null) {
+        _controller.clear();
+        _analyzedTone = MessageTone.neutral;
+      }
+    });
+    _scrollToBottom();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<AppProvider>().currentUser;
+    final aiCoach = context.watch<AppProvider>().aiCoachEnabled;
+    final aiShield = context.watch<AppProvider>().aiShieldEnabled;
+    final isReadOnly = user?.role == UserRole.observer;
+    final thread = _threadId == null
+        ? null
+        : context.watch<MessagingProvider>().getThreadById(_threadId!);
+
+    if (_initializing) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (thread == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Nie udało się otworzyć rozmowy „${widget.category}”.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            categoryChannelSubtitle(widget.category),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: thread.messages.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          thread.categoryIcon,
+                          size: 48,
+                          color: thread.categoryColor.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Brak wiadomości w „${widget.category}”',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Napisz pierwszą wiadomość poniżej',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: thread.messages.length,
+                  itemBuilder: (ctx, i) {
+                    final msg = thread.messages[i];
+                    final isMe = msg.senderId == user?.id;
+                    return _MessageBubble(
+                      message: msg,
+                      isMe: isMe,
+                      aiShieldEnabled: aiShield,
+                    );
+                  },
+                ),
+        ),
+        if (!isReadOnly)
+          Container(
+            color: Colors.white,
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              top: 8,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    maxLines: 4,
+                    minLines: 1,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(),
+                    decoration: const InputDecoration(
+                      hintText: 'Napisz wiadomość...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(20)),
+                        borderSide: BorderSide(color: AppTheme.dividerColor),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {});
+                      if (aiCoach && value.length > 10) {
+                        _analyzedTone = AiGuidanceService.analyze(value).tone;
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: _sending
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          Icons.send,
+                          color: _controller.text.isEmpty
+                              ? AppTheme.textHint
+                              : AppTheme.primaryTeal,
+                        ),
+                  onPressed:
+                      _controller.text.isEmpty || _sending ? null : _sendMessage,
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
