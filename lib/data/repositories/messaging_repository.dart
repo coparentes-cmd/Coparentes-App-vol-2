@@ -111,11 +111,13 @@ class MessagingRepository {
     required String threadId,
     required String content,
     required MessageTone tone,
+    List<Map<String, dynamic>> attachments = const [],
   }) async {
     try {
       final payload = await _apiClient.postJson('/threads/$threadId/messages', {
         'content': content,
         'tone': messageToneToApi(tone),
+        if (attachments.isNotEmpty) 'attachments': attachments,
       });
       final thread = messageThreadFromJson(payload);
       await _upsertThread(thread);
@@ -135,10 +137,19 @@ class MessagingRepository {
         senderName: 'Ty',
         content: content,
         tone: tone,
-        attachments: const [],
+        attachments: attachments
+            .map(
+              (item) => MessageAttachment(
+                id: item['id'] as String,
+                name: item['name'] as String,
+                type: item['type'] as String,
+                sizeBytes: (item['sizeBytes'] as num?)?.toInt() ?? 0,
+              ),
+            )
+            .toList(),
         sentAt: now,
         isDelivered: false,
-        isRead: true,
+        isRead: false,
         hash: 'pending_${now.microsecondsSinceEpoch}',
         isShielded: tone == MessageTone.aggressive,
       );
@@ -177,11 +188,22 @@ class MessagingRepository {
           'threadId': threadId,
           'content': content,
           'tone': messageToneToApi(tone),
+          if (attachments.isNotEmpty) 'attachments': attachments,
         },
       });
 
       return optimisticThread;
     }
+  }
+
+  Future<Map<String, dynamic>> downloadMessageAttachment({
+    required String threadId,
+    required String messageId,
+    required String attachmentId,
+  }) {
+    return _apiClient.getJson(
+      '/threads/$threadId/messages/$messageId/attachments/$attachmentId',
+    );
   }
 
   Future<MessageThread?> markThreadRead(String threadId) async {
@@ -243,6 +265,8 @@ class MessagingRepository {
               {
                 'content': payload['content'],
                 'tone': payload['tone'],
+                if (payload['attachments'] != null)
+                  'attachments': payload['attachments'],
               },
             );
             final updatedThread = messageThreadFromJson(response);

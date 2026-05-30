@@ -8,9 +8,13 @@ import '../../providers/app_provider.dart';
 import '../../providers/exports_provider.dart';
 import '../../providers/offline_sync_provider.dart';
 import '../../services/ai_guidance_service.dart';
+import '../../services/message_attachment_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/file_download.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/message_compose_bar.dart';
+import '../../widgets/message_status_indicator.dart';
 
 class MessagingScreen extends StatefulWidget {
   final String? openThreadId;
@@ -368,6 +372,39 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
   String? _threadId;
   bool _initializing = true;
   bool _sending = false;
+  final List<PendingMessageAttachment> _pendingAttachments = [];
+
+  Future<void> _pickAttachment() async {
+    if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Możesz dodać maksymalnie 3 załączniki.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final picked = await MessageAttachmentPicker.pickAttachment();
+      if (!mounted || picked == null) {
+        return;
+      }
+      setState(() => _pendingAttachments.add(picked));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  void _removeAttachment(String attachmentId) {
+    setState(
+      () => _pendingAttachments.removeWhere((item) => item.id == attachmentId),
+    );
+  }
 
   @override
   void initState() {
@@ -448,15 +485,20 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
 
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
-    if (content.isEmpty || _threadId == null || _sending) {
+    if ((content.isEmpty && _pendingAttachments.isEmpty) ||
+        _threadId == null ||
+        _sending) {
       return;
     }
 
     setState(() => _sending = true);
+    final attachments =
+        _pendingAttachments.map((item) => item.toApiPayload()).toList();
     final sent = await context.read<MessagingProvider>().sendMessage(
           threadId: _threadId!,
           content: content,
           tone: _analyzedTone,
+          attachments: attachments,
         );
     if (!mounted) {
       return;
@@ -467,6 +509,7 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       if (sent != null) {
         _controller.clear();
         _analyzedTone = MessageTone.neutral;
+        _pendingAttachments.clear();
       }
     });
     _scrollToBottom();
@@ -553,6 +596,7 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                     final isMe = msg.senderId == user?.id;
                     return _MessageBubble(
                       message: msg,
+                      threadId: thread.id,
                       isMe: isMe,
                       aiShieldEnabled: aiShield,
                     );
@@ -560,62 +604,19 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                 ),
         ),
         if (!isReadOnly)
-          Container(
-            color: Colors.white,
-            padding: EdgeInsets.only(
-              left: 12,
-              right: 12,
-              top: 8,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    maxLines: 4,
-                    minLines: 1,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
-                    decoration: const InputDecoration(
-                      hintText: 'Napisz wiadomość...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: AppTheme.dividerColor),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {});
-                      if (aiCoach && value.length > 10) {
-                        _analyzedTone = AiGuidanceService.analyze(value).tone;
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: _sending
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.send,
-                          color: _controller.text.isEmpty
-                              ? AppTheme.textHint
-                              : AppTheme.primaryTeal,
-                        ),
-                  onPressed:
-                      _controller.text.isEmpty || _sending ? null : _sendMessage,
-                ),
-              ],
-            ),
+          MessageComposeBar(
+            controller: _controller,
+            pendingAttachments: _pendingAttachments,
+            onPickAttachment: _pickAttachment,
+            onRemoveAttachment: _removeAttachment,
+            onSend: _sendMessage,
+            sending: _sending,
+            onChanged: (value) {
+              setState(() {});
+              if (aiCoach && value.length > 10) {
+                _analyzedTone = AiGuidanceService.analyze(value).tone;
+              }
+            },
           ),
       ],
     );
@@ -936,6 +937,40 @@ class _ThreadScreenState extends State<ThreadScreen> {
   bool _showAiSuggestion = false;
   String _aiSuggestion = '';
   Timer? _livePollTimer;
+  bool _sending = false;
+  final List<PendingMessageAttachment> _pendingAttachments = [];
+
+  Future<void> _pickAttachment() async {
+    if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Możesz dodać maksymalnie 3 załączniki.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final picked = await MessageAttachmentPicker.pickAttachment();
+      if (!mounted || picked == null) {
+        return;
+      }
+      setState(() => _pendingAttachments.add(picked));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
+  void _removeAttachment(String attachmentId) {
+    setState(
+      () => _pendingAttachments.removeWhere((item) => item.id == attachmentId),
+    );
+  }
 
   void _pollThreadMessages() {
     final appProvider = context.read<AppProvider>();
@@ -1080,6 +1115,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
                 final isMe = msg.senderId == user?.id;
                 return _MessageBubble(
                   message: msg,
+                  threadId: widget.threadId,
                   isMe: isMe,
                   aiShieldEnabled: aiShield,
                 );
@@ -1181,69 +1217,19 @@ class _ThreadScreenState extends State<ThreadScreen> {
 
           // Input area
           if (!isReadOnly)
-            Container(
-              color: Colors.white,
-              padding: EdgeInsets.only(
-                left: 12,
-                right: 12,
-                top: 8,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.attach_file,
-                      color: AppTheme.textSecondary,
-                    ),
-                    onPressed: null, // attachments coming soon
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: 4,
-                      minLines: 1,
-                      decoration: const InputDecoration(
-                        hintText: 'Napisz wiadomość...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(20)),
-                          borderSide: BorderSide(color: AppTheme.dividerColor),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                      ),
-                      onChanged: (v) {
-                        setState(() {});
-                        if (aiCoach && v.length > 10) {
-                          _analyzeTone(v);
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (aiCoach && _controller.text.length > 10)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.auto_awesome,
-                        color: AppTheme.aiCoachColor,
-                      ),
-                      onPressed: _getAiSuggestion,
-                      tooltip: 'AI Coach',
-                    ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.send,
-                      color: _controller.text.isEmpty
-                          ? AppTheme.textHint
-                          : AppTheme.primaryTeal,
-                    ),
-                    onPressed: _controller.text.isEmpty ? null : _sendMessage,
-                  ),
-                ],
-              ),
+            MessageComposeBar(
+              controller: _controller,
+              pendingAttachments: _pendingAttachments,
+              onPickAttachment: _pickAttachment,
+              onRemoveAttachment: _removeAttachment,
+              onSend: _sendMessage,
+              sending: _sending,
+              onChanged: (value) {
+                setState(() {});
+                if (aiCoach && value.length > 10) {
+                  _analyzeTone(value);
+                }
+              },
             ),
         ],
       ),
@@ -1265,15 +1251,26 @@ class _ThreadScreenState extends State<ThreadScreen> {
 
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
-    if (content.isEmpty) return;
+    if (content.isEmpty && _pendingAttachments.isEmpty) {
+      return;
+    }
 
+    setState(() => _sending = true);
+    final attachments =
+        _pendingAttachments.map((item) => item.toApiPayload()).toList();
     final sent = await context.read<MessagingProvider>().sendMessage(
           threadId: widget.threadId,
           content: content,
           tone: _analyzedTone,
+          attachments: attachments,
         );
 
-    if (!mounted || sent == null) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _sending = false);
+    if (sent == null) {
       return;
     }
 
@@ -1281,6 +1278,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
     setState(() {
       _showAiSuggestion = false;
       _analyzedTone = MessageTone.neutral;
+      _pendingAttachments.clear();
     });
   }
 
@@ -1354,11 +1352,13 @@ class _ThreadScreenState extends State<ThreadScreen> {
 
 class _MessageBubble extends StatefulWidget {
   final Message message;
+  final String threadId;
   final bool isMe;
   final bool aiShieldEnabled;
 
   const _MessageBubble({
     required this.message,
+    required this.threadId,
     required this.isMe,
     required this.aiShieldEnabled,
   });
@@ -1369,6 +1369,7 @@ class _MessageBubble extends StatefulWidget {
 
 class _MessageBubbleState extends State<_MessageBubble> {
   bool _showOriginal = false;
+  bool _downloadingAttachment = false;
 
   bool get _isShielded =>
       widget.aiShieldEnabled &&
@@ -1377,48 +1378,48 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
+    final isSent = widget.isMe;
+
     return Align(
-      alignment: widget.isMe ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isSent ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 6),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.of(context).size.width * 0.84,
         ),
         child: Column(
-          crossAxisAlignment: widget.isMe
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
+          crossAxisAlignment: isSent
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
           children: [
             // Sender name
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               child: Text(
                 widget.message.senderName,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             // Bubble
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
-                color: widget.isMe
-                    ? AppTheme.primaryTeal
-                    : Colors.white,
+                color: isSent ? AppTheme.primaryTeal : AppTheme.accentColor,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(widget.isMe ? 16 : 4),
-                  bottomRight: Radius.circular(widget.isMe ? 4 : 16),
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isSent ? 6 : 18),
+                  bottomRight: Radius.circular(isSent ? 18 : 6),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -1429,59 +1430,62 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.shield,
-                          size: 12,
-                          color: AppTheme.aiCoachColor,
+                          size: 13,
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'AI Shield – wersja logistyczna',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppTheme.aiCoachColor,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontStyle: FontStyle.italic,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       _extractLogistics(widget.message.content),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: widget.isMe ? Colors.white : AppTheme.textPrimary,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        height: 1.45,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () => setState(() => _showOriginal = true),
-                      child: const Text(
+                      child: Text(
                         'Pokaż oryginał',
                         style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.aiCoachColor,
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.92),
                           decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
                   ] else ...[
-                    Text(
-                      widget.message.content,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: widget.isMe ? Colors.white : AppTheme.textPrimary,
+                    if (widget.message.content.isNotEmpty)
+                      Text(
+                        widget.message.content,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.45,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
                     if (_isShielded && _showOriginal) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       GestureDetector(
                         onTap: () => setState(() => _showOriginal = false),
-                        child: const Text(
+                        child: Text(
                           'Ukryj oryginał',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.aiCoachColor,
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.92),
                             decoration: TextDecoration.underline,
                           ),
                         ),
@@ -1489,67 +1493,72 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     ],
                   ],
                   if (widget.message.attachments.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     ...widget.message.attachments.map(
-                      (att) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black12,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.attach_file,
-                              size: 12,
-                              color: widget.isMe ? Colors.white70 : AppTheme.textSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              att.name,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: widget.isMe ? Colors.white70 : AppTheme.textSecondary,
+                      (att) => InkWell(
+                        onTap: _downloadingAttachment
+                            ? null
+                            : () => _downloadAttachment(att),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _downloadingAttachment
+                                    ? Icons.hourglass_top
+                                    : Icons.attach_file,
+                                size: 14,
+                                color: Colors.white.withValues(alpha: 0.9),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Text(
+                                '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: isSent
+                        ? Alignment.centerLeft
+                        : Alignment.centerRight,
+                    child: Tooltip(
+                      message: isSent
+                          ? messageReceiptLabel(
+                              widget.message,
+                              isMe: true,
+                            )
+                          : _formatTime(widget.message.sentAt),
+                      child: MessageReceiptFooter(
+                        message: widget.message,
+                        isMe: widget.isMe,
+                        sentAt: widget.message.sentAt,
+                        onColoredBubble: true,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            // Timestamp + hash
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _formatTime(widget.message.sentAt),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.textHint,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  if (widget.message.isRead)
-                    const Icon(
-                      Icons.done_all,
-                      size: 12,
-                      color: AppTheme.primaryTeal,
-                    )
-                  else if (widget.message.isDelivered)
-                    const Icon(Icons.done, size: 12, color: AppTheme.textHint),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.lock, size: 10, color: AppTheme.textHint),
-                ],
-              ),
+              child: const Icon(Icons.lock, size: 10, color: AppTheme.textHint),
             ),
           ],
         ),
@@ -1559,6 +1568,45 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   String _extractLogistics(String content) {
     return AiGuidanceService.analyze(content).logisticsSummary;
+  }
+
+  Future<void> _downloadAttachment(MessageAttachment attachment) async {
+    setState(() => _downloadingAttachment = true);
+    final payload = await context.read<MessagingProvider>().downloadMessageAttachment(
+          threadId: widget.threadId,
+          messageId: widget.message.id,
+          attachmentId: attachment.id,
+        );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _downloadingAttachment = false);
+
+    if (payload == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nie udało się pobrać załącznika.')),
+      );
+      return;
+    }
+
+    try {
+      final contentBase64 = payload['contentBase64'] as String?;
+      if (contentBase64 == null || contentBase64.isEmpty) {
+        throw StateError('Brak danych pliku.');
+      }
+      await saveBytesAsFile(
+        fileName: payload['name'] as String? ?? attachment.name,
+        mimeType: payload['type'] as String? ?? attachment.type,
+        bytes: decodeAttachmentBase64(contentBase64),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 
   String _formatTime(DateTime dt) {

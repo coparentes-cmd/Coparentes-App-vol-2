@@ -849,12 +849,14 @@ class MessagingProvider extends ChangeNotifier {
     required String threadId,
     required String content,
     required MessageTone tone,
+    List<Map<String, dynamic>> attachments = const [],
   }) async {
     try {
       final updatedThread = await _repository.sendMessage(
         threadId: threadId,
         content: content,
         tone: tone,
+        attachments: attachments,
       );
       final index = _threads.indexWhere((thread) => thread.id == threadId);
       if (index >= 0) {
@@ -876,6 +878,24 @@ class MessagingProvider extends ChangeNotifier {
       return updatedThread;
     } catch (error) {
       _error = 'Nie udało się wysłać wiadomości.';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> downloadMessageAttachment({
+    required String threadId,
+    required String messageId,
+    required String attachmentId,
+  }) async {
+    try {
+      return await _repository.downloadMessageAttachment(
+        threadId: threadId,
+        messageId: messageId,
+        attachmentId: attachmentId,
+      );
+    } catch (_) {
+      _error = 'Nie udało się pobrać załącznika.';
       notifyListeners();
       return null;
     }
