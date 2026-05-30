@@ -58,4 +58,26 @@ if [ ! -f build/web/index.html ]; then
   exit 1
 fi
 
-echo "Flutter web build completed successfully."
+BUILD_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD 2>/dev/null || echo local)"
+echo "{\"buildId\":\"$BUILD_ID\"}" > build/web/version.json
+BUILD_ID="$BUILD_ID" python3 - <<'PY'
+import os
+import re
+from pathlib import Path
+
+build_id = os.environ["BUILD_ID"]
+index = Path("build/web/index.html")
+html = index.read_text()
+meta = f'  <meta name="coparentes-build" content="{build_id}">\n'
+if 'coparentes-build' not in html:
+    html = html.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + meta)
+else:
+    html = re.sub(
+        r'<meta name="coparentes-build" content="[^"]*">',
+        meta.strip(),
+        html,
+    )
+index.write_text(html)
+PY
+
+echo "Flutter web build completed successfully (buildId=$BUILD_ID)."
