@@ -555,53 +555,48 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
           ),
         ),
         Expanded(
-          child: thread.messages.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          thread.categoryIcon,
-                          size: 48,
-                          color: thread.categoryColor.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Brak wiadomości w „${widget.category}”',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary,
+          child: ColoredBox(
+            color: imessageChatBackground,
+            child: thread.messages.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            thread.categoryIcon,
+                            size: 48,
+                            color: thread.categoryColor.withValues(alpha: 0.5),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Napisz pierwszą wiadomość poniżej',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.textSecondary,
+                          const SizedBox(height: 12),
+                          Text(
+                            'Brak wiadomości w „${widget.category}”',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Napisz pierwszą wiadomość poniżej',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  )
+                : _ThreadMessagesList(
+                    messages: thread.messages,
+                    threadId: thread.id,
+                    viewerUserId: user?.id,
+                    aiShieldEnabled: aiShield,
+                    scrollController: _scrollController,
                   ),
-                )
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  itemCount: thread.messages.length,
-                  itemBuilder: (ctx, i) {
-                    final msg = thread.messages[i];
-                    final isMe = msg.senderId == user?.id;
-                    return _MessageBubble(
-                      message: msg,
-                      threadId: thread.id,
-                      isMe: isMe,
-                      aiShieldEnabled: aiShield,
-                    );
-                  },
-                ),
+          ),
         ),
         if (!isReadOnly)
           MessageComposeBar(
@@ -1107,19 +1102,14 @@ class _ThreadScreenState extends State<ThreadScreen> {
 
           // Messages list
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              itemCount: thread.messages.length,
-              itemBuilder: (ctx, i) {
-                final msg = thread.messages[i];
-                final isMe = msg.senderId == user?.id;
-                return _MessageBubble(
-                  message: msg,
-                  threadId: widget.threadId,
-                  isMe: isMe,
-                  aiShieldEnabled: aiShield,
-                );
-              },
+            child: ColoredBox(
+              color: imessageChatBackground,
+              child: _ThreadMessagesList(
+                messages: thread.messages,
+                threadId: widget.threadId,
+                viewerUserId: user?.id,
+                aiShieldEnabled: aiShield,
+              ),
             ),
           ),
 
@@ -1350,17 +1340,57 @@ class _ThreadScreenState extends State<ThreadScreen> {
   }
 }
 
+class _ThreadMessagesList extends StatelessWidget {
+  final List<Message> messages;
+  final String threadId;
+  final String? viewerUserId;
+  final bool aiShieldEnabled;
+  final ScrollController? scrollController;
+
+  const _ThreadMessagesList({
+    required this.messages,
+    required this.threadId,
+    required this.viewerUserId,
+    required this.aiShieldEnabled,
+    this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      controller: scrollController,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        final isMe = message.senderId == viewerUserId;
+        final group = messageGroupInfo(messages, index);
+
+        return _MessageBubble(
+          message: message,
+          threadId: threadId,
+          isMe: isMe,
+          aiShieldEnabled: aiShieldEnabled,
+          group: group,
+        );
+      },
+    );
+  }
+}
+
 class _MessageBubble extends StatefulWidget {
   final Message message;
   final String threadId;
   final bool isMe;
   final bool aiShieldEnabled;
+  final MessageGroupInfo group;
 
   const _MessageBubble({
     required this.message,
     required this.threadId,
     required this.isMe,
     required this.aiShieldEnabled,
+    required this.group,
   });
 
   @override
@@ -1378,190 +1408,191 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final isSent = widget.isMe;
+    final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
 
-    return Align(
-      alignment: isSent ? Alignment.centerLeft : Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.84,
-        ),
-        child: Column(
-          crossAxisAlignment: isSent
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.end,
-          children: [
-            // Sender name
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              child: Text(
-                widget.message.senderName,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            // Bubble
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              decoration: BoxDecoration(
-                color: isSent ? AppTheme.primaryTeal : AppTheme.accentColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isSent ? 6 : 18),
-                  bottomRight: Radius.circular(isSent ? 18 : 6),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+    return Padding(
+      padding: EdgeInsets.only(top: widget.group.topSpacing),
+      child: Row(
+        mainAxisAlignment:
+            widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Column(
+              crossAxisAlignment: widget.isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.group.showSenderName && !widget.isMe)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6, bottom: 4),
+                    child: Text(
+                      widget.message.senderName,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_isShielded && !_showOriginal) ...[
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.shield,
-                          size: 13,
-                          color: Colors.white.withValues(alpha: 0.9),
+                Container(
+                  constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                  padding: const EdgeInsets.fromLTRB(14, 9, 12, 8),
+                  decoration: BoxDecoration(
+                    color: widget.isMe
+                        ? AppTheme.primaryTeal
+                        : AppTheme.accentColor,
+                    borderRadius: imessageBubbleRadius(
+                      isMe: widget.isMe,
+                      isFirstInGroup: widget.group.isFirstInGroup,
+                      isLastInGroup: widget.group.isLastInGroup,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isShielded && !_showOriginal) ...[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.shield,
+                              size: 12,
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'AI Shield – wersja logistyczna',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(height: 6),
                         Text(
-                          'AI Shield – wersja logistyczna',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontStyle: FontStyle.italic,
+                          _extractLogistics(widget.message.content),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.35,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => setState(() => _showOriginal = true),
+                          child: Text(
+                            'Pokaż oryginał',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.92),
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        if (widget.message.content.isNotEmpty)
+                          Text(
+                            widget.message.content,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              height: 1.35,
+                              color: Colors.white,
+                            ),
+                          ),
+                        if (_isShielded && _showOriginal) ...[
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            onTap: () => setState(() => _showOriginal = false),
+                            child: Text(
+                              'Ukryj oryginał',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.92),
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                      if (widget.message.attachments.isNotEmpty) ...[
+                        if (widget.message.content.isNotEmpty)
+                          const SizedBox(height: 8),
+                        ...widget.message.attachments.map(
+                          (att) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: InkWell(
+                              onTap: _downloadingAttachment
+                                  ? null
+                                  : () => _downloadAttachment(att),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _downloadingAttachment
+                                          ? Icons.hourglass_top
+                                          : Icons.attach_file,
+                                      size: 14,
+                                      color: Colors.white.withValues(alpha: 0.92),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              Colors.white.withValues(alpha: 0.92),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _extractLogistics(widget.message.content),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.45,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => setState(() => _showOriginal = true),
-                      child: Text(
-                        'Pokaż oryginał',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.92),
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    if (widget.message.content.isNotEmpty)
-                      Text(
-                        widget.message.content,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          height: 1.45,
-                          color: Colors.white,
-                        ),
-                      ),
-                    if (_isShielded && _showOriginal) ...[
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () => setState(() => _showOriginal = false),
-                        child: Text(
-                          'Ukryj oryginał',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.92),
-                            decoration: TextDecoration.underline,
+                      const SizedBox(height: 2),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Tooltip(
+                          message: widget.isMe
+                              ? messageReceiptLabel(
+                                  widget.message,
+                                  isMe: true,
+                                )
+                              : _formatTime(widget.message.sentAt),
+                          child: MessageReceiptFooter(
+                            message: widget.message,
+                            isMe: widget.isMe,
+                            sentAt: widget.message.sentAt,
+                            onColoredBubble: true,
                           ),
                         ),
                       ),
                     ],
-                  ],
-                  if (widget.message.attachments.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    ...widget.message.attachments.map(
-                      (att) => InkWell(
-                        onTap: _downloadingAttachment
-                            ? null
-                            : () => _downloadAttachment(att),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _downloadingAttachment
-                                    ? Icons.hourglass_top
-                                    : Icons.attach_file,
-                                size: 14,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: isSent
-                        ? Alignment.centerLeft
-                        : Alignment.centerRight,
-                    child: Tooltip(
-                      message: isSent
-                          ? messageReceiptLabel(
-                              widget.message,
-                              isMe: true,
-                            )
-                          : _formatTime(widget.message.sentAt),
-                      child: MessageReceiptFooter(
-                        message: widget.message,
-                        isMe: widget.isMe,
-                        sentAt: widget.message.sentAt,
-                        onColoredBubble: true,
-                      ),
-                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: const Icon(Icons.lock, size: 10, color: AppTheme.textHint),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

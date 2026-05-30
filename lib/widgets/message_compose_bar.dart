@@ -29,20 +29,23 @@ class MessageComposeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(
-        left: 12,
-        right: 12,
-        top: 8,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: AppTheme.dividerColor, width: 0.5),
+        ),
       ),
+      padding: EdgeInsets.fromLTRB(8, 8, 8, bottomInset > 0 ? bottomInset + 8 : 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (pendingAttachments.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -65,7 +68,8 @@ class MessageComposeBar extends StatelessWidget {
             children: [
               IconButton(
                 icon: Icon(
-                  Icons.attach_file,
+                  Icons.add_circle_outline,
+                  size: 28,
                   color: pendingAttachments.length >= maxMessageAttachmentsPerMessage
                       ? AppTheme.textHint
                       : AppTheme.textSecondary,
@@ -77,44 +81,73 @@ class MessageComposeBar extends StatelessWidget {
                         : onPickAttachment,
               ),
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  maxLines: 4,
-                  minLines: 1,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) {
-                    if (_canSend) {
-                      onSend?.call();
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    hintText: 'Napisz wiadomość...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(20)),
-                      borderSide: BorderSide(color: AppTheme.dividerColor),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFEFF4),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: const Color(0xFFE0E0E5)),
                   ),
-                  onChanged: onChanged,
+                  child: TextField(
+                    controller: controller,
+                    maxLines: 5,
+                    minLines: 1,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) {
+                      if (_canSend) {
+                        onSend?.call();
+                      }
+                    },
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.35,
+                      color: AppTheme.textPrimary,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Wiadomość',
+                      hintStyle: TextStyle(color: AppTheme.textHint),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      isDense: true,
+                    ),
+                    onChanged: onChanged,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: sending
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        Icons.send,
-                        color: _canSend ? AppTheme.primaryTeal : AppTheme.textHint,
+              const SizedBox(width: 6),
+              if (sending)
+                const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (_canSend)
+                Material(
+                  color: AppTheme.primaryTeal,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onSend,
+                    child: const SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: Icon(
+                        Icons.arrow_upward_rounded,
+                        color: Colors.white,
+                        size: 20,
                       ),
-                onPressed: _canSend ? onSend : null,
-              ),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(width: 34, height: 34),
             ],
           ),
         ],

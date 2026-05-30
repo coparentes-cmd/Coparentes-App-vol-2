@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../models/models.dart';
 
 bool threadHasUnreadForViewer(MessageThread thread, String viewerUserId) {
@@ -53,3 +55,57 @@ String formatMessageNotification(Message message) {
       : message.content;
   return '${message.senderName}: $preview';
 }
+
+class MessageGroupInfo {
+  final bool isFirstInGroup;
+  final bool isLastInGroup;
+
+  const MessageGroupInfo({
+    required this.isFirstInGroup,
+    required this.isLastInGroup,
+  });
+
+  bool get showSenderName => isFirstInGroup;
+  double get topSpacing => isFirstInGroup ? 10 : 2;
+}
+
+MessageGroupInfo messageGroupInfo(List<Message> messages, int index) {
+  final message = messages[index];
+  final previous = index > 0 ? messages[index - 1] : null;
+  final next = index < messages.length - 1 ? messages[index + 1] : null;
+  final sameSenderAsPrevious = previous?.senderId == message.senderId;
+  final sameSenderAsNext = next?.senderId == message.senderId;
+
+  return MessageGroupInfo(
+    isFirstInGroup: !sameSenderAsPrevious,
+    isLastInGroup: !sameSenderAsNext,
+  );
+}
+
+BorderRadius imessageBubbleRadius({
+  required bool isMe,
+  required bool isFirstInGroup,
+  required bool isLastInGroup,
+}) {
+  const large = 20.0;
+  const small = 5.0;
+
+  if (isMe) {
+    return BorderRadius.only(
+      topLeft: const Radius.circular(large),
+      topRight: Radius.circular(isFirstInGroup ? large : small),
+      bottomLeft: const Radius.circular(large),
+      bottomRight: Radius.circular(isLastInGroup ? small : small),
+    );
+  }
+
+  return BorderRadius.only(
+    topLeft: Radius.circular(isFirstInGroup ? large : small),
+    topRight: const Radius.circular(large),
+    bottomLeft: Radius.circular(isLastInGroup ? small : small),
+    bottomRight: const Radius.circular(large),
+  );
+}
+
+/// iMessage-style chat canvas background.
+const Color imessageChatBackground = Color(0xFFE9E9EB);
