@@ -7,6 +7,7 @@ import '../config/country_profiles.dart';
 import '../data/api/app_api_client.dart';
 import '../data/models/auth_session.dart';
 import '../data/repositories/auth_repository.dart';
+import '../config/messaging_categories.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../models/models.dart';
 import '../utils/messaging_helpers.dart';
@@ -792,6 +793,33 @@ class MessagingProvider extends ChangeNotifier {
     try {
       return _threads.firstWhere((thread) => thread.id == threadId);
     } catch (_) {
+      return null;
+    }
+  }
+
+  MessageThread? getCategoryChannel(String category) {
+    return findCategoryChannel(_threads, category);
+  }
+
+  Future<MessageThread?> openCategoryChannel(String category) async {
+    final existing = findCategoryChannel(_threads, category);
+    if (existing != null) {
+      return existing;
+    }
+
+    try {
+      final thread = await _repository.getOrCreateCategoryThread(category);
+      final index = _threads.indexWhere((item) => item.id == thread.id);
+      if (index >= 0) {
+        _threads[index] = thread;
+      } else {
+        _threads.insert(0, thread);
+      }
+      notifyListeners();
+      return thread;
+    } catch (_) {
+      _error = 'Nie udało się otworzyć rozmowy tematycznej.';
+      notifyListeners();
       return null;
     }
   }

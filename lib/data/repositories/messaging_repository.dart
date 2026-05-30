@@ -1,3 +1,4 @@
+import '../../config/messaging_categories.dart';
 import '../../models/models.dart';
 import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
@@ -80,6 +81,29 @@ class MessagingRepository {
         },
       });
       return localThread;
+    }
+  }
+
+  Future<MessageThread> getOrCreateCategoryThread(String category) async {
+    try {
+      final payload = await _apiClient.postJson('/threads/channel', {
+        'category': category,
+      });
+      final thread = messageThreadFromJson(payload);
+      await _upsertThread(thread);
+      return thread;
+    } catch (error) {
+      if (!_apiClient.isNetworkError(error)) {
+        rethrow;
+      }
+
+      final cached = _getCachedThreads();
+      final existing = findCategoryChannel(cached, category);
+      if (existing != null) {
+        return existing;
+      }
+
+      return createThread(subject: category, category: category);
     }
   }
 

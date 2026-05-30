@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/messaging_categories.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/exports_provider.dart';
@@ -20,7 +21,6 @@ class MessagingScreen extends StatefulWidget {
 }
 
 class _MessagingScreenState extends State<MessagingScreen> {
-  String _selectedCategory = 'Wszystkie';
   String _searchQuery = '';
 
   @override
@@ -65,16 +65,18 @@ class _MessagingScreenState extends State<MessagingScreen> {
     final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
     final isReadOnly = user?.role == UserRole.observer;
-    final visibleThreads = messaging.threads.where((thread) {
-      final matchesCategory =
-          _selectedCategory == 'Wszystkie' || thread.category == _selectedCategory;
+    final customThreads = messaging.threads.where((thread) {
+      if (isCategoryChannel(thread)) {
+        return false;
+      }
       final query = _searchQuery.trim().toLowerCase();
-      final matchesQuery = query.isEmpty ||
-          thread.subject.toLowerCase().contains(query) ||
+      if (query.isEmpty) {
+        return true;
+      }
+      return thread.subject.toLowerCase().contains(query) ||
           thread.messages.any(
             (message) => message.content.toLowerCase().contains(query),
           );
-      return matchesCategory && matchesQuery;
     }).toList();
 
     return Scaffold(
@@ -93,113 +95,140 @@ class _MessagingScreenState extends State<MessagingScreen> {
           ),
           if (!isReadOnly)
             IconButton(
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.edit_note),
+              tooltip: 'Własny temat',
               onPressed: () => _newThread(context),
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // Category filter chips
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
-                'Wszystkie',
-                'Szkoła',
-                'Zdrowie',
-                'Finansowe',
-                'Zmiana grafiku',
-                'Inne',
-              ]
-                  .map(
-                    (cat) => _CategoryChip(
-                      category: cat,
-                      selected: _selectedCategory == cat,
-                      onTap: () => setState(() => _selectedCategory = cat),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-          // Immutable notice
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.immutableBadge.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.lock, size: 14, color: AppTheme.immutableBadge),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Wiadomości po wysłaniu są niezmienialnie archiwizowane (hash SHA-256)',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.immutableBadge,
+      body: RefreshIndicator(
+        onRefresh: () async => _loadThreads(context),
+        child: messaging.isLoading && messaging.threads.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 88),
+                children: [
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                    child: Text(
+                      'Rozmowy tematyczne',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textSecondary.withValues(alpha: 0.9),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // AI contextual tip for messaging
-          if (!isReadOnly)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: AiContextualTip(
-                tips: AiTips.messaging,
-                intervalSeconds: 7,
-              ),
-            ),
-          // Threads list
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async => _loadThreads(context),
-              child: messaging.isLoading && messaging.threads.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : visibleThreads.isEmpty
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(height: 120),
-                            EmptyState(
-                              icon: Icons.chat_bubble_outline,
-                              title: 'Brak wyników',
-                              subtitle:
-                                  'Zmień filtr albo rozpocznij nowy wątek tematyczny',
+                  ...messagingCategoryChannels.map(
+                    (category) => _CategoryChannelTile(
+                      category: category,
+                      thread: messaging.getCategoryChannel(category),
+                      viewerUserId: user?.id,
+                      onTap: () => _openCategoryChannel(context, category),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.immutableBadge.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.lock, size: 14, color: AppTheme.immutableBadge),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Wiadomości po wysłaniu są niezmienialnie archiwizowane (hash SHA-256)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.immutableBadge,
                             ),
-                          ],
-                        )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          itemCount: visibleThreads.length,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemBuilder: (ctx, i) {
-                            final viewerId = user?.id;
-                            return _ThreadTile(
-                              thread: visibleThreads[i],
-                              viewerUserId: viewerId,
-                            );
-                          },
+                          ),
                         ),
-            ),
-          ),
-        ],
+                      ],
+                    ),
+                  ),
+                  if (!isReadOnly)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: AiContextualTip(
+                        tips: AiTips.messaging,
+                        intervalSeconds: 7,
+                      ),
+                    ),
+                  if (customThreads.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Text(
+                        'Wątki z własnym tematem',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textSecondary.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                    ...customThreads.map(
+                      (thread) => _ThreadTile(
+                        thread: thread,
+                        viewerUserId: user?.id,
+                      ),
+                    ),
+                  ] else if (_searchQuery.trim().isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    const EmptyState(
+                      icon: Icons.search_off,
+                      title: 'Brak wyników',
+                      subtitle: 'Spróbuj innej frazy wyszukiwania',
+                    ),
+                  ],
+                ],
+              ),
       ),
       floatingActionButton: isReadOnly
           ? null
           : FloatingActionButton.extended(
               onPressed: () => _newThread(context),
-              icon: const Icon(Icons.edit),
-              label: const Text('Nowy wątek'),
+              icon: const Icon(Icons.edit_note),
+              label: const Text('Własny temat'),
             ),
     );
+  }
+
+  Future<void> _openCategoryChannel(
+    BuildContext context,
+    String category,
+  ) async {
+    final thread = await context.read<MessagingProvider>().openCategoryChannel(
+          category,
+        );
+    if (!context.mounted || thread == null) {
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ThreadScreen(threadId: thread.id),
+      ),
+    );
+
+    if (context.mounted) {
+      _loadThreads(context);
+    }
   }
 
   void _showSearch(BuildContext context) {
@@ -245,7 +274,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Wątek "${thread.subject}" został utworzony'),
+        content: Text('Wątek „${thread.subject}” został utworzony'),
         backgroundColor: AppTheme.successColor,
       ),
     );
@@ -259,41 +288,141 @@ class _MessagingScreenState extends State<MessagingScreen> {
   }
 }
 
-class _CategoryChip extends StatelessWidget {
+class _CategoryChannelTile extends StatelessWidget {
   final String category;
-  final bool selected;
+  final MessageThread? thread;
+  final String? viewerUserId;
   final VoidCallback onTap;
 
-  const _CategoryChip({
+  const _CategoryChannelTile({
     required this.category,
-    required this.selected,
+    required this.thread,
+    required this.viewerUserId,
     required this.onTap,
   });
 
+  bool get _hasUnread {
+    if (thread == null || viewerUserId == null) {
+      return thread?.hasUnread ?? false;
+    }
+    return threadHasUnreadForViewer(thread!, viewerUserId!);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final previewThread = thread ??
+        MessageThread(
+          id: 'preview_$category',
+          subject: category,
+          category: category,
+          messages: const [],
+          lastActivity: DateTime.now(),
+        );
+    final lastMsg = thread?.messages.isNotEmpty == true
+        ? thread!.messages.last
+        : null;
+
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(category),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        backgroundColor: Colors.white,
-        selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
-        checkmarkColor: AppTheme.primaryTeal,
-        labelStyle: TextStyle(
-          fontSize: 12,
-          color: selected ? AppTheme.primaryTeal : AppTheme.textSecondary,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: selected ? AppTheme.primaryTeal : AppTheme.dividerColor,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: previewThread.categoryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    previewThread.categoryIcon,
+                    color: previewThread.categoryColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: _hasUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (thread != null)
+                            Text(
+                              _formatTime(thread!.lastActivity),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textHint,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        lastMsg != null
+                            ? '${lastMsg.senderName}: ${lastMsg.content}'
+                            : categoryChannelSubtitle(category),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: lastMsg != null
+                              ? AppTheme.textSecondary
+                              : AppTheme.textHint,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right,
+                  color: AppTheme.textHint.withValues(alpha: 0.8),
+                ),
+                if (_hasUnread) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryTeal,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    return '${diff.inDays}d';
   }
 }
 
@@ -1177,11 +1306,20 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Nowy wątek',
+            'Własny temat',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Dla konkretnych spraw (np. „Angielski – zmiana terminu”). '
+            'Ogólne rozmowy o szkole czy zdrowiu prowadź w kanałach tematycznych.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
@@ -1232,6 +1370,16 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
   void _createThread() {
     final subject = _subjectController.text.trim();
     if (subject.isEmpty) return;
+    if (messagingCategoryChannels.contains(subject)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ten temat jest już kanałem tematycznym — użyj go na liście powyżej.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final workspace = context.read<AppProvider>().currentWorkspace;
     context.read<MessagingProvider>()
