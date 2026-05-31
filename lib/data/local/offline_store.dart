@@ -53,12 +53,35 @@ class OfflineStore extends ChangeNotifier {
   }
 
   Map<String, dynamic>? getCalendarSnapshot() => _decodeMap(
-        _preferences.getString(_calendarKey),
+        _preferences.getString(_calendarStorageKey()),
       );
 
   Future<void> saveCalendarSnapshot(Map<String, dynamic> payload) async {
-    await _preferences.setString(_calendarKey, jsonEncode(payload));
+    await _preferences.setString(
+      _calendarStorageKey(),
+      jsonEncode(payload),
+    );
     notifyListeners();
+  }
+
+  String _calendarStorageKey() {
+    final workspaceId = _activeWorkspaceId();
+    if (workspaceId == null) {
+      return _calendarKey;
+    }
+    return '${_calendarKey}_$workspaceId';
+  }
+
+  String? _activeWorkspaceId() {
+    final session = getSessionPayload();
+    final workspace = session?['workspace'];
+    if (workspace is Map) {
+      final id = workspace['id'];
+      if (id is String && id.isNotEmpty) {
+        return id;
+      }
+    }
+    return null;
   }
 
   List<Map<String, dynamic>> getFinancesExpenses() => _decodeList(
@@ -149,7 +172,11 @@ class OfflineStore extends ChangeNotifier {
     await _preferences.remove(_sessionPayloadKey);
     await _preferences.remove(_threadsKey);
     await _preferences.remove(_exportsKey);
-    await _preferences.remove(_calendarKey);
+    for (final key in _preferences.getKeys()) {
+      if (key == _calendarKey || key.startsWith('${_calendarKey}_')) {
+        await _preferences.remove(key);
+      }
+    }
     await _preferences.remove(_financesKey);
     await _preferences.remove(_documentsKey);
     await _preferences.remove(_pendingActionsKey);

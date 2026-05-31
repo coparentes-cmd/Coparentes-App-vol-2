@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/google_style_month_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -19,15 +21,44 @@ class _CalendarScreenState extends State<CalendarScreen>
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   late TabController _tabController;
+  Timer? _liveRefreshTimer;
+
+  static const _liveRefreshInterval = Duration(seconds: 12);
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startLiveRefresh());
+  }
+
+  void _startLiveRefresh() {
+    if (!mounted) {
+      return;
+    }
+
+    final isDemo = context.read<AppProvider>().isDemoMode;
+    if (isDemo) {
+      return;
+    }
+
+    unawaited(context.read<CalendarProvider>().load(silent: true));
+
+    _liveRefreshTimer?.cancel();
+    _liveRefreshTimer = Timer.periodic(_liveRefreshInterval, (_) {
+      if (!mounted) {
+        return;
+      }
+      if (context.read<AppProvider>().isDemoMode) {
+        return;
+      }
+      context.read<CalendarProvider>().load(silent: true);
+    });
   }
 
   @override
   void dispose() {
+    _liveRefreshTimer?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -131,136 +162,72 @@ class _CalendarScreenState extends State<CalendarScreen>
     List<CalendarEvent> selectedEvents,
     Color roleColor,
   ) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // AI contextual tip for calendar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-            child: AiContextualTip(
-              tips: AiTips.calendar,
-              intervalSeconds: 8,
-            ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          child: AiContextualTip(
+            tips: AiTips.calendar,
+            intervalSeconds: 8,
           ),
-          // Calendar widget
-          Container(
-            color: Colors.white,
-            child: TableCalendar(
-              firstDay: DateTime.now().subtract(const Duration(days: 60)),
-              lastDay: DateTime.now().add(const Duration(days: 120)),
-              focusedDay: _focusedDay,
-              selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
-              onDaySelected: (selected, focused) {
-                setState(() {
-                  _selectedDay = selected;
-                  _focusedDay = focused;
-                });
-              },
-              calendarBuilders: CalendarBuilders(
-                defaultBuilder: (ctx, day, focused) {
-                  final slots = calendar.getSlotsForDay(day);
-                  if (slots.isEmpty) return null;
-                  final custodian = slots.first.custodian;
-                  final isParentA = custodian == UserRole.parentA;
-                  return Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: (isParentA
-                              ? AppTheme.parentAColor
-                              : AppTheme.parentBColor)
-                          .withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${day.day}',
-                        style: TextStyle(
-                          color: isParentA
-                              ? AppTheme.parentAColor
-                              : AppTheme.parentBColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                markerBuilder: (ctx, day, events) {
-                  final dayEvents = calendar.getEventsForDay(day);
-                  if (dayEvents.isEmpty) return null;
-                  return Positioned(
-                    bottom: 4,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: dayEvents
-                          .take(3)
-                          .map(
-                            (e) => Container(
-                              width: 5,
-                              height: 5,
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
-                              decoration: BoxDecoration(
-                                color: e.typeColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  );
-                },
+        ),
+        Expanded(
+          child: GoogleStyleMonthCalendar(
+            focusedDay: _focusedDay,
+            selectedDay: _selectedDay,
+            accentColor: roleColor,
+            getSlotsForDay: calendar.getSlotsForDay,
+            getEventsForDay: calendar.getEventsForDay,
+            onDaySelected: (day) {
+              setState(() {
+                _selectedDay = day;
+                _focusedDay = day;
+              });
+            },
+            onMonthChanged: (month) {
+              setState(() => _focusedDay = month);
+            },
+            onTodayPressed: () {
+              final today = DateTime.now();
+              setState(() {
+                _focusedDay = today;
+                _selectedDay = today;
+              });
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LegendItem(
+                color: AppTheme.parentAColor,
+                label: 'U Mamy',
               ),
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-                titleTextStyle: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
+              const SizedBox(width: 20),
+              _LegendItem(
+                color: AppTheme.parentBColor,
+                label: 'U Taty',
               ),
-              calendarStyle: CalendarStyle(
-                selectedDecoration: BoxDecoration(
-                  color: roleColor,
-                  shape: BoxShape.circle,
-                ),
-                todayDecoration: BoxDecoration(
-                  color: roleColor.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                weekendTextStyle: const TextStyle(color: AppTheme.errorColor),
+            ],
+          ),
+        ),
+        if (selectedSlots.isNotEmpty || selectedEvents.isNotEmpty)
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.28,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _SelectedDayCard(
+                day: _selectedDay,
+                slot: selectedSlots.isNotEmpty ? selectedSlots.first : null,
+                events: selectedEvents,
               ),
             ),
           ),
-
-          // Legend
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _LegendItem(
-                  color: AppTheme.parentAColor,
-                  label: 'U Mamy',
-                ),
-                const SizedBox(width: 24),
-                _LegendItem(
-                  color: AppTheme.parentBColor,
-                  label: 'U Taty',
-                ),
-              ],
-            ),
-          ),
-
-          // Selected day details
-          if (selectedSlots.isNotEmpty) ...[
-            _SelectedDayCard(
-              day: _selectedDay,
-              slot: selectedSlots.first,
-              events: selectedEvents,
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 
@@ -292,6 +259,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                 SwapStatus.accepted,
                 note: 'Akceptuję',
               );
+              await _refreshSwapMessaging(context);
             } catch (_) {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
@@ -302,23 +270,7 @@ class _CalendarScreenState extends State<CalendarScreen>
               );
             }
           },
-          onReject: () async {
-            try {
-              await calendar.respondToSwap(
-                swap.id,
-                SwapStatus.rejected,
-                note: 'Odrzucam',
-              );
-            } catch (_) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Nie udało się odrzucić wymiany.'),
-                  backgroundColor: AppTheme.errorColor,
-                ),
-              );
-            }
-          },
+          onReject: () => _showSwapRejectSheet(context, swap),
         );
       },
     );
@@ -362,7 +314,37 @@ class _CalendarScreenState extends State<CalendarScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _SwapRequestSheet(selectedDay: _selectedDay),
+      builder: (_) => _SwapRequestSheet(
+        selectedDay: _selectedDay,
+        onSubmitted: () => _refreshSwapMessaging(context),
+      ),
+    );
+  }
+
+  Future<void> _refreshSwapMessaging(BuildContext context) async {
+    if (context.read<AppProvider>().isDemoMode) {
+      return;
+    }
+
+    final viewerUserId = context.read<AppProvider>().currentUser?.id;
+    await context.read<MessagingProvider>().loadThreads(
+          viewerUserId: viewerUserId,
+          notifyEnabled: context.read<AppProvider>().notifyMessages,
+          silent: true,
+        );
+  }
+
+  void _showSwapRejectSheet(BuildContext context, SwapRequest swap) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _SwapRejectSheet(
+        swap: swap,
+        onSubmitted: () => _refreshSwapMessaging(context),
+      ),
     );
   }
 }
@@ -398,7 +380,7 @@ class _LegendItem extends StatelessWidget {
 
 class _SelectedDayCard extends StatelessWidget {
   final DateTime day;
-  final CustodySlot slot;
+  final CustodySlot? slot;
   final List<CalendarEvent> events;
 
   const _SelectedDayCard({
@@ -409,9 +391,13 @@ class _SelectedDayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isParentA = slot.custodian == UserRole.parentA;
-    final color = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
-    final label = isParentA ? 'U Mamy' : 'U Taty';
+    final isParentA = slot?.custodian == UserRole.parentA;
+    final color = slot == null
+        ? AppTheme.textSecondary
+        : (isParentA ? AppTheme.parentAColor : AppTheme.parentBColor);
+    final label = slot == null
+        ? null
+        : (isParentA ? 'U Mamy' : 'U Taty');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -420,49 +406,61 @@ class _SelectedDayCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.home, color: color, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (slot.handoverTime != null)
-                    Text(
-                      'Przekazanie: ${slot.handoverTime}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                ],
+              Text(
+                _formatDayHeader(day),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
               ),
-              if (slot.handoverLocation != null) ...[
-                const SizedBox(height: 4),
+              if (slot != null && label != null) ...[
+                const SizedBox(height: 10),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 14,
-                      color: AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 4),
+                    Icon(Icons.home, color: color, size: 20),
+                    const SizedBox(width: 8),
                     Text(
-                      slot.handoverLocation!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: color,
                       ),
                     ),
+                    const Spacer(),
+                    if (slot!.handoverTime != null)
+                      Text(
+                        'Przekazanie: ${slot!.handoverTime}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
                   ],
                 ),
+                if (slot!.handoverLocation != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        slot!.handoverLocation!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
               if (events.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -477,7 +475,7 @@ class _SelectedDayCard extends StatelessWidget {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: e.typeColor.withValues(alpha: 0.1),
+                            color: e.typeColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -495,7 +493,7 @@ class _SelectedDayCard extends StatelessWidget {
                                 e.title,
                                 style: const TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                   color: AppTheme.textPrimary,
                                 ),
                               ),
@@ -514,12 +512,50 @@ class _SelectedDayCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
+              ] else if (slot == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Brak zdarzeń tego dnia',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _formatDayHeader(DateTime date) {
+    const weekdays = [
+      'poniedziałek',
+      'wtorek',
+      'środa',
+      'czwartek',
+      'piątek',
+      'sobota',
+      'niedziela',
+    ];
+    const months = [
+      'stycznia',
+      'lutego',
+      'marca',
+      'kwietnia',
+      'maja',
+      'czerwca',
+      'lipca',
+      'sierpnia',
+      'września',
+      'października',
+      'listopada',
+      'grudnia',
+    ];
+    final weekday = weekdays[date.weekday - 1];
+    return '${weekday[0].toUpperCase()}${weekday.substring(1)}, ${date.day} ${months[date.month - 1]}';
   }
 }
 
@@ -865,8 +901,12 @@ class _AddEventSheetState extends State<_AddEventSheet> {
 
 class _SwapRequestSheet extends StatefulWidget {
   final DateTime selectedDay;
+  final VoidCallback? onSubmitted;
 
-  const _SwapRequestSheet({required this.selectedDay});
+  const _SwapRequestSheet({
+    required this.selectedDay,
+    this.onSubmitted,
+  });
 
   @override
   State<_SwapRequestSheet> createState() => _SwapRequestSheetState();
@@ -926,10 +966,13 @@ class _SwapRequestSheetState extends State<_SwapRequestSheet> {
                 : _reasonController.text.trim(),
           );
       if (!mounted) return;
+      widget.onSubmitted?.call();
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Wniosek o zamianę wysłany do drugiego rodzica'),
+          content: Text(
+            'Wniosek wysłany. Drugi rodzic zobaczy go w wiadomościach → Zmiana grafiku.',
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -1020,6 +1063,288 @@ class _SwapRequestSheetState extends State<_SwapRequestSheet> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('Wyślij wniosek'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatSwapDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}.'
+      '${date.month.toString().padLeft(2, '0')}.'
+      '${date.year}';
+}
+
+class _SwapRejectSheet extends StatefulWidget {
+  final SwapRequest swap;
+  final VoidCallback? onSubmitted;
+
+  const _SwapRejectSheet({
+    required this.swap,
+    this.onSubmitted,
+  });
+
+  @override
+  State<_SwapRejectSheet> createState() => _SwapRejectSheetState();
+}
+
+class _SwapRejectSheetState extends State<_SwapRejectSheet> {
+  final _reasonController = TextEditingController();
+  late DateTime _counterOriginalDate;
+  late DateTime _counterProposedDate;
+  bool _proposeAlternativeDates = false;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _counterOriginalDate = DateTime(
+      widget.swap.originalDate.year,
+      widget.swap.originalDate.month,
+      widget.swap.originalDate.day,
+    );
+    _counterProposedDate = DateTime(
+      widget.swap.proposedDate.year,
+      widget.swap.proposedDate.month,
+      widget.swap.proposedDate.day,
+    );
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  bool get _counterDatesChanged {
+    final sameOriginal = _counterOriginalDate.year == widget.swap.originalDate.year &&
+        _counterOriginalDate.month == widget.swap.originalDate.month &&
+        _counterOriginalDate.day == widget.swap.originalDate.day;
+    final sameProposed = _counterProposedDate.year == widget.swap.proposedDate.year &&
+        _counterProposedDate.month == widget.swap.proposedDate.month &&
+        _counterProposedDate.day == widget.swap.proposedDate.day;
+    return !sameOriginal || !sameProposed;
+  }
+
+  Future<void> _pickDate({
+    required DateTime initial,
+    required ValueChanged<DateTime> onSelected,
+  }) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      onSelected(DateTime(picked.year, picked.month, picked.day));
+    }
+  }
+
+  String _buildResponseNote({required SwapStatus status}) {
+    final reason = _reasonController.text.trim();
+    if (status == SwapStatus.counterProposed) {
+      final lines = <String>[
+        'Kontrpropozycja dat:',
+        'Oryginalny dzień: ${_formatSwapDate(_counterOriginalDate)}',
+        'Proponowany dzień: ${_formatSwapDate(_counterProposedDate)}',
+      ];
+      if (reason.isNotEmpty) {
+        lines.add('Powód: $reason');
+      }
+      return lines.join('\n');
+    }
+
+    final lines = <String>[
+      'Odrzucony wniosek:',
+      'Oryginalny dzień: ${_formatSwapDate(widget.swap.originalDate)}',
+      'Proponowany dzień: ${_formatSwapDate(widget.swap.proposedDate)}',
+    ];
+    if (reason.isNotEmpty) {
+      lines.add('Powód: $reason');
+    }
+    return lines.join('\n');
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final useCounter = _proposeAlternativeDates && _counterDatesChanged;
+    final status =
+        useCounter ? SwapStatus.counterProposed : SwapStatus.rejected;
+    final note = _buildResponseNote(status: status);
+
+    try {
+      await context.read<CalendarProvider>().respondToSwap(
+            widget.swap.id,
+            status,
+            note: note,
+          );
+      if (!mounted) {
+        return;
+      }
+      widget.onSubmitted?.call();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            useCounter
+                ? 'Wysłano kontrpropozycję dat do ${widget.swap.requesterName}.'
+                : 'Wniosek o zamianę został odrzucony.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się odrzucić wymiany.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Odrzuć wniosek o zamianę',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Wniosek od ${widget.swap.requesterName}',
+            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.dividerColor),
+            ),
+            child: Column(
+              children: [
+                _SwapDateRow(
+                  label: 'Oryginalny dzień we wniosku',
+                  date: widget.swap.originalDate,
+                  icon: Icons.event,
+                  color: AppTheme.errorColor,
+                ),
+                const SizedBox(height: 8),
+                _SwapDateRow(
+                  label: 'Proponowany dzień we wniosku',
+                  date: widget.swap.proposedDate,
+                  icon: Icons.event_available,
+                  color: AppTheme.successColor,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'Proponuję inne daty',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            subtitle: const Text(
+              'Wyślij kontrpropozycję zamiast samego odrzucenia',
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+            value: _proposeAlternativeDates,
+            activeThumbColor: AppTheme.primaryTeal,
+            onChanged: (value) => setState(() => _proposeAlternativeDates = value),
+          ),
+          if (_proposeAlternativeDates) ...[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Twój oryginalny dzień'),
+              subtitle: Text(_formatSwapDate(_counterOriginalDate)),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () => _pickDate(
+                initial: _counterOriginalDate,
+                onSelected: (value) =>
+                    setState(() => _counterOriginalDate = value),
+              ),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Twój proponowany dzień'),
+              subtitle: Text(_formatSwapDate(_counterProposedDate)),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () => _pickDate(
+                initial: _counterProposedDate,
+                onSelected: (value) =>
+                    setState(() => _counterProposedDate = value),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          TextField(
+            controller: _reasonController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Powód (opcjonalnie)',
+              hintText: 'np. Mam wtedy wyjazd służbowy…',
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isSubmitting ? null : _submit,
+              icon: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.close, size: 18),
+              label: Text(
+                _proposeAlternativeDates && _counterDatesChanged
+                    ? 'Odrzuć i wyślij kontrpropozycję'
+                    : 'Odrzuć wniosek',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.errorColor,
+                side: const BorderSide(color: AppTheme.errorColor),
+                minimumSize: const Size.fromHeight(48),
+              ),
             ),
           ),
         ],

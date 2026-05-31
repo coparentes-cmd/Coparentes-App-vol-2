@@ -27,20 +27,27 @@ class CalendarProvider extends ChangeNotifier {
   bool get isEmpty =>
       _custodySlots.isEmpty && _events.isEmpty && _swapRequests.isEmpty;
 
-  Future<void> load() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  Future<void> load({bool silent = false}) async {
+    if (!silent) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       final snapshot = await _repository.fetchCalendar();
       _applySnapshot(snapshot);
       _loadedFromApi = true;
+      _error = null;
     } catch (error) {
-      _error = error.toString();
+      if (!silent) {
+        _error = error.toString();
+      }
       _loadedFromApi = false;
     } finally {
-      _isLoading = false;
+      if (!silent) {
+        _isLoading = false;
+      }
       notifyListeners();
     }
   }
@@ -71,7 +78,12 @@ class CalendarProvider extends ChangeNotifier {
       CalendarEvent(
         id: 'evt_001',
         title: 'Angielski – Zosia',
-        startDate: now.add(const Duration(days: 2)),
+        startDate: DateTime(
+          now.add(const Duration(days: 2)).year,
+          now.add(const Duration(days: 2)).month,
+          now.add(const Duration(days: 2)).day,
+          17,
+        ),
         type: EventType.school,
         childId: 'child_001',
         createdBy: 'user_001',
@@ -79,9 +91,55 @@ class CalendarProvider extends ChangeNotifier {
         description: 'Zajęcia o 17:00',
       ),
       CalendarEvent(
+        id: 'evt_001b',
+        title: 'Piłka nożna',
+        startDate: DateTime(
+          now.add(const Duration(days: 2)).year,
+          now.add(const Duration(days: 2)).month,
+          now.add(const Duration(days: 2)).day,
+          18,
+          30,
+        ),
+        type: EventType.activity,
+        childId: 'child_001',
+        createdBy: 'user_002',
+      ),
+      CalendarEvent(
+        id: 'evt_001c',
+        title: 'Korepetycje matma',
+        startDate: DateTime(
+          now.add(const Duration(days: 2)).year,
+          now.add(const Duration(days: 2)).month,
+          now.add(const Duration(days: 2)).day,
+          19,
+        ),
+        type: EventType.school,
+        childId: 'child_001',
+        createdBy: 'user_001',
+      ),
+      CalendarEvent(
+        id: 'evt_001d',
+        title: 'Kino',
+        startDate: DateTime(
+          now.add(const Duration(days: 2)).year,
+          now.add(const Duration(days: 2)).month,
+          now.add(const Duration(days: 2)).day,
+          20,
+        ),
+        type: EventType.other,
+        childId: 'child_001',
+        createdBy: 'user_001',
+      ),
+      CalendarEvent(
         id: 'evt_002',
         title: 'Dentysta – Tomek',
-        startDate: now.add(const Duration(days: 5)),
+        startDate: DateTime(
+          now.add(const Duration(days: 5)).year,
+          now.add(const Duration(days: 5)).month,
+          now.add(const Duration(days: 5)).day,
+          10,
+          30,
+        ),
         type: EventType.medical,
         childId: 'child_002',
         createdBy: 'user_001',
@@ -182,16 +240,12 @@ class CalendarProvider extends ChangeNotifier {
     String? note,
   }) async {
     try {
-      final updated = await _repository.respondToSwap(
+      await _repository.respondToSwap(
         swapId: swapId,
         status: status,
         responseNote: note,
       );
-      final index = _swapRequests.indexWhere((s) => s.id == swapId);
-      if (index >= 0) {
-        _swapRequests[index] = updated;
-      }
-      notifyListeners();
+      await load(silent: true);
     } catch (error) {
       _error = error.toString();
       notifyListeners();
@@ -209,7 +263,7 @@ class CalendarProvider extends ChangeNotifier {
     String? location,
   }) async {
     try {
-      final created = await _repository.createEvent(
+      await _repository.createEvent(
         title: title,
         startDate: startDate,
         type: type,
@@ -218,9 +272,7 @@ class CalendarProvider extends ChangeNotifier {
         childId: childId,
         location: location,
       );
-      _events.add(created);
-      _events.sort((a, b) => a.startDate.compareTo(b.startDate));
-      notifyListeners();
+      await load(silent: true);
     } catch (error) {
       _error = error.toString();
       notifyListeners();
@@ -234,13 +286,12 @@ class CalendarProvider extends ChangeNotifier {
     String? reason,
   }) async {
     try {
-      final created = await _repository.createSwapRequest(
+      await _repository.createSwapRequest(
         originalDate: originalDate,
         proposedDate: proposedDate,
         reason: reason,
       );
-      _swapRequests.insert(0, created);
-      notifyListeners();
+      await load(silent: true);
     } catch (error) {
       _error = error.toString();
       notifyListeners();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,6 +32,7 @@ import 'widgets/offline_status_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pl_PL', null);
   final preferences = await SharedPreferences.getInstance();
   final offlineStore = OfflineStore(preferences: preferences);
   final apiClient = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
@@ -135,8 +137,12 @@ class CoparentesApp extends StatelessWidget {
                   );
             },
             refreshData: () async {
+              final appProvider = context.read<AppProvider>();
+              if (appProvider.isDemoMode) {
+                return;
+              }
               await context.read<ExportsProvider>().loadExports();
-              await context.read<CalendarProvider>().load();
+              await context.read<CalendarProvider>().load(silent: true);
               await context.read<FinanceProvider>().load();
               await context.read<DocumentsProvider>().load();
             },

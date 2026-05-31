@@ -38,7 +38,7 @@ class _AppLifecycleRefresherState extends State<AppLifecycleRefresher>
       return;
     }
 
-    context.read<OfflineSyncProvider>().pollMessagingNow();
+    context.read<OfflineSyncProvider>().refreshStatus();
   }
 
   @override
