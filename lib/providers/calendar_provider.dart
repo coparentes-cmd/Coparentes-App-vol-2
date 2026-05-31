@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models/calendar_snapshot.dart';
 import '../data/repositories/calendar_repository.dart';
 import '../models/models.dart';
+import '../utils/calendar_date_utils.dart';
 
 class CalendarProvider extends ChangeNotifier {
   final CalendarRepository _repository;
@@ -43,7 +44,11 @@ class CalendarProvider extends ChangeNotifier {
       if (!silent) {
         _error = error.toString();
       }
-      _loadedFromApi = false;
+      if (_custodySlots.isEmpty &&
+          _events.isEmpty &&
+          _swapRequests.isEmpty) {
+        _loadedFromApi = false;
+      }
     } finally {
       if (!silent) {
         _isLoading = false;
@@ -214,24 +219,55 @@ class CalendarProvider extends ChangeNotifier {
 
   List<CustodySlot> getSlotsForDay(DateTime date) {
     return _custodySlots
-        .where(
-          (s) =>
-              s.date.year == date.year &&
-              s.date.month == date.month &&
-              s.date.day == date.day,
-        )
+        .where((slot) => isSameCalendarDay(slot.date, date))
         .toList();
   }
 
   List<CalendarEvent> getEventsForDay(DateTime date) {
-    return _events.where((e) {
-      final sameDay = e.startDate.year == date.year &&
-          e.startDate.month == date.month &&
-          e.startDate.day == date.day;
-      if (e.endDate == null) return sameDay;
-      return date.isAfter(e.startDate.subtract(const Duration(days: 1))) &&
-          date.isBefore(e.endDate!.add(const Duration(days: 1)));
+    return _events.where((event) {
+      if (isSameCalendarDay(event.startDate, date)) {
+        return true;
+      }
+      if (event.endDate == null) {
+        return false;
+      }
+
+      final target = DateTime(date.year, date.month, date.day);
+      final start = event.startDate.toLocal();
+      final end = event.endDate!.toLocal();
+      final startDay = DateTime(start.year, start.month, start.day);
+      final endDay = DateTime(end.year, end.month, end.day);
+      return !target.isBefore(startDay) && !target.isAfter(endDay);
     }).toList();
+  }
+
+  Future<void> _reloadBestEffort() async {
+    try {
+      await load(silent: true);
+    } catch (_) {
+      // Keep optimistic/local state if refresh fails temporarily.
+    }
+  }
+
+  void _upsertEvent(CalendarEvent event) {
+    final index = _events.indexWhere((item) => item.id == event.id);
+    if (index >= 0) {
+      _events[index] = event;
+    } else {
+      _events.add(event);
+    }
+    _events.sort((a, b) => a.startDate.compareTo(b.startDate));
+    notifyListeners();
+  }
+
+  void _upsertSwap(SwapRequest swap) {
+    final index = _swapRequests.indexWhere((item) => item.id == swap.id);
+    if (index >= 0) {
+      _swapRequests[index] = swap;
+    } else {
+      _swapRequests.insert(0, swap);
+    }
+    notifyListeners();
   }
 
   Future<void> respondToSwap(
@@ -240,12 +276,13 @@ class CalendarProvider extends ChangeNotifier {
     String? note,
   }) async {
     try {
-      await _repository.respondToSwap(
+      final updated = await _repository.respondToSwap(
         swapId: swapId,
         status: status,
         responseNote: note,
       );
-      await load(silent: true);
+      _upsertSwap(updated);
+      await _reloadBestEffort();
     } catch (error) {
       _error = error.toString();
       notifyListeners();
@@ -263,7 +300,7 @@ class CalendarProvider extends ChangeNotifier {
     String? location,
   }) async {
     try {
-      await _repository.createEvent(
+      final created = await _repository.createEvent(
         title: title,
         startDate: startDate,
         type: type,
@@ -272,7 +309,8 @@ class CalendarProvider extends ChangeNotifier {
         childId: childId,
         location: location,
       );
-      await load(silent: true);
+      _upsertEvent(created);
+      await _reloadBestEffort();
     } catch (error) {
       _error = error.toString();
       notifyListeners();
@@ -286,12 +324,13 @@ class CalendarProvider extends ChangeNotifier {
     String? reason,
   }) async {
     try {
-      await _repository.createSwapRequest(
+      final created = await _repository.createSwapRequest(
         originalDate: originalDate,
         proposedDate: proposedDate,
         reason: reason,
       );
-      await load(silent: true);
+      _upsertSwap(created);
+      await _reloadBestEffort();
     } catch (error) {
       _error = error.toString();
       notifyListeners();

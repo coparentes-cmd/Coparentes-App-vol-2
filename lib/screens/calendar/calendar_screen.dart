@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/api/app_api_client.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/calendar_provider.dart';
@@ -164,6 +165,21 @@ class _CalendarScreenState extends State<CalendarScreen>
   ) {
     return Column(
       children: [
+        if (calendar.isLoading && calendar.isEmpty)
+          const LinearProgressIndicator(minHeight: 2),
+        if (calendar.error != null && calendar.isEmpty)
+          MaterialBanner(
+            content: Text(
+              'Nie udało się załadować kalendarza. Sprawdź połączenie i spróbuj ponownie.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    context.read<CalendarProvider>().load(),
+                child: const Text('Odśwież'),
+              ),
+            ],
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
           child: AiContextualTip(
@@ -173,6 +189,11 @@ class _CalendarScreenState extends State<CalendarScreen>
         ),
         Expanded(
           child: GoogleStyleMonthCalendar(
+            key: ValueKey(
+              'cal-${calendar.custodySlots.length}-'
+              '${calendar.events.length}-'
+              '${calendar.loadedFromApi}',
+            ),
             focusedDay: _focusedDay,
             selectedDay: _selectedDay,
             accentColor: roleColor,
@@ -800,11 +821,11 @@ class _AddEventSheetState extends State<_AddEventSheet> {
           backgroundColor: AppTheme.successColor,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się dodać zdarzenia.'),
+        SnackBar(
+          content: Text(_calendarActionError(error, 'zdarzenia')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -976,11 +997,11 @@ class _SwapRequestSheetState extends State<_SwapRequestSheet> {
           backgroundColor: AppTheme.successColor,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się wysłać wniosku o zamianę.'),
+        SnackBar(
+          content: Text(_calendarActionError(error, 'wniosku o zamianę')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -1201,13 +1222,13 @@ class _SwapRejectSheetState extends State<_SwapRejectSheet> {
           backgroundColor: AppTheme.successColor,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się odrzucić wymiany.'),
+        SnackBar(
+          content: Text(_calendarActionError(error, 'odpowiedzi na wymianę')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -1351,4 +1372,16 @@ class _SwapRejectSheetState extends State<_SwapRejectSheet> {
       ),
     );
   }
+}
+
+String _calendarActionError(Object error, String actionLabel) {
+  if (error is ApiException) {
+    if (error.message == 'invalid_request') {
+      return 'Nieprawidłowe dane $actionLabel. Sprawdź wybrane daty.';
+    }
+    if (error.statusCode >= 500) {
+      return 'Błąd serwera. Spróbuj ponownie za chwilę.';
+    }
+  }
+  return 'Nie udało się wysłać $actionLabel.';
 }

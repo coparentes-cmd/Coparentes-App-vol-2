@@ -1,4 +1,5 @@
 import '../../models/models.dart';
+import '../../utils/calendar_date_utils.dart';
 import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../models/calendar_snapshot.dart';
@@ -43,10 +44,10 @@ class CalendarRepository {
     try {
       final payload = await _apiClient.postJson('/calendar/events', {
         'title': title,
-        'startDate': startDate.toIso8601String(),
+        'startDate': calendarDateToApiIso(startDate),
         'type': eventTypeToApi(type),
         if (description != null) 'description': description,
-        if (endDate != null) 'endDate': endDate.toIso8601String(),
+        if (endDate != null) 'endDate': calendarDateToApiIso(endDate),
         if (childId != null) 'childId': childId,
         if (location != null) 'location': location,
       });
@@ -78,8 +79,8 @@ class CalendarRepository {
           'clientEventId': local.id,
           'title': title,
           'description': description,
-          'startDate': startDate.toIso8601String(),
-          'endDate': endDate?.toIso8601String(),
+          'startDate': calendarDateToApiIso(startDate),
+          'endDate': endDate != null ? calendarDateToApiIso(endDate) : null,
           'type': eventTypeToApi(type),
           'childId': childId,
           'location': location,
@@ -96,8 +97,8 @@ class CalendarRepository {
   }) async {
     try {
       final payload = await _apiClient.postJson('/calendar/swaps', {
-        'originalDate': originalDate.toIso8601String(),
-        'proposedDate': proposedDate.toIso8601String(),
+        'originalDate': calendarDateToApiIso(originalDate),
+        'proposedDate': calendarDateToApiIso(proposedDate),
         if (reason != null) 'reason': reason,
       });
       final swap = swapRequestFromJson(payload);
@@ -125,8 +126,8 @@ class CalendarRepository {
         'createdAt': now.toIso8601String(),
         'payload': {
           'clientSwapId': local.id,
-          'originalDate': originalDate.toIso8601String(),
-          'proposedDate': proposedDate.toIso8601String(),
+          'originalDate': calendarDateToApiIso(originalDate),
+          'proposedDate': calendarDateToApiIso(proposedDate),
           'reason': reason,
         },
       });
@@ -214,10 +215,11 @@ class CalendarRepository {
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
             final response = await _apiClient.postJson('/calendar/events', {
               'title': payload['title'],
-              'startDate': payload['startDate'],
+              'startDate': _normalizeApiDateString(payload['startDate'] as String),
               'type': payload['type'],
               if (payload['description'] != null) 'description': payload['description'],
-              if (payload['endDate'] != null) 'endDate': payload['endDate'],
+              if (payload['endDate'] != null)
+                'endDate': _normalizeApiDateString(payload['endDate'] as String),
               if (payload['childId'] != null) 'childId': payload['childId'],
               if (payload['location'] != null) 'location': payload['location'],
             });
@@ -228,8 +230,10 @@ class CalendarRepository {
           case 'calendar.createSwap':
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
             final response = await _apiClient.postJson('/calendar/swaps', {
-              'originalDate': payload['originalDate'],
-              'proposedDate': payload['proposedDate'],
+              'originalDate':
+                  _normalizeApiDateString(payload['originalDate'] as String),
+              'proposedDate':
+                  _normalizeApiDateString(payload['proposedDate'] as String),
               if (payload['reason'] != null) 'reason': payload['reason'],
             });
             final swap = swapRequestFromJson(response);
@@ -355,5 +359,12 @@ class CalendarRepository {
     } else {
       snapshot.swapRequests.insert(0, replacement);
     }
+  }
+
+  String _normalizeApiDateString(String value) {
+    if (value.endsWith('Z') || value.contains('+')) {
+      return value;
+    }
+    return calendarDateToApiIso(DateTime.parse(value));
   }
 }
