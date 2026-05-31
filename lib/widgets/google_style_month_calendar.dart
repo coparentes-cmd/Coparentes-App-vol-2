@@ -14,6 +14,7 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
   final List<CustodySlot> Function(DateTime day) getSlotsForDay;
   final List<CalendarEvent> Function(DateTime day) getEventsForDay;
   final ValueChanged<DateTime> onDaySelected;
+  final ValueChanged<DateTime>? onDayDoubleTap;
   final ValueChanged<DateTime> onMonthChanged;
   final VoidCallback onTodayPressed;
 
@@ -25,6 +26,7 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
     required this.getSlotsForDay,
     required this.getEventsForDay,
     required this.onDaySelected,
+    this.onDayDoubleTap,
     required this.onMonthChanged,
     required this.onTodayPressed,
   });
@@ -77,6 +79,7 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   slots: getSlotsForDay(day),
                   events: getEventsForDay(day),
                   accentColor: accentColor,
+                  onDoubleTap: onDayDoubleTap,
                 ),
                 todayBuilder: (context, day, focused) => _DayCell(
                   day: day,
@@ -86,6 +89,7 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   slots: getSlotsForDay(day),
                   events: getEventsForDay(day),
                   accentColor: accentColor,
+                  onDoubleTap: onDayDoubleTap,
                 ),
                 selectedBuilder: (context, day, focused) => _DayCell(
                   day: day,
@@ -95,6 +99,7 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   slots: getSlotsForDay(day),
                   events: getEventsForDay(day),
                   accentColor: accentColor,
+                  onDoubleTap: onDayDoubleTap,
                 ),
                 outsideBuilder: (context, day, focused) => _DayCell(
                   day: day,
@@ -104,6 +109,7 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   slots: getSlotsForDay(day),
                   events: getEventsForDay(day),
                   accentColor: accentColor,
+                  onDoubleTap: onDayDoubleTap,
                 ),
               ),
               calendarStyle: CalendarStyle(
@@ -222,6 +228,7 @@ class _DayCell extends StatelessWidget {
   final List<CustodySlot> slots;
   final List<CalendarEvent> events;
   final Color accentColor;
+  final ValueChanged<DateTime>? onDoubleTap;
 
   const _DayCell({
     required this.day,
@@ -231,6 +238,7 @@ class _DayCell extends StatelessWidget {
     required this.slots,
     required this.events,
     required this.accentColor,
+    this.onDoubleTap,
   });
 
   @override
@@ -241,7 +249,10 @@ class _DayCell extends StatelessWidget {
     final visibleEvents = sortedEvents.take(_maxVisibleEvents).toList();
     final hiddenCount = sortedEvents.length - visibleEvents.length;
 
-    return DecoratedBox(
+    return GestureDetector(
+      onDoubleTap: onDoubleTap == null ? null : () => onDoubleTap!(day),
+      behavior: HitTestBehavior.opaque,
+      child: DecoratedBox(
       decoration: BoxDecoration(
         color: _cellBackground(custodyColor),
         border: isSelected
@@ -290,6 +301,7 @@ class _DayCell extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -393,11 +405,12 @@ class _EventChip extends StatelessWidget {
   }
 
   String? _formatTime(DateTime date) {
-    if (date.hour == 0 && date.minute == 0) {
+    final local = date.toLocal();
+    if (local.hour == 0 && local.minute == 0) {
       return null;
     }
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 }

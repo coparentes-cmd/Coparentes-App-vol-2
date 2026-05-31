@@ -17,6 +17,7 @@ class CalendarProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _loadedFromApi = false;
+  int _loadGeneration = 0;
 
   List<CustodySlot> get custodySlots => _custodySlots;
   List<CalendarEvent> get events => _events;
@@ -29,6 +30,8 @@ class CalendarProvider extends ChangeNotifier {
       _custodySlots.isEmpty && _events.isEmpty && _swapRequests.isEmpty;
 
   Future<void> load({bool silent = false}) async {
+    final generation = ++_loadGeneration;
+
     if (!silent) {
       _isLoading = true;
       _error = null;
@@ -37,10 +40,16 @@ class CalendarProvider extends ChangeNotifier {
 
     try {
       final snapshot = await _repository.fetchCalendar();
+      if (generation != _loadGeneration) {
+        return;
+      }
       _applySnapshot(snapshot);
       _loadedFromApi = true;
       _error = null;
     } catch (error) {
+      if (generation != _loadGeneration) {
+        return;
+      }
       if (!silent) {
         _error = error.toString();
       }
@@ -50,6 +59,9 @@ class CalendarProvider extends ChangeNotifier {
         _loadedFromApi = false;
       }
     } finally {
+      if (generation != _loadGeneration) {
+        return;
+      }
       if (!silent) {
         _isLoading = false;
       }
@@ -270,6 +282,39 @@ class CalendarProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _applyAcceptedSwapToSlots(SwapRequest swap) {
+    final originalIndex = _custodySlots.indexWhere(
+      (slot) => isSameCalendarDay(slot.date, swap.originalDate),
+    );
+    final proposedIndex = _custodySlots.indexWhere(
+      (slot) => isSameCalendarDay(slot.date, swap.proposedDate),
+    );
+    if (originalIndex < 0 || proposedIndex < 0) {
+      return;
+    }
+
+    final originalSlot = _custodySlots[originalIndex];
+    final proposedSlot = _custodySlots[proposedIndex];
+    final originalCustodian = originalSlot.custodian;
+    final proposedCustodian = proposedSlot.custodian;
+
+    _custodySlots[originalIndex] = CustodySlot(
+      id: originalSlot.id,
+      date: originalSlot.date,
+      custodian: proposedCustodian,
+      handoverLocation: originalSlot.handoverLocation,
+      handoverTime: originalSlot.handoverTime,
+    );
+    _custodySlots[proposedIndex] = CustodySlot(
+      id: proposedSlot.id,
+      date: proposedSlot.date,
+      custodian: originalCustodian,
+      handoverLocation: proposedSlot.handoverLocation,
+      handoverTime: proposedSlot.handoverTime,
+    );
+    notifyListeners();
+  }
+
   Future<void> respondToSwap(
     String swapId,
     SwapStatus status, {
@@ -282,12 +327,44 @@ class CalendarProvider extends ChangeNotifier {
         responseNote: note,
       );
       _upsertSwap(updated);
+      if (status == SwapStatus.accepted) {
+        _applyAcceptedSwapToSlots(updated);
+      }
       await _reloadBestEffort();
+      if (status == SwapStatus.accepted) {
+        _applyAcceptedSwapToSlots(updated);
+      }
     } catch (error) {
       _error = error.toString();
       notifyListeners();
       rethrow;
     }
+  }
+
+  void addLocalEvent({
+    required String title,
+    required DateTime startDate,
+    required EventType type,
+    required String createdBy,
+    String? description,
+    DateTime? endDate,
+    String? childId,
+    String? location,
+  }) {
+    final day = calendarDayFrom(startDate);
+    _upsertEvent(
+      CalendarEvent(
+        id: 'local_evt_${DateTime.now().microsecondsSinceEpoch}',
+        title: title,
+        description: description,
+        startDate: day,
+        endDate: endDate == null ? null : calendarDayFrom(endDate),
+        type: type,
+        childId: childId,
+        createdBy: createdBy,
+        location: location,
+      ),
+    );
   }
 
   Future<void> addEvent({
@@ -300,17 +377,20 @@ class CalendarProvider extends ChangeNotifier {
     String? location,
   }) async {
     try {
+      final day = calendarDayFrom(startDate);
       final created = await _repository.createEvent(
         title: title,
-        startDate: startDate,
+        startDate: day,
         type: type,
         description: description,
-        endDate: endDate,
+        endDate: endDate == null ? null : calendarDayFrom(endDate),
         childId: childId,
         location: location,
       );
       _upsertEvent(created);
       await _reloadBestEffort();
+      // Keep the saved event visible if an older refresh finishes last.
+      _upsertEvent(created);
     } catch (error) {
       _error = error.toString();
       notifyListeners();

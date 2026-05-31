@@ -1,6 +1,13 @@
 /// Backend (Zod `.datetime()`) requires ISO-8601 with timezone, e.g. `…Z`.
 String calendarDateToApiIso(DateTime date) {
-  return DateTime.utc(date.year, date.month, date.day, 12).toIso8601String();
+  final local = date.toLocal();
+  return DateTime.utc(local.year, local.month, local.day, 12).toIso8601String();
+}
+
+/// Calendar day selected in UI (no time-of-day semantics).
+DateTime calendarDayFrom(DateTime date) {
+  final local = date.toLocal();
+  return DateTime(local.year, local.month, local.day);
 }
 
 bool isSameCalendarDay(DateTime a, DateTime b) {

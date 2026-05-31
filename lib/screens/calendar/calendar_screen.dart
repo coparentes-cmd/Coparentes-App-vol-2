@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/calendar_date_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/google_style_month_calendar.dart';
 
@@ -29,7 +30,7 @@ class _CalendarScreenState extends State<CalendarScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _startLiveRefresh());
   }
 
@@ -73,8 +74,6 @@ class _CalendarScreenState extends State<CalendarScreen>
         ? AppTheme.parentAColor
         : AppTheme.parentBColor;
 
-    final selectedSlots = calendar.getSlotsForDay(_selectedDay);
-    final selectedEvents = calendar.getEventsForDay(_selectedDay);
     final pendingSwaps = calendar.swapRequests
         .where((s) => s.status == SwapStatus.pending)
         .toList();
@@ -125,25 +124,14 @@ class _CalendarScreenState extends State<CalendarScreen>
                 ],
               ),
             ),
-            const Tab(text: 'Zdarzenia'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 1: Calendar
-          _buildCalendarTab(
-            context,
-            calendar,
-            selectedSlots,
-            selectedEvents,
-            roleColor,
-          ),
-          // Tab 2: Swap requests
+          _buildCalendarTab(context, calendar, roleColor),
           _buildSwapsTab(context, calendar),
-          // Tab 3: Events list
-          _buildEventsTab(context, calendar),
         ],
       ),
       floatingActionButton: isReadOnly
@@ -159,8 +147,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   Widget _buildCalendarTab(
     BuildContext context,
     CalendarProvider calendar,
-    List<CustodySlot> selectedSlots,
-    List<CalendarEvent> selectedEvents,
     Color roleColor,
   ) {
     return Column(
@@ -205,6 +191,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                 _focusedDay = day;
               });
             },
+            onDayDoubleTap: (day) => _showDayDetailSheet(context, calendar, day),
             onMonthChanged: (month) {
               setState(() => _focusedDay = month);
             },
@@ -234,21 +221,63 @@ class _CalendarScreenState extends State<CalendarScreen>
             ],
           ),
         ),
-        if (selectedSlots.isNotEmpty || selectedEvents.isNotEmpty)
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.28,
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _SelectedDayCard(
-                day: _selectedDay,
-                slot: selectedSlots.isNotEmpty ? selectedSlots.first : null,
-                events: selectedEvents,
-              ),
+      ],
+    );
+  }
+
+  void _showDayDetailSheet(
+    BuildContext context,
+    CalendarProvider calendar,
+    DateTime day,
+  ) {
+    setState(() {
+      _selectedDay = day;
+      _focusedDay = day;
+    });
+
+    final slots = calendar.getSlotsForDay(day);
+    final events = calendar.getEventsForDay(day);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final maxHeight = MediaQuery.of(ctx).size.height * 0.55;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxHeight),
+                    child: SingleChildScrollView(
+                      child: _SelectedDayCard(
+                        day: day,
+                        slot: slots.isNotEmpty ? slots.first : null,
+                        events: events,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-      ],
+        );
+      },
     );
   }
 
@@ -273,6 +302,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         return _SwapCard(
           swap: swap,
           isMyRequest: isMyRequest,
+          canRespond: isPending && !isMyRequest,
           onAccept: () async {
             try {
               await calendar.respondToSwap(
@@ -280,12 +310,23 @@ class _CalendarScreenState extends State<CalendarScreen>
                 SwapStatus.accepted,
                 note: 'Akceptuję',
               );
-              await _refreshSwapMessaging(context);
-            } catch (_) {
               if (!context.mounted) return;
+              await _refreshSwapMessaging(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Nie udało się zaakceptować wymiany.'),
+                  content: Text(
+                    'Zamiana zaakceptowana. Grafik opieki został zaktualizowany.',
+                  ),
+                  backgroundColor: AppTheme.successColor,
+                ),
+              );
+            } catch (error) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _calendarActionError(error, 'akceptacji zamiany'),
+                  ),
                   backgroundColor: AppTheme.errorColor,
                 ),
               );
@@ -293,26 +334,6 @@ class _CalendarScreenState extends State<CalendarScreen>
           },
           onReject: () => _showSwapRejectSheet(context, swap),
         );
-      },
-    );
-  }
-
-  Widget _buildEventsTab(BuildContext context, CalendarProvider calendar) {
-    final events = calendar.events;
-    if (events.isEmpty) {
-      return const EmptyState(
-        icon: Icons.event_note,
-        title: 'Brak zdarzeń',
-        subtitle: 'Dodaj zdarzenia szkolne, medyczne i inne',
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: events.length,
-      itemBuilder: (ctx, i) {
-        final event = events[i];
-        return _EventCard(event: event);
       },
     );
   }
@@ -420,12 +441,10 @@ class _SelectedDayCard extends StatelessWidget {
         ? null
         : (isParentA ? 'U Mamy' : 'U Taty');
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -547,7 +566,6 @@ class _SelectedDayCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -583,103 +601,134 @@ class _SelectedDayCard extends StatelessWidget {
 class _SwapCard extends StatelessWidget {
   final SwapRequest swap;
   final bool isMyRequest;
+  final bool canRespond;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
   const _SwapCard({
     required this.swap,
     required this.isMyRequest,
+    required this.canRespond,
     required this.onAccept,
     required this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPending = swap.status == SwapStatus.pending;
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isMyRequest ? 'Twój wniosek' : 'Wniosek od ${swap.requesterName}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                StatusChip(
-                  label: swap.statusLabel,
-                  color: swap.statusColor,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _SwapDateRow(
-              label: 'Oryginalny dzień',
-              date: swap.originalDate,
-              icon: Icons.event,
-              color: AppTheme.errorColor,
-            ),
-            const SizedBox(height: 6),
-            _SwapDateRow(
-              label: 'Proponowany dzień',
-              date: swap.proposedDate,
-              icon: Icons.event_available,
-              color: AppTheme.successColor,
-            ),
-            if (swap.reason != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Powód: ${swap.reason}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-            if (swap.responseNote != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Odpowiedź: ${swap.responseNote}',
-                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-              ),
-            ],
-            if (isPending && !isMyRequest) ...[
-              const SizedBox(height: 12),
-              Row(
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.close, size: 16),
-                      label: const Text('Odrzuć'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          isMyRequest
+                              ? 'Twój wniosek'
+                              : 'Wniosek od ${swap.requesterName}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      StatusChip(
+                        label: swap.statusLabel,
+                        color: swap.statusColor,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _SwapDateRow(
+                    label: 'Oryginalny dzień',
+                    date: swap.originalDate,
+                    icon: Icons.event,
+                    color: AppTheme.errorColor,
+                  ),
+                  const SizedBox(height: 6),
+                  _SwapDateRow(
+                    label: 'Proponowany dzień',
+                    date: swap.proposedDate,
+                    icon: Icons.event_available,
+                    color: AppTheme.successColor,
+                  ),
+                  if (swap.reason != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Powód: ${swap.reason}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                  if (swap.responseNote != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Odpowiedź: ${swap.responseNote}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (isMyRequest && swap.status == SwapStatus.pending) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Oczekuje na decyzję drugiego rodzica.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (canRespond) ...[
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 108,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton(
+                      onPressed: onAccept,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.successColor,
+                        minimumSize: const Size.fromHeight(40),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const Text(
+                        'Akceptuj',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
                       onPressed: onReject,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.errorColor,
                         side: const BorderSide(color: AppTheme.errorColor),
+                        minimumSize: const Size.fromHeight(40),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const Text(
+                        'Odrzuć',
+                        style: TextStyle(fontSize: 13),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Akceptuj'),
-                      onPressed: onAccept,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.successColor,
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -726,53 +775,6 @@ class _SwapDateRow extends StatelessWidget {
   }
 }
 
-class _EventCard extends StatelessWidget {
-  final CalendarEvent event;
-
-  const _EventCard({required this.event});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: event.typeColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(event.typeIcon, color: event.typeColor, size: 20),
-        ),
-        title: Text(
-          event.title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${event.startDate.day}.${event.startDate.month}.${event.startDate.year}',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-            ),
-            if (event.location != null)
-              Text(
-                event.location!,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-              ),
-          ],
-        ),
-        trailing: Icon(Icons.chevron_right, color: AppTheme.textHint, size: 18),
-      ),
-    );
-  }
-}
-
 class _AddEventSheet extends StatefulWidget {
   final DateTime selectedDay;
 
@@ -795,24 +797,38 @@ class _AddEventSheetState extends State<_AddEventSheet> {
 
   Future<void> _submit() async {
     final title = _titleController.text.trim();
-    if (title.isEmpty || _isSubmitting) {
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Podaj tytuł zdarzenia.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    if (_isSubmitting) {
       return;
     }
 
     setState(() => _isSubmitting = true);
 
     try {
-      final startDate = DateTime(
-        widget.selectedDay.year,
-        widget.selectedDay.month,
-        widget.selectedDay.day,
-        12,
-      );
-      await context.read<CalendarProvider>().addEvent(
-            title: title,
-            startDate: startDate,
-            type: _selectedType,
-          );
+      final startDate = calendarDayFrom(widget.selectedDay);
+      final app = context.read<AppProvider>();
+      if (app.isDemoMode) {
+        context.read<CalendarProvider>().addLocalEvent(
+              title: title,
+              startDate: startDate,
+              type: _selectedType,
+              createdBy: app.currentUser?.id ?? 'demo',
+            );
+      } else {
+        await context.read<CalendarProvider>().addEvent(
+              title: title,
+              startDate: startDate,
+              type: _selectedType,
+            );
+      }
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1378,6 +1394,9 @@ String _calendarActionError(Object error, String actionLabel) {
   if (error is ApiException) {
     if (error.message == 'invalid_request') {
       return 'Nieprawidłowe dane $actionLabel. Sprawdź wybrane daty.';
+    }
+    if (error.message == 'swap_not_allowed') {
+      return 'Nie możesz odpowiedzieć na własny wniosek o zamianę.';
     }
     if (error.statusCode >= 500) {
       return 'Błąd serwera. Spróbuj ponownie za chwilę.';

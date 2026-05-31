@@ -1,4 +1,5 @@
 import '../../models/models.dart';
+import '../../utils/calendar_date_utils.dart';
 import 'api_serializers.dart' show userRoleFromApi, userRoleToApi;
 
 EventType eventTypeFromApi(String value) {
@@ -76,7 +77,7 @@ CustodySlot custodySlotFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> custodySlotToJson(CustodySlot slot) {
   return {
     'id': slot.id,
-    'date': slot.date.toIso8601String(),
+    'date': calendarDateToApiIso(slot.date),
     'custodian': userRoleToApi(slot.custodian),
     'handoverLocation': slot.handoverLocation,
     'handoverTime': slot.handoverTime,
@@ -104,8 +105,9 @@ Map<String, dynamic> calendarEventToJson(CalendarEvent event) {
     'id': event.id,
     'title': event.title,
     'description': event.description,
-    'startDate': event.startDate.toIso8601String(),
-    'endDate': event.endDate?.toIso8601String(),
+    'startDate': calendarDateToApiIso(event.startDate),
+    'endDate':
+        event.endDate == null ? null : calendarDateToApiIso(event.endDate!),
     'type': eventTypeToApi(event.type),
     'childId': event.childId,
     'createdBy': event.createdBy,
