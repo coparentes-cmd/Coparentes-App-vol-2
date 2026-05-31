@@ -299,10 +299,12 @@ class _CalendarScreenState extends State<CalendarScreen>
       itemBuilder: (ctx, i) {
         final swap = swaps[i];
         final isMyRequest = swap.requesterId == user?.id;
+        final canRespond =
+            swap.status == SwapStatus.pending && !isMyRequest;
         return _SwapCard(
           swap: swap,
           isMyRequest: isMyRequest,
-          canRespond: isPending && !isMyRequest,
+          canRespond: canRespond,
           onAccept: () async {
             try {
               await calendar.respondToSwap(
