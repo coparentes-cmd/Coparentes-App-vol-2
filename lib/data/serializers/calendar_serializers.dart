@@ -105,9 +105,9 @@ Map<String, dynamic> calendarEventToJson(CalendarEvent event) {
     'id': event.id,
     'title': event.title,
     'description': event.description,
-    'startDate': calendarDateToApiIso(event.startDate),
+    'startDate': calendarStartDateToApiIso(event.startDate),
     'endDate':
-        event.endDate == null ? null : calendarDateToApiIso(event.endDate!),
+        event.endDate == null ? null : calendarStartDateToApiIso(event.endDate!),
     'type': eventTypeToApi(event.type),
     'childId': event.childId,
     'createdBy': event.createdBy,

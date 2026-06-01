@@ -236,7 +236,7 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   List<CalendarEvent> getEventsForDay(DateTime date) {
-    return _events.where((event) {
+    final events = _events.where((event) {
       if (isSameCalendarDay(event.startDate, date)) {
         return true;
       }
@@ -251,6 +251,8 @@ class CalendarProvider extends ChangeNotifier {
       final endDay = DateTime(end.year, end.month, end.day);
       return !target.isBefore(startDay) && !target.isAfter(endDay);
     }).toList();
+    events.sort((a, b) => compareEventTimes(a.startDate, b.startDate));
+    return events;
   }
 
   Future<void> _reloadBestEffort() async {
@@ -268,7 +270,7 @@ class CalendarProvider extends ChangeNotifier {
     } else {
       _events.add(event);
     }
-    _events.sort((a, b) => a.startDate.compareTo(b.startDate));
+    _events.sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     notifyListeners();
   }
 
@@ -351,14 +353,13 @@ class CalendarProvider extends ChangeNotifier {
     String? childId,
     String? location,
   }) {
-    final day = calendarDayFrom(startDate);
     _upsertEvent(
       CalendarEvent(
         id: 'local_evt_${DateTime.now().microsecondsSinceEpoch}',
         title: title,
         description: description,
-        startDate: day,
-        endDate: endDate == null ? null : calendarDayFrom(endDate),
+        startDate: _normalizeEventStart(startDate),
+        endDate: endDate == null ? null : _normalizeEventStart(endDate),
         type: type,
         childId: childId,
         createdBy: createdBy,
@@ -377,13 +378,13 @@ class CalendarProvider extends ChangeNotifier {
     String? location,
   }) async {
     try {
-      final day = calendarDayFrom(startDate);
+      final normalizedStart = _normalizeEventStart(startDate);
       final created = await _repository.createEvent(
         title: title,
-        startDate: day,
+        startDate: normalizedStart,
         type: type,
         description: description,
-        endDate: endDate == null ? null : calendarDayFrom(endDate),
+        endDate: endDate == null ? null : _normalizeEventStart(endDate),
         childId: childId,
         location: location,
       );
@@ -425,8 +426,20 @@ class CalendarProvider extends ChangeNotifier {
     _events
       ..clear()
       ..addAll(snapshot.events);
+    _events.sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     _swapRequests
       ..clear()
       ..addAll(snapshot.swapRequests);
+  }
+
+  DateTime _normalizeEventStart(DateTime startDate) {
+    final local = startDate.toLocal();
+    return DateTime(
+      local.year,
+      local.month,
+      local.day,
+      local.hour,
+      local.minute,
+    );
   }
 }

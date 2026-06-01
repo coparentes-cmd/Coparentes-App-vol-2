@@ -82,13 +82,6 @@ class _CalendarScreenState extends State<CalendarScreen>
       backgroundColor: AppTheme.surfaceColor,
       appBar: AppBar(
         title: const Text('Kalendarz opieki'),
-        actions: [
-          if (!isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => _addEvent(context),
-            ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -136,10 +129,23 @@ class _CalendarScreenState extends State<CalendarScreen>
       ),
       floatingActionButton: isReadOnly
           ? null
-          : FloatingActionButton.extended(
-              onPressed: () => _requestSwap(context),
-              icon: const Icon(Icons.swap_horiz),
-              label: const Text('Zamiana'),
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'calendar_new_event',
+                  onPressed: () => _addEvent(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nowe zdarzenie'),
+                ),
+                const SizedBox(width: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'calendar_swap',
+                  onPressed: () => _requestSwap(context),
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text('Zamiana'),
+                ),
+              ],
             ),
     );
   }
@@ -435,6 +441,8 @@ class _SelectedDayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sortedEvents = List<CalendarEvent>.from(events)
+      ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     final isParentA = slot?.custodian == UserRole.parentA;
     final color = slot == null
         ? AppTheme.textSecondary
@@ -504,12 +512,14 @@ class _SelectedDayCard extends StatelessWidget {
                   ),
                 ],
               ],
-              if (events.isNotEmpty) ...[
+              if (sortedEvents.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                ...events.map(
-                  (e) => Padding(
+                ...sortedEvents.map(
+                  (e) {
+                    final timeLabel = formatEventTimeLabel(e.startDate);
+                    return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
@@ -532,7 +542,9 @@ class _SelectedDayCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                e.title,
+                                timeLabel == null
+                                    ? e.title
+                                    : '$timeLabel  ${e.title}',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -552,7 +564,8 @@ class _SelectedDayCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ),
+                  );
+                  },
                 ),
               ] else if (slot == null)
                 const Padding(
@@ -789,12 +802,29 @@ class _AddEventSheet extends StatefulWidget {
 class _AddEventSheetState extends State<_AddEventSheet> {
   final _titleController = TextEditingController();
   EventType _selectedType = EventType.school;
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
   bool _isSubmitting = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    if (picked != null) {
+      setState(() => _selectedTime = picked);
+    }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   Future<void> _submit() async {
@@ -815,7 +845,11 @@ class _AddEventSheetState extends State<_AddEventSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      final startDate = calendarDayFrom(widget.selectedDay);
+      final startDate = calendarDateTimeFrom(
+        day: widget.selectedDay,
+        hour: _selectedTime.hour,
+        minute: _selectedTime.minute,
+      );
       final app = context.read<AppProvider>();
       if (app.isDemoMode) {
         context.read<CalendarProvider>().addLocalEvent(
@@ -880,7 +914,16 @@ class _AddEventSheetState extends State<_AddEventSheet> {
             'Data: ${widget.selectedDay.day}.${widget.selectedDay.month}.${widget.selectedDay.year}',
             style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.access_time, color: AppTheme.textSecondary),
+            title: const Text('Godzina'),
+            subtitle: Text(_formatTime(_selectedTime)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _pickTime,
+          ),
+          const SizedBox(height: 8),
           TextField(
             controller: _titleController,
             decoration: const InputDecoration(

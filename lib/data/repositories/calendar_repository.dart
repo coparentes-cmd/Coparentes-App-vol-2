@@ -44,10 +44,10 @@ class CalendarRepository {
     try {
       final payload = await _apiClient.postJson('/calendar/events', {
         'title': title,
-        'startDate': calendarDateToApiIso(startDate),
+        'startDate': calendarStartDateToApiIso(startDate),
         'type': eventTypeToApi(type),
         if (description != null) 'description': description,
-        if (endDate != null) 'endDate': calendarDateToApiIso(endDate),
+        if (endDate != null) 'endDate': calendarStartDateToApiIso(endDate),
         if (childId != null) 'childId': childId,
         if (location != null) 'location': location,
       });
@@ -79,8 +79,8 @@ class CalendarRepository {
           'clientEventId': local.id,
           'title': title,
           'description': description,
-          'startDate': calendarDateToApiIso(startDate),
-          'endDate': endDate != null ? calendarDateToApiIso(endDate) : null,
+          'startDate': calendarStartDateToApiIso(startDate),
+          'endDate': endDate != null ? calendarStartDateToApiIso(endDate) : null,
           'type': eventTypeToApi(type),
           'childId': childId,
           'location': location,
@@ -365,6 +365,6 @@ class CalendarRepository {
     if (value.endsWith('Z') || value.contains('+')) {
       return value;
     }
-    return calendarDateToApiIso(DateTime.parse(value));
+    return calendarStartDateToApiIso(DateTime.parse(value));
   }
 }

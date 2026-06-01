@@ -3,6 +3,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../utils/calendar_date_utils.dart';
 
 const _maxVisibleEvents = 3;
 
@@ -245,7 +246,7 @@ class _DayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final custodyColor = _custodyColor();
     final sortedEvents = List<CalendarEvent>.from(events)
-      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+      ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     final visibleEvents = sortedEvents.take(_maxVisibleEvents).toList();
     final hiddenCount = sortedEvents.length - visibleEvents.length;
 
@@ -397,20 +398,10 @@ class _EventChip extends StatelessWidget {
   }
 
   String _label(CalendarEvent event) {
-    final timePrefix = _formatTime(event.startDate);
+    final timePrefix = formatEventTimeLabel(event.startDate);
     if (timePrefix == null) {
       return event.title;
     }
     return '$timePrefix ${event.title}';
-  }
-
-  String? _formatTime(DateTime date) {
-    final local = date.toLocal();
-    if (local.hour == 0 && local.minute == 0) {
-      return null;
-    }
-    final hour = local.hour.toString().padLeft(2, '0');
-    final minute = local.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
   }
 }
