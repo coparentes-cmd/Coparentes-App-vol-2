@@ -1439,201 +1439,192 @@ class _MessageBubbleState extends State<_MessageBubble> {
 
     return Padding(
       padding: EdgeInsets.only(top: widget.group.topSpacing),
-      child: Row(
-        mainAxisAlignment:
-            widget.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment:
+            widget.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(
-            child: Align(
-              alignment: widget.isMe
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-                child: Column(
-                  crossAxisAlignment: widget.isMe
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.group.showSenderName && !widget.isMe)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6, bottom: 4),
+          if (widget.group.showSenderName && !widget.isMe)
+            Padding(
+              padding: const EdgeInsets.only(left: 6, bottom: 4),
+              child: Text(
+                widget.message.senderName,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: bubbleStyle.senderNameColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+            child: IntrinsicWidth(
+              child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+              decoration: BoxDecoration(
+                color: bubbleStyle.backgroundColor,
+                border: Border.all(color: bubbleStyle.borderColor),
+                borderRadius: imessageBubbleRadius(
+                  isMe: widget.isMe,
+                  isFirstInGroup: widget.group.isFirstInGroup,
+                  isLastInGroup: widget.group.isLastInGroup,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isShielded && !_showOriginal) ...[
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.shield,
+                          size: 12,
+                          color: bubbleStyle.secondaryTextColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'AI Shield – wersja logistyczna',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: bubbleStyle.secondaryTextColor,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _extractLogistics(widget.message.content),
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.35,
+                        color: bubbleStyle.textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () => setState(() => _showOriginal = true),
+                      child: Text(
+                        'Pokaż oryginał',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: bubbleStyle.senderNameColor,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    if (widget.message.content.isNotEmpty)
+                      Text(
+                        widget.message.content,
+                        style: TextStyle(
+                          fontSize: 16,
+                          height: 1.35,
+                          color: bubbleStyle.textColor,
+                        ),
+                      ),
+                    if (_isShielded && _showOriginal) ...[
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () => setState(() => _showOriginal = false),
                         child: Text(
-                          widget.message.senderName,
+                          'Ukryj oryginał',
                           style: TextStyle(
                             fontSize: 11,
                             color: bubbleStyle.senderNameColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    Container(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
-                      decoration: BoxDecoration(
-                        color: bubbleStyle.backgroundColor,
-                        border: Border.all(color: bubbleStyle.borderColor),
-                        borderRadius: imessageBubbleRadius(
-                          isMe: widget.isMe,
-                          isFirstInGroup: widget.group.isFirstInGroup,
-                          isLastInGroup: widget.group.isLastInGroup,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                      if (_isShielded && !_showOriginal) ...[
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.shield,
-                              size: 12,
-                              color: bubbleStyle.secondaryTextColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'AI Shield – wersja logistyczna',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: bubbleStyle.secondaryTextColor,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _extractLogistics(widget.message.content),
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.35,
-                            color: bubbleStyle.textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        GestureDetector(
-                          onTap: () => setState(() => _showOriginal = true),
-                          child: Text(
-                            'Pokaż oryginał',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: bubbleStyle.senderNameColor,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      ] else ...[
-                        if (widget.message.content.isNotEmpty)
-                          Text(
-                            widget.message.content,
-                            style: TextStyle(
-                              fontSize: 16,
-                              height: 1.35,
-                              color: bubbleStyle.textColor,
-                            ),
-                          ),
-                        if (_isShielded && _showOriginal) ...[
-                          const SizedBox(height: 4),
-                          GestureDetector(
-                            onTap: () => setState(() => _showOriginal = false),
-                            child: Text(
-                              'Ukryj oryginał',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: bubbleStyle.senderNameColor,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                      if (widget.message.attachments.isNotEmpty) ...[
-                        if (widget.message.content.isNotEmpty)
-                          const SizedBox(height: 8),
-                        ...widget.message.attachments.map(
-                          (att) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: InkWell(
-                              onTap: _downloadingAttachment
-                                  ? null
-                                  : () => _downloadAttachment(att),
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: bubbleStyle.attachmentBackground,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _downloadingAttachment
-                                          ? Icons.hourglass_top
-                                          : Icons.attach_file,
-                                      size: 14,
-                                      color: bubbleStyle.attachmentForeground,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text(
-                                        '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: bubbleStyle.attachmentForeground,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 2),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Tooltip(
-                          message: widget.isMe
-                              ? messageReceiptLabel(
-                                  widget.message,
-                                  isMe: true,
-                                )
-                              : _formatTime(widget.message.sentAt),
-                          child: MessageReceiptFooter(
-                            message: widget.message,
-                            isMe: widget.isMe,
-                            sentAt: widget.message.sentAt,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ),
                     ],
-                  ),
-                ),
-                if (showSwapActions) ...[
-                  const SizedBox(height: 6),
-                  _SwapMessageActions(
-                    swap: swap,
-                    alignEnd: widget.isMe,
-                    isLoading: _respondingToSwap,
-                    onAccept: () => _respondToSwap(swap, SwapStatus.accepted),
-                    onReject: () => _respondToSwap(swap, SwapStatus.rejected),
+                  ],
+                  if (widget.message.attachments.isNotEmpty) ...[
+                    if (widget.message.content.isNotEmpty)
+                      const SizedBox(height: 8),
+                    ...widget.message.attachments.map(
+                      (att) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: InkWell(
+                          onTap: _downloadingAttachment
+                              ? null
+                              : () => _downloadAttachment(att),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: bubbleStyle.attachmentBackground,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _downloadingAttachment
+                                      ? Icons.hourglass_top
+                                      : Icons.attach_file,
+                                  size: 14,
+                                  color: bubbleStyle.attachmentForeground,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: bubbleStyle.attachmentForeground,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Tooltip(
+                        message: widget.isMe
+                            ? messageReceiptLabel(
+                                widget.message,
+                                isMe: true,
+                              )
+                            : _formatTime(widget.message.sentAt),
+                        child: MessageReceiptFooter(
+                          message: widget.message,
+                          isMe: widget.isMe,
+                          sentAt: widget.message.sentAt,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-      ],
+          ),
+          if (showSwapActions) ...[
+            const SizedBox(height: 6),
+            _SwapMessageActions(
+              swap: swap,
+              alignEnd: widget.isMe,
+              isLoading: _respondingToSwap,
+              onAccept: () => _respondToSwap(swap, SwapStatus.accepted),
+              onReject: () => _respondToSwap(swap, SwapStatus.rejected),
+            ),
+          ],
+        ],
       ),
     );
   }
