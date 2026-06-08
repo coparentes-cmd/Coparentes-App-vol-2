@@ -10,8 +10,10 @@ import '../../providers/offline_sync_provider.dart';
 import '../../services/ai_guidance_service.dart';
 import '../../services/message_attachment_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 import '../../utils/file_download.dart';
 import '../../utils/messaging_helpers.dart';
+import '../../utils/swap_message_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/message_compose_bar.dart';
 import '../../widgets/message_status_indicator.dart';
@@ -85,29 +87,26 @@ class _MessagingScreenState extends State<MessagingScreen> {
     }).toList();
     final showInlineChat = _selectedCategory != 'Wszystkie';
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        title: Text(showInlineChat ? _selectedCategory : 'Wiadomości'),
-        actions: [
+    return ParentTabScaffold(
+      title: showInlineChat ? _selectedCategory : 'Wiadomości',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Odśwież wiadomości',
+          onPressed: () => _loadThreads(context),
+        ),
+        if (!showInlineChat)
           IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Odśwież wiadomości',
-            onPressed: () => _loadThreads(context),
+            icon: const Icon(Icons.search),
+            onPressed: () => _showSearch(context),
           ),
-          if (!showInlineChat)
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () => _showSearch(context),
-            ),
-          if (!isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.edit_note),
-              tooltip: 'Własny temat',
-              onPressed: () => _newThread(context),
-            ),
-        ],
-      ),
+        if (!isReadOnly)
+          ParentHeaderActionButton(
+            label: 'Nowy wątek',
+            icon: Icons.edit_note,
+            onPressed: () => _newThread(context),
+          ),
+      ],
       body: Column(
         children: [
           SizedBox(
@@ -249,13 +248,6 @@ class _MessagingScreenState extends State<MessagingScreen> {
             ),
         ],
       ),
-      floatingActionButton: isReadOnly || showInlineChat
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => _newThread(context),
-              icon: const Icon(Icons.edit_note),
-              label: const Text('Własny temat'),
-            ),
     );
   }
 
@@ -453,6 +445,10 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       await messaging.markThreadRead(thread.id, viewerUserId: userId);
     }
 
+    if (isSwapScheduleThread(widget.category)) {
+      unawaited(context.read<CalendarProvider>().load(silent: true));
+    }
+
     setState(() => _initializing = false);
     _scrollToBottom();
     context.read<OfflineSyncProvider>().pollMessagingNow();
@@ -592,6 +588,7 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                 : _ThreadMessagesList(
                     messages: thread.messages,
                     threadId: thread.id,
+                    threadCategory: widget.category,
                     viewerUserId: user?.id,
                     aiShieldEnabled: aiShield,
                     scrollController: _scrollController,
@@ -991,6 +988,11 @@ class _ThreadScreenState extends State<ThreadScreen> {
             widget.threadId,
             viewerUserId: userId,
           );
+      final thread =
+          context.read<MessagingProvider>().getThreadById(widget.threadId);
+      if (isSwapScheduleThread(thread?.category)) {
+        unawaited(context.read<CalendarProvider>().load(silent: true));
+      }
       _pollThreadMessages();
       context.read<OfflineSyncProvider>().pollMessagingNow();
     });
@@ -1107,6 +1109,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
               child: _ThreadMessagesList(
                 messages: thread.messages,
                 threadId: widget.threadId,
+                threadCategory: thread.category,
                 viewerUserId: user?.id,
                 aiShieldEnabled: aiShield,
               ),
@@ -1343,6 +1346,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
 class _ThreadMessagesList extends StatelessWidget {
   final List<Message> messages;
   final String threadId;
+  final String? threadCategory;
   final String? viewerUserId;
   final bool aiShieldEnabled;
   final ScrollController? scrollController;
@@ -1350,6 +1354,7 @@ class _ThreadMessagesList extends StatelessWidget {
   const _ThreadMessagesList({
     required this.messages,
     required this.threadId,
+    this.threadCategory,
     required this.viewerUserId,
     required this.aiShieldEnabled,
     this.scrollController,
@@ -1369,6 +1374,7 @@ class _ThreadMessagesList extends StatelessWidget {
         return _MessageBubble(
           message: message,
           threadId: threadId,
+          threadCategory: threadCategory,
           isMe: isMe,
           aiShieldEnabled: aiShieldEnabled,
           group: group,
@@ -1381,6 +1387,7 @@ class _ThreadMessagesList extends StatelessWidget {
 class _MessageBubble extends StatefulWidget {
   final Message message;
   final String threadId;
+  final String? threadCategory;
   final bool isMe;
   final bool aiShieldEnabled;
   final MessageGroupInfo group;
@@ -1388,6 +1395,7 @@ class _MessageBubble extends StatefulWidget {
   const _MessageBubble({
     required this.message,
     required this.threadId,
+    this.threadCategory,
     required this.isMe,
     required this.aiShieldEnabled,
     required this.group,
@@ -1400,6 +1408,7 @@ class _MessageBubble extends StatefulWidget {
 class _MessageBubbleState extends State<_MessageBubble> {
   bool _showOriginal = false;
   bool _downloadingAttachment = false;
+  bool _respondingToSwap = false;
 
   bool get _isShielded =>
       widget.aiShieldEnabled &&
@@ -1409,6 +1418,19 @@ class _MessageBubbleState extends State<_MessageBubble> {
   @override
   Widget build(BuildContext context) {
     final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
+    final calendar = context.watch<CalendarProvider>();
+    final swap = isSwapScheduleThread(widget.threadCategory)
+        ? findPendingSwapForMessage(
+            messageContent: widget.message.content,
+            messageSenderId: widget.message.senderId,
+            swaps: calendar.swapRequests,
+          )
+        : null;
+    final showSwapActions = swap != null &&
+        canRespondToSwapMessage(
+          swap: swap,
+          viewerUserId: context.read<AppProvider>().currentUser?.id,
+        );
 
     return Padding(
       padding: EdgeInsets.only(top: widget.group.topSpacing),
@@ -1589,12 +1611,80 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     ],
                   ),
                 ),
+                if (showSwapActions) ...[
+                  const SizedBox(height: 6),
+                  _SwapMessageActions(
+                    swap: swap,
+                    alignEnd: widget.isMe,
+                    isLoading: _respondingToSwap,
+                    onAccept: () => _respondToSwap(swap, SwapStatus.accepted),
+                    onReject: () => _respondToSwap(swap, SwapStatus.rejected),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _respondToSwap(SwapRequest swap, SwapStatus status) async {
+    if (_respondingToSwap) {
+      return;
+    }
+
+    setState(() => _respondingToSwap = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final app = context.read<AppProvider>();
+    final calendar = context.read<CalendarProvider>();
+    final messaging = context.read<MessagingProvider>();
+
+    try {
+      if (calendar.swapRequests.isEmpty) {
+        await calendar.load(silent: true);
+      }
+
+      await calendar.respondToSwap(
+        swap.id,
+        status,
+        note: status == SwapStatus.rejected ? 'Odrzucono z czatu.' : null,
+      );
+
+      await messaging.loadThreads(
+        viewerUserId: app.currentUser?.id,
+        silent: true,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            status == SwapStatus.accepted
+                ? 'Zamiana zaakceptowana — kalendarz zaktualizowany.'
+                : 'Wniosek o zamianę odrzucony.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się zapisać odpowiedzi na wniosek.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _respondingToSwap = false);
+      }
+    }
   }
 
   String _extractLogistics(String content) {
@@ -1809,5 +1899,68 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
       }
       Navigator.pop(context, thread);
     });
+  }
+}
+
+class _SwapMessageActions extends StatelessWidget {
+  final SwapRequest swap;
+  final bool alignEnd;
+  final bool isLoading;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _SwapMessageActions({
+    required this.swap,
+    required this.alignEnd,
+    required this.isLoading,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          OutlinedButton(
+            onPressed: isLoading ? null : onReject,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+              side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.45)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            child: const Text('Odrzuć'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: isLoading ? null : onAccept,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              elevation: 0,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Akceptuj'),
+          ),
+        ],
+      ),
+    );
   }
 }

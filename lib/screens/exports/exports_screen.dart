@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../models/models.dart';
 import '../../providers/exports_provider.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 
 class ExportsScreen extends StatefulWidget {
   const ExportsScreen({super.key});
@@ -32,17 +33,14 @@ class _ExportsScreenState extends State<ExportsScreen> {
   Widget build(BuildContext context) {
     final exportsProvider = context.watch<ExportsProvider>();
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        title: const Text('Eksporty dowodowe'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => _showInfo(context),
-          ),
-        ],
-      ),
+    return ParentTabScaffold(
+      title: 'Eksporty dowodowe',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: () => _showInfo(context),
+        ),
+      ],
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -5,9 +5,11 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/calendar_date_utils.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/brand_widgets.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 import '../messaging/messaging_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../finance/finance_screen.dart';
@@ -25,6 +27,8 @@ class ParentDashboard extends StatefulWidget {
 
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
+  DateTime _calendarFocusDay = DateTime.now();
+  int _calendarFocusRequestId = 0;
 
   void _navigateToTab(int index) {
     setState(() => _selectedIndex = index);
@@ -34,6 +38,14 @@ class _ParentDashboardState extends State<ParentDashboard> {
     if (index == 0 || index == 3) {
       _refreshFinanceNow();
     }
+  }
+
+  void _openCalendarOnDay(DateTime day) {
+    setState(() {
+      _calendarFocusDay = DateTime(day.year, day.month, day.day);
+      _calendarFocusRequestId += 1;
+      _selectedIndex = 2;
+    });
   }
 
   void _refreshFinanceNow() {
@@ -54,9 +66,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          _DashboardHome(onNavigateToTab: _navigateToTab),
+          _DashboardHome(
+            onNavigateToTab: _navigateToTab,
+            onOpenCalendarDay: _openCalendarOnDay,
+          ),
           const MessagingScreen(),
-          const CalendarScreen(),
+          CalendarScreen(
+            focusDay: _calendarFocusDay,
+            focusRequestId: _calendarFocusRequestId,
+          ),
           const FinanceScreen(),
           const DocumentsScreen(),
           const ExportsScreen(),
@@ -159,8 +177,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
 class _DashboardHome extends StatelessWidget {
   final ValueChanged<int> onNavigateToTab;
+  final ValueChanged<DateTime> onOpenCalendarDay;
 
-  const _DashboardHome({required this.onNavigateToTab});
+  const _DashboardHome({
+    required this.onNavigateToTab,
+    required this.onOpenCalendarDay,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -225,127 +247,107 @@ class _DashboardHome extends StatelessWidget {
 
     final firstName = user?.name.split(' ').first ?? '';
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      body: CustomScrollView(
-        slivers: [
-          // App Bar
-          SliverAppBar(
-            expandedHeight: 130,
-            floating: false,
-            pinned: true,
-            backgroundColor: roleColor,
-            automaticallyImplyLeading: false,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: roleColor,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Title
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const BrandLogo(width: 112, height: 34),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Dzień dobry, $firstName',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                workspace?.name ?? '',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.75),
-                                  fontSize: 13,
-                                ),
-                              ),
-                              if (highConflict) ...[
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.highConflictColor,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'Tryb HC aktywny',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        // Profile avatar + gear button
-                        GestureDetector(
-                          onTap: () => _openSettings(context),
-                          child: SizedBox(
-                            width: 52,
-                            height: 52,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Avatar circle
-                                CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.22),
-                                  child: Text(
-                                    firstName.isNotEmpty ? firstName[0] : '?',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
-                                // Gear icon badge
-                                Positioned(
-                                  right: -4,
-                                  top: -4,
-                                  child: Container(
-                                    width: 20,
-                                    height: 20,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.settings,
-                                      size: 13,
-                                      color: roleColor,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+    return ParentTabScaffold(
+      headerColor: roleColor,
+      headerHeight: 130,
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const BrandLogo(width: 112, height: 34),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Dzień dobry, $firstName',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(height: 3),
+                  Text(
+                    workspace?.name ?? '',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (highConflict) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.highConflictColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Tryb HC aktywny',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _openSettings(context),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Colors.white.withValues(alpha: 0.22),
+                      child: Text(
+                        firstName.isNotEmpty ? firstName[0] : '?',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.settings,
+                          size: 13,
+                          color: roleColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-
+          ],
+        ),
+      ),
+      body: CustomScrollView(
+        slivers: [
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,10 +358,12 @@ class _DashboardHome extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: _TodayCard(
-                    custodyText: custodyText,
+                    date: now,
                     todayEvents: todayEvents,
                     pendingSwaps: pendingSwaps,
                     roleColor: roleColor,
+                    custodyLabel: todaySlots.isNotEmpty ? custodyText : null,
+                    onTap: () => onOpenCalendarDay(now),
                   ),
                 ),
 
@@ -525,24 +529,44 @@ class _DashboardHome extends StatelessWidget {
 // ─── Subwidgets ────────────────────────────────────────────────────────────────
 
 class _TodayCard extends StatelessWidget {
-  final String custodyText;
+  final DateTime date;
   final List<CalendarEvent> todayEvents;
   final int pendingSwaps;
   final Color roleColor;
+  final String? custodyLabel;
+  final VoidCallback onTap;
 
   const _TodayCard({
-    required this.custodyText,
+    required this.date,
     required this.todayEvents,
     required this.pendingSwaps,
     required this.roleColor,
+    this.custodyLabel,
+    required this.onTap,
   });
+
+  String get _dateLabel {
+    const months = [
+      'sty',
+      'lut',
+      'mar',
+      'kwi',
+      'maj',
+      'cze',
+      'lip',
+      'sie',
+      'wrz',
+      'paź',
+      'lis',
+      'gru',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -552,88 +576,125 @@ class _TodayCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.home, color: roleColor, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Dziś: $custodyText',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: roleColor,
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.event, color: roleColor, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Dziś · $_dateLabel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: roleColor,
+                        ),
+                      ),
+                    ],
                   ),
+                  if (pendingSwaps > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warningColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$pendingSwaps zamiana',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.warningColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                 ],
               ),
-              if (pendingSwaps > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.warningColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '$pendingSwaps zamiana',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.warningColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          if (todayEvents.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            ...todayEvents.take(3).map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
+              if (custodyLabel != null) ...[
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    Icon(e.typeIcon, color: e.typeColor, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        e.title,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.textPrimary,
-                        ),
+                    Icon(Icons.home, color: roleColor.withValues(alpha: 0.7), size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Opieka: $custodyLabel',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
-                    if (e.description != null)
-                      Text(
-                        e.description!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
                   ],
                 ),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 8),
-            const Text(
-              'Brak zaplanowanych zdarzeń na dziś',
-              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-            ),
-          ],
-        ],
+              ],
+              const SizedBox(height: 12),
+              if (todayEvents.isNotEmpty)
+                ...todayEvents.take(3).map(
+                  (event) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Icon(event.typeIcon, color: event.typeColor, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            event.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (formatEventTimeLabel(event.startDate) != null)
+                          Text(
+                            formatEventTimeLabel(event.startDate)!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const Text(
+                  'Brak wydarzeń na dziś',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                ),
+              if (todayEvents.length > 3) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '+ ${todayEvents.length - 3} więcej w kalendarzu',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: roleColor.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
+    ),
     );
   }
 }

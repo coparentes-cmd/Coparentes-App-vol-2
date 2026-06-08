@@ -11,6 +11,7 @@ import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../services/receipt_attachment_service.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 
 enum _ReportPeriod { thisMonth, quarter, year }
 
@@ -60,59 +61,56 @@ class _FinanceScreenState extends State<FinanceScreen>
     final user = context.watch<AppProvider>().currentUser;
     final isReadOnly = user?.role == UserRole.observer;
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        title: const Text('Finanse'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Eksport PDF',
-            onPressed: () => _exportFinances(context),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: [
-            const Tab(text: 'Saldo'),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Wydatki'),
-                  const SizedBox(width: 4),
-                  Consumer<FinanceProvider>(
-                    builder: (_, fp, __) {
-                      final pending = fp.pendingCount;
-                      if (pending == 0) return const SizedBox.shrink();
-                      return Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '$pending',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppTheme.primaryTeal,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const Tab(text: 'Raporty'),
-          ],
+    return ParentTabScaffold(
+      title: 'Finanse',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          tooltip: 'Eksport PDF',
+          onPressed: () => _exportFinances(context),
         ),
+      ],
+      tabBar: TabBar(
+        controller: _tabController,
+        indicatorColor: Colors.white,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        tabs: [
+          const Tab(text: 'Saldo'),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Wydatki'),
+                const SizedBox(width: 4),
+                Consumer<FinanceProvider>(
+                  builder: (_, fp, __) {
+                    final pending = fp.pendingCount;
+                    if (pending == 0) return const SizedBox.shrink();
+                    return Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$pending',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.primaryTeal,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Tab(text: 'Raporty'),
+        ],
       ),
       body: TabBarView(
         controller: _tabController,
@@ -224,57 +222,55 @@ class _FinanceScreenState extends State<FinanceScreen>
           ),
           const SizedBox(height: 12),
 
-          // Main balance card — szerokość i styl jak baner AI Coach
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: signedBalance.abs() < 0.01
-                    ? [AppTheme.warningColor, const Color(0xFFFFB74D)]
-                    : signedBalance > 0
-                    ? [const Color(0xFF2E7D32), const Color(0xFF66BB6A)]
-                    : [AppTheme.warningColor, const Color(0xFFFFB74D)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.warningColor.withValues(alpha: 0.22),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  balanceHeadline,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  signedBalance.abs() < 0.01
-                      ? 'Po zaakceptowanych wydatkach oboje jesteście na zero.'
-                      : signedBalance > 0
-                      ? 'Drugi rodzic winien Tobie po akceptacji wydatków.'
-                      : 'Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'Ostatnia synchronizacja: ${_formatSyncTime(finance.lastSyncedAt!)}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+          // Main balance card — kompaktowa, ciemna pigułka
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 320),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: ParentHeaderActionButton.buttonColor,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: ParentHeaderActionButton.buttonColor
+                        .withValues(alpha: 0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    balanceHeadline,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    signedBalance.abs() < 0.01
+                        ? 'Po zaakceptowanych wydatkach oboje jesteście na zero.'
+                        : signedBalance > 0
+                        ? 'Drugi rodzic winien Tobie po akceptacji wydatków.'
+                        : 'Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Ostatnia synchronizacja: ${_formatSyncTime(finance.lastSyncedAt!)}',
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 10),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),

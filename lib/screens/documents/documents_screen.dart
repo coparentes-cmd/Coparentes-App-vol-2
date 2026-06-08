@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/documents_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -38,19 +39,16 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             .where((document) => document.category == _selectedCategory)
             .toList();
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        title: const Text('Documents'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_file),
-            onPressed: documentsProvider.isLoading
-                ? null
-                : () => _showUploadSheet(context, workspace),
-          ),
-        ],
-      ),
+    return ParentTabScaffold(
+      title: 'Documents',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.upload_file),
+          onPressed: documentsProvider.isLoading
+              ? null
+              : () => _showUploadSheet(context, workspace),
+        ),
+      ],
       body: RefreshIndicator(
         onRefresh: () => documentsProvider.load(),
         child: ListView(

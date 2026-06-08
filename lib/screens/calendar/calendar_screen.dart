@@ -9,10 +9,18 @@ import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 import '../../widgets/google_style_month_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final DateTime? focusDay;
+  final int focusRequestId;
+
+  const CalendarScreen({
+    super.key,
+    this.focusDay,
+    this.focusRequestId = 0,
+  });
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -31,7 +39,27 @@ class _CalendarScreenState extends State<CalendarScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    if (widget.focusDay != null) {
+      _jumpToDay(widget.focusDay!);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _startLiveRefresh());
+  }
+
+  @override
+  void didUpdateWidget(CalendarScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusRequestId != oldWidget.focusRequestId &&
+        widget.focusDay != null) {
+      _jumpToDay(widget.focusDay!);
+    }
+  }
+
+  void _jumpToDay(DateTime day) {
+    final normalized = DateTime(day.year, day.month, day.day);
+    setState(() {
+      _focusedDay = normalized;
+      _selectedDay = normalized;
+    });
   }
 
   void _startLiveRefresh() {
@@ -78,47 +106,53 @@ class _CalendarScreenState extends State<CalendarScreen>
         .where((s) => s.status == SwapStatus.pending)
         .toList();
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        title: const Text('Kalendarz opieki'),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: [
-            const Tab(text: 'Grafik'),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Zamiany'),
-                  if (pendingSwaps.isNotEmpty) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '${pendingSwaps.length}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: roleColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+    return ParentTabScaffold(
+      title: 'Kalendarz opieki',
+      actions: isReadOnly
+          ? null
+          : [
+              ParentHeaderActionButton(
+                label: 'Zamiana',
+                icon: Icons.swap_horiz,
+                onPressed: () => _requestSwap(context),
+              ),
+            ],
+      tabBar: TabBar(
+        controller: _tabController,
+        indicatorColor: Colors.white,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        tabs: [
+          const Tab(text: 'Grafik'),
+          Tab(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Zamiany'),
+                if (pendingSwaps.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${pendingSwaps.length}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: roleColor,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       body: TabBarView(
         controller: _tabController,
@@ -129,23 +163,11 @@ class _CalendarScreenState extends State<CalendarScreen>
       ),
       floatingActionButton: isReadOnly
           ? null
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: 'calendar_new_event',
-                  onPressed: () => _addEvent(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nowe zdarzenie'),
-                ),
-                const SizedBox(width: 12),
-                FloatingActionButton.extended(
-                  heroTag: 'calendar_swap',
-                  onPressed: () => _requestSwap(context),
-                  icon: const Icon(Icons.swap_horiz),
-                  label: const Text('Zamiana'),
-                ),
-              ],
+          : FloatingActionButton.extended(
+              heroTag: 'calendar_new_event',
+              onPressed: () => _addEvent(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Nowe zdarzenie'),
             ),
     );
   }
