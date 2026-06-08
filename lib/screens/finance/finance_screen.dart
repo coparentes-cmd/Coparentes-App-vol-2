@@ -328,6 +328,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   color: AppTheme.warningColor,
                   icon: Icons.account_balance_wallet,
                   currencyCode: currencyCode,
+                  onTap: _openPendingExpenses,
                 ),
               ),
             ],
@@ -838,6 +839,13 @@ class _FinanceScreenState extends State<FinanceScreen>
     }
   }
 
+  void _openPendingExpenses() {
+    setState(() {
+      _expenseFilter = ExpenseStatus.pending;
+      _tabController.index = 1;
+    });
+  }
+
   void _addExpense(
     BuildContext context, {
     required bool ocrMode,
@@ -967,6 +975,7 @@ class _SummaryCard extends StatelessWidget {
   final Color color;
   final IconData icon;
   final String currencyCode;
+  final VoidCallback? onTap;
 
   const _SummaryCard({
     required this.title,
@@ -974,44 +983,54 @@ class _SummaryCard extends StatelessWidget {
     required this.color,
     required this.icon,
     required this.currencyCode,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 8),
+        Text(
+          '${amount.toStringAsFixed(0)} $currencyCode',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+      ],
+    );
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 8),
-          Text(
-            '${amount.toStringAsFixed(0)} $currencyCode',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-        ],
+          child: content,
+        ),
       ),
     );
   }

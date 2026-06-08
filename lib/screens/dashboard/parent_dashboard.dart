@@ -26,14 +26,15 @@ class ParentDashboard extends StatefulWidget {
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
-    _DashboardHome(),
-    MessagingScreen(),
-    CalendarScreen(),
-    FinanceScreen(),
-    DocumentsScreen(),
-    ExportsScreen(),
-  ];
+  void _navigateToTab(int index) {
+    setState(() => _selectedIndex = index);
+    if (index == 1) {
+      context.read<OfflineSyncProvider>().pollMessagingNow();
+    }
+    if (index == 0 || index == 3) {
+      _refreshFinanceNow();
+    }
+  }
 
   void _refreshFinanceNow() {
     final app = context.read<AppProvider>();
@@ -50,7 +51,17 @@ class _ParentDashboardState extends State<ParentDashboard> {
     final isParentA = user?.role == UserRole.parentA;
 
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          _DashboardHome(onNavigateToTab: _navigateToTab),
+          const MessagingScreen(),
+          const CalendarScreen(),
+          const FinanceScreen(),
+          const DocumentsScreen(),
+          const ExportsScreen(),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -65,13 +76,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (i) {
-            setState(() => _selectedIndex = i);
-            if (i == 1) {
-              context.read<OfflineSyncProvider>().pollMessagingNow();
-            }
-            if (i == 0 || i == 3) {
-              _refreshFinanceNow();
-            }
+            _navigateToTab(i);
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
@@ -153,7 +158,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
 // ─── Dashboard Home ────────────────────────────────────────────────────────────
 
 class _DashboardHome extends StatelessWidget {
-  const _DashboardHome();
+  final ValueChanged<int> onNavigateToTab;
+
+  const _DashboardHome({required this.onNavigateToTab});
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +198,21 @@ class _DashboardHome extends StatelessWidget {
             parentB: parentB,
           )
         : '${finance.totalPending.toStringAsFixed(0)} PLN';
+
+    final chatActivity = _latestChatActivity(messaging);
+    final chatDetail = unreadMessages == 0
+        ? 'Czat'
+        : 'Czat · $unreadMessages nowe';
+
+    final financeActivity = _latestFinanceActivity(finance);
+    final financeDetail = finance.pendingCount == 0
+        ? 'Finanse · $netBalanceLabel'
+        : 'Finanse · ${finance.pendingCount} oczekuje';
+
+    final calendarActivity = _latestCalendarActivity(calendar);
+    final calendarDetail = pendingSwaps == 0
+        ? 'Kalendarz'
+        : 'Kalendarz · $pendingSwaps zamiany';
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -362,38 +384,38 @@ class _DashboardHome extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Quick stats row
+                // Ostatnie aktywności z zakładek
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       Expanded(
                         child: _StatCard(
-                          label: 'Nowe wiad.',
-                          value: unreadMessages.toString(),
+                          label: chatDetail,
+                          value: chatActivity,
                           icon: Icons.chat_bubble,
                           color: AppTheme.primaryTeal,
-                          onTap: () {},
+                          onTap: () => onNavigateToTab(1),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _StatCard(
-                          label: 'Saldo netto',
-                          value: netBalanceLabel,
+                          label: financeDetail,
+                          value: financeActivity,
                           icon: Icons.account_balance_wallet,
                           color: AppTheme.warningColor,
-                          onTap: () {},
+                          onTap: () => onNavigateToTab(3),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _StatCard(
-                          label: 'Zamiany',
-                          value: pendingSwaps.toString(),
-                          icon: Icons.swap_horiz,
+                          label: calendarDetail,
+                          value: calendarActivity,
+                          icon: Icons.calendar_month,
                           color: AppTheme.parentBColor,
-                          onTap: () {},
+                          onTap: () => onNavigateToTab(2),
                         ),
                       ),
                     ],
@@ -703,10 +725,13 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: color,
+                height: 1.25,
               ),
             ),
             const SizedBox(height: 2),
@@ -867,6 +892,83 @@ String _formatNetBalanceLabel({
     return '+${signed.toStringAsFixed(0)} PLN';
   }
   return '-${signed.abs().toStringAsFixed(0)} PLN';
+}
+
+String _latestChatActivity(MessagingProvider messaging) {
+  if (messaging.threads.isEmpty) {
+    return 'Brak wiadomości';
+  }
+
+  final threads = [...messaging.threads]
+    ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+  final thread = threads.first;
+  final lastMsg = thread.messages.isNotEmpty ? thread.messages.last : null;
+
+  if (lastMsg != null) {
+    final preview = lastMsg.content.trim();
+    if (preview.isEmpty && lastMsg.attachments.isNotEmpty) {
+      return '📎 ${thread.subject}';
+    }
+    if (preview.isNotEmpty) {
+      return preview.length > 32 ? '${preview.substring(0, 32)}…' : preview;
+    }
+  }
+
+  return thread.subject;
+}
+
+String _latestFinanceActivity(FinanceProvider finance) {
+  final pending = finance.expenses
+      .where((expense) => expense.status == ExpenseStatus.pending)
+      .toList()
+    ..sort((a, b) => b.date.compareTo(a.date));
+
+  if (pending.isNotEmpty) {
+    final expense = pending.first;
+    return '${expense.title} · ${expense.amount.toStringAsFixed(0)} PLN';
+  }
+
+  if (finance.expenses.isEmpty) {
+    return 'Brak wydatków';
+  }
+
+  final latest = [...finance.expenses]
+    ..sort((a, b) => b.date.compareTo(a.date));
+  final expense = latest.first;
+  return '${expense.title} · ${expense.amount.toStringAsFixed(0)} PLN';
+}
+
+String _latestCalendarActivity(CalendarProvider calendar) {
+  final pendingSwaps = calendar.swapRequests
+      .where((swap) => swap.status == SwapStatus.pending)
+      .toList()
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  if (pendingSwaps.isNotEmpty) {
+    final swap = pendingSwaps.first;
+    return 'Zamiana ${_formatShortDate(swap.originalDate)}→${_formatShortDate(swap.proposedDate)}';
+  }
+
+  final now = DateTime.now();
+  final upcoming = calendar.events
+      .where(
+        (event) => !event.startDate.isBefore(
+          DateTime(now.year, now.month, now.day),
+        ),
+      )
+      .toList()
+    ..sort((a, b) => a.startDate.compareTo(b.startDate));
+
+  if (upcoming.isNotEmpty) {
+    final event = upcoming.first;
+    return '${event.title} · ${_formatShortDate(event.startDate)}';
+  }
+
+  return 'Brak nadchodzących';
+}
+
+String _formatShortDate(DateTime date) {
+  return '${date.day}.${date.month}';
 }
 
 class _FinanceSnapshotCard extends StatelessWidget {
