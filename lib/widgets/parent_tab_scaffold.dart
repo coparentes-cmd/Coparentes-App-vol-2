@@ -36,10 +36,7 @@ class ParentTabScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        headerColor ??
-        Theme.of(context).appBarTheme.backgroundColor ??
-        Theme.of(context).colorScheme.primary;
+    final color = headerColor ?? AppTheme.brandHeaderBlue;
     final topPadding = MediaQuery.paddingOf(context).top;
 
     return Scaffold(

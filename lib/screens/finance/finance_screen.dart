@@ -13,7 +13,7 @@ import '../../services/receipt_attachment_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 
-enum _ReportPeriod { thisMonth, quarter, year }
+enum _ReportPeriod { thisMonth, quarter, year, custom }
 
 enum _FinanceReportType { chronological, statistical, balance }
 
@@ -30,6 +30,8 @@ class _FinanceScreenState extends State<FinanceScreen>
   ExpenseStatus? _expenseFilter;
   _ReportPeriod _reportPeriod = _ReportPeriod.thisMonth;
   _FinanceReportType _reportType = _FinanceReportType.chronological;
+  DateTime? _customReportFrom;
+  DateTime? _customReportTo;
 
   @override
   void initState() {
@@ -166,6 +168,12 @@ class _FinanceScreenState extends State<FinanceScreen>
     return '${syncedAt.hour.toString().padLeft(2, '0')}:${syncedAt.minute.toString().padLeft(2, '0')}';
   }
 
+  String _formatReportDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.'
+        '${date.year}';
+  }
+
   (DateTime, DateTime) _reportDateRange() {
     final now = DateTime.now();
     switch (_reportPeriod) {
@@ -176,6 +184,101 @@ class _FinanceScreenState extends State<FinanceScreen>
         return (DateTime(now.year, quarterStartMonth, 1), now);
       case _ReportPeriod.year:
         return (DateTime(now.year, 1, 1), now);
+      case _ReportPeriod.custom:
+        final from = _customReportFrom ?? DateTime(now.year, now.month, 1);
+        final to = _customReportTo ?? now;
+        if (from.isAfter(to)) {
+          return (to, from);
+        }
+        return (from, to);
+    }
+  }
+
+  Future<void> _selectCustomReportRange() async {
+    final now = DateTime.now();
+    var from = _customReportFrom ?? DateTime(now.year, now.month, 1);
+    var to = _customReportTo ?? now;
+
+    final applied = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final invalidRange = from.isAfter(to);
+            return AlertDialog(
+              title: const Text('Wybierz daty'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Od'),
+                    subtitle: Text(_formatReportDate(from)),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: from,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(now.year + 1, 12, 31),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => from = picked);
+                      }
+                    },
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Do'),
+                    subtitle: Text(_formatReportDate(to)),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: to,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(now.year + 1, 12, 31),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => to = picked);
+                      }
+                    },
+                  ),
+                  if (invalidRange)
+                    const Text(
+                      'Data „Od” nie może być późniejsza niż „Do”.',
+                      style: TextStyle(
+                        color: AppTheme.errorColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Anuluj'),
+                ),
+                ElevatedButton(
+                  onPressed: invalidRange
+                      ? null
+                      : () => Navigator.pop(dialogContext, true),
+                  child: const Text('Zastosuj'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (applied == true && mounted) {
+      setState(() {
+        _reportPeriod = _ReportPeriod.custom;
+        _customReportFrom = from;
+        _customReportTo = to;
+      });
     }
   }
 
@@ -218,18 +321,18 @@ class _FinanceScreenState extends State<FinanceScreen>
           ),
           const SizedBox(height: 12),
 
-          // Main balance card — kompaktowa, brandowy niebieski
+          // Main balance card — kompaktowa, zielony brand (jak dawne paski)
           Align(
             alignment: Alignment.centerLeft,
             child: Container(
               constraints: const BoxConstraints(maxWidth: 320),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppTheme.brandHeaderBlue,
+                color: AppTheme.primaryTeal,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.brandHeaderBlue.withValues(alpha: 0.22),
+                    color: AppTheme.primaryTeal.withValues(alpha: 0.22),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -688,7 +791,24 @@ class _FinanceScreenState extends State<FinanceScreen>
                 onSelected: () =>
                     setState(() => _reportPeriod = _ReportPeriod.year),
               ),
+              _PeriodChip(
+                label: _reportPeriod == _ReportPeriod.custom &&
+                        _customReportFrom != null &&
+                        _customReportTo != null
+                    ? 'Wybierz daty · ${_formatReportDate(_customReportFrom!)} – ${_formatReportDate(_customReportTo!)}'
+                    : 'Wybierz daty',
+                selected: _reportPeriod == _ReportPeriod.custom,
+                onSelected: _selectCustomReportRange,
+              ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Zakres: ${_formatReportDate(from)} – ${_formatReportDate(to)}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+            ),
           ),
           const SizedBox(height: 20),
           const Text(

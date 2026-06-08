@@ -1445,40 +1445,45 @@ class _MessageBubbleState extends State<_MessageBubble> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Flexible(
-            child: Column(
-              crossAxisAlignment: widget.isMe
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.group.showSenderName && !widget.isMe)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6, bottom: 4),
-                    child: Text(
-                      widget.message.senderName,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: bubbleStyle.senderNameColor,
-                        fontWeight: FontWeight.w600,
+            child: Align(
+              alignment: widget.isMe
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                child: Column(
+                  crossAxisAlignment: widget.isMe
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.group.showSenderName && !widget.isMe)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6, bottom: 4),
+                        child: Text(
+                          widget.message.senderName,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: bubbleStyle.senderNameColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                Container(
-                  constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
-                  decoration: BoxDecoration(
-                    color: bubbleStyle.backgroundColor,
-                    border: Border.all(color: bubbleStyle.borderColor),
-                    borderRadius: imessageBubbleRadius(
-                      isMe: widget.isMe,
-                      isFirstInGroup: widget.group.isFirstInGroup,
-                      isLastInGroup: widget.group.isLastInGroup,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                      decoration: BoxDecoration(
+                        color: bubbleStyle.backgroundColor,
+                        border: Border.all(color: bubbleStyle.borderColor),
+                        borderRadius: imessageBubbleRadius(
+                          isMe: widget.isMe,
+                          isFirstInGroup: widget.group.isFirstInGroup,
+                          isLastInGroup: widget.group.isLastInGroup,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                       if (_isShielded && !_showOriginal) ...[
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1626,7 +1631,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
               ],
             ),
           ),
-        ],
+        ),
+      ),
+      ],
       ),
     );
   }
