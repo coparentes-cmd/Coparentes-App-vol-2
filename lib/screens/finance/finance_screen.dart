@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 
+import '../../data/api/app_api_client.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/exports_provider.dart';
@@ -137,7 +139,9 @@ class _FinanceScreenState extends State<FinanceScreen>
                   onPressed: () => _addExpense(
                     context,
                     ocrMode: true,
-                    autoLaunchSource: ReceiptImageSource.camera,
+                    autoLaunchSource: kIsWeb
+                        ? ReceiptImageSource.gallery
+                        : ReceiptImageSource.camera,
                   ),
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Z paragonu'),
@@ -1799,15 +1803,36 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
       setState(() => _isParsingReceipt = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            error is StateError
-                ? error.message
-                : 'Nie udało się odczytać paragonu. Spróbuj jaśniejszego zdjęcia.',
-          ),
+          content: Text(_receiptParseErrorMessage(error)),
           backgroundColor: AppTheme.errorColor,
         ),
       );
     }
+  }
+
+  String _receiptParseErrorMessage(Object error) {
+    if (error is StateError) {
+      return error.message;
+    }
+    if (error is ApiException) {
+      switch (error.message) {
+        case 'receipt_invalid':
+          return 'Nieobsługiwany format zdjęcia. Wybierz JPG lub PNG.';
+        case 'receipt_unreadable':
+          return 'Nie udało się odczytać tekstu z paragonu. Spróbuj jaśniejszego zdjęcia.';
+        case 'receipt_too_large':
+          return 'Zdjęcie jest za duże (max 512 KB). Zbliż paragon i spróbuj ponownie.';
+        default:
+          if (error.statusCode >= 500) {
+            return 'Serwer OCR chwilowo niedostępny. Spróbuj za chwilę.';
+          }
+          return 'Nie udało się odczytać paragonu (${error.message}).';
+      }
+    }
+    if (error is TimeoutException) {
+      return 'OCR trwa zbyt długo. Spróbuj mniejszego zdjęcia lub poczekaj chwilę.';
+    }
+    return 'Nie udało się odczytać paragonu. Spróbuj jaśniejszego zdjęcia JPG.';
   }
 
   @override

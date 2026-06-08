@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -71,6 +72,9 @@ class ReceiptAttachmentPicker {
   static Future<PendingReceiptImage?> pickReceiptImage({
     required ReceiptImageSource source,
   }) async {
+    if (kIsWeb && source == ReceiptImageSource.camera) {
+      return _pickFromGallery();
+    }
     if (source == ReceiptImageSource.camera) {
       return _captureFromCamera();
     }
@@ -103,7 +107,9 @@ class ReceiptAttachmentPicker {
       withData: true,
       allowMultiple: false,
       type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+      allowedExtensions: kIsWeb
+          ? const ['jpg', 'jpeg', 'png', 'webp']
+          : const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
     );
 
     if (result == null || result.files.isEmpty) {
@@ -143,11 +149,8 @@ class ReceiptAttachmentPicker {
   static Uint8List _compressForUpload(Uint8List bytes) {
     final decoded = img.decodeImage(bytes);
     if (decoded == null) {
-      if (bytes.length <= maxReceiptBytes) {
-        return bytes;
-      }
       throw StateError(
-        'Nie udało się przetworzyć zdjęcia. Spróbuj zrobić zdjęcie ponownie.',
+        'Nie udało się przetworzyć zdjęcia. Użyj JPG lub PNG (nie HEIC).',
       );
     }
 

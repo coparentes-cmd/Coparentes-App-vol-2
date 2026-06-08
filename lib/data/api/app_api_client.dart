@@ -46,15 +46,16 @@ class AppApiClient {
 
   Future<Map<String, dynamic>> postJson(
     String path,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, {
+    Duration? timeout,
+  }) async {
     final response = await _httpClient
         .post(
           Uri.parse('$baseUrl$path'),
           headers: _headers(),
           body: jsonEncode(body),
         )
-        .timeout(_requestTimeout);
+        .timeout(timeout ?? _requestTimeout);
     return _decode(response);
   }
 

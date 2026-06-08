@@ -39,10 +39,14 @@ class FinanceRepository {
     required String contentBase64,
     required String mimeType,
   }) async {
-    final payload = await _apiClient.postJson('/finances/receipts/parse', {
-      'contentBase64': contentBase64,
-      'mimeType': mimeType,
-    });
+    final payload = await _apiClient.postJson(
+      '/finances/receipts/parse',
+      {
+        'contentBase64': contentBase64,
+        'mimeType': mimeType,
+      },
+      timeout: const Duration(seconds: 90),
+    );
     return ReceiptParseResult.fromJson(
       Map<String, dynamic>.from(payload as Map),
     );
