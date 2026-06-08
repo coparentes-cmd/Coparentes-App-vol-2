@@ -136,6 +136,13 @@ class CoparentesApp extends StatelessWidget {
                     silent: true,
                   );
             },
+            refreshFinance: () async {
+              final appProvider = context.read<AppProvider>();
+              if (appProvider.isDemoMode) {
+                return;
+              }
+              await context.read<FinanceProvider>().load(silent: true);
+            },
             refreshData: () async {
               final appProvider = context.read<AppProvider>();
               if (appProvider.isDemoMode) {
@@ -143,7 +150,7 @@ class CoparentesApp extends StatelessWidget {
               }
               await context.read<ExportsProvider>().loadExports();
               await context.read<CalendarProvider>().load(silent: true);
-              await context.read<FinanceProvider>().load();
+              await context.read<FinanceProvider>().load(silent: true);
               await context.read<DocumentsProvider>().load();
             },
           ),

@@ -38,6 +38,7 @@ class _AppLifecycleRefresherState extends State<AppLifecycleRefresher>
       return;
     }
 
+    context.read<OfflineSyncProvider>().pollFinanceNow();
     context.read<OfflineSyncProvider>().refreshStatus();
   }
 

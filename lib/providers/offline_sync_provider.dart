@@ -19,13 +19,17 @@ class OfflineSyncProvider extends ChangeNotifier {
   final DocumentsRepository _documentsRepository;
   final OfflineStore _offlineStore;
   final Future<void> Function()? _refreshMessaging;
+  final Future<void> Function()? _refreshFinance;
   final Future<void> Function()? _refreshData;
 
   Timer? _messagingTimer;
+  Timer? _financeTimer;
   Timer? _fullRefreshTimer;
   bool _isOnline = true;
   bool _isPollingMessaging = false;
+  bool _isPollingFinance = false;
   static const _messagingPollInterval = Duration(seconds: 3);
+  static const _financePollInterval = Duration(seconds: 10);
   static const _fullRefreshInterval = Duration(seconds: 30);
   bool _isSyncing = false;
   int _pendingCount = 0;
@@ -40,6 +44,7 @@ class OfflineSyncProvider extends ChangeNotifier {
     required DocumentsRepository documentsRepository,
     required OfflineStore offlineStore,
     Future<void> Function()? refreshMessaging,
+    Future<void> Function()? refreshFinance,
     Future<void> Function()? refreshData,
   })  : _apiClient = apiClient,
         _messagingRepository = messagingRepository,
@@ -49,6 +54,7 @@ class OfflineSyncProvider extends ChangeNotifier {
         _documentsRepository = documentsRepository,
         _offlineStore = offlineStore,
         _refreshMessaging = refreshMessaging,
+        _refreshFinance = refreshFinance,
         _refreshData = refreshData {
     _offlineStore.addListener(_handleStoreChanged);
     unawaited(initialize());
@@ -90,12 +96,19 @@ class OfflineSyncProvider extends ChangeNotifier {
       await syncNow();
     } else {
       await pollMessagingNow();
+      await pollFinanceNow();
     }
 
     _messagingTimer?.cancel();
     _messagingTimer = Timer.periodic(
       _messagingPollInterval,
       (_) => unawaited(pollMessagingNow()),
+    );
+
+    _financeTimer?.cancel();
+    _financeTimer = Timer.periodic(
+      _financePollInterval,
+      (_) => unawaited(pollFinanceNow()),
     );
 
     _fullRefreshTimer?.cancel();
@@ -122,6 +135,21 @@ class OfflineSyncProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> pollFinanceNow() async {
+    if (_isPollingFinance || _refreshFinance == null) {
+      return;
+    }
+
+    _isPollingFinance = true;
+    try {
+      await _refreshFinance!.call();
+    } catch (_) {
+      // Keep polling on transient API errors.
+    } finally {
+      _isPollingFinance = false;
+    }
+  }
+
   Future<void> refreshStatus() async {
     final previousOnline = _isOnline;
     final previousPendingCount = _pendingCount;
@@ -138,6 +166,7 @@ class OfflineSyncProvider extends ChangeNotifier {
       try {
         await _refreshData!.call();
         await pollMessagingNow();
+        await pollFinanceNow();
       } catch (_) {
         // Keep polling on transient API errors.
       }
@@ -169,6 +198,7 @@ class OfflineSyncProvider extends ChangeNotifier {
         await _refreshData!.call();
       }
       await pollMessagingNow();
+      await pollFinanceNow();
     } catch (error) {
       _lastSyncError = error.toString();
     } finally {
@@ -193,6 +223,7 @@ class OfflineSyncProvider extends ChangeNotifier {
   @override
   void dispose() {
     _messagingTimer?.cancel();
+    _financeTimer?.cancel();
     _fullRefreshTimer?.cancel();
     _offlineStore.removeListener(_handleStoreChanged);
     super.dispose();

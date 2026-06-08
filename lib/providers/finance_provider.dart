@@ -2,6 +2,24 @@ import 'package:flutter/material.dart';
 
 import '../data/repositories/finance_repository.dart';
 import '../models/models.dart';
+import '../services/receipt_attachment_service.dart';
+
+/// Net debt between two parents after accepted (unpaid) expenses.
+class ParentNetBalance {
+  final String debtorId;
+  final String debtorName;
+  final String creditorId;
+  final String creditorName;
+  final double amount;
+
+  const ParentNetBalance({
+    required this.debtorId,
+    required this.debtorName,
+    required this.creditorId,
+    required this.creditorName,
+    required this.amount,
+  });
+}
 
 class FinanceProvider extends ChangeNotifier {
   final FinanceRepository _repository;
@@ -13,15 +31,48 @@ class FinanceProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _loadedFromApi = false;
+  int _loadGeneration = 0;
+  DateTime? _lastSyncedAt;
 
   List<Expense> get expenses => _expenses;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get loadedFromApi => _loadedFromApi;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+
+  bool canRespondToExpense(Expense expense, String userId) {
+    return expense.status == ExpenseStatus.pending && expense.paidBy != userId;
+  }
+
+  bool isAwaitingOtherParent(Expense expense, String userId) {
+    return expense.status == ExpenseStatus.pending && expense.paidBy == userId;
+  }
+
+  Iterable<Expense> get _acceptedForBalance =>
+      _expenses.where((e) => e.status == ExpenseStatus.accepted);
+
+  int get acceptedCount =>
+      _expenses.where((e) => e.status == ExpenseStatus.accepted).length;
+
+  int get pendingCount =>
+      _expenses.where((e) => e.status == ExpenseStatus.pending).length;
+
+  int get disputedCount =>
+      _expenses.where((e) => e.status == ExpenseStatus.disputed).length;
+
+  int get settledCount =>
+      _expenses.where((e) => e.status == ExpenseStatus.settled).length;
 
   double get totalPending {
     return _expenses
         .where((e) => e.status == ExpenseStatus.pending)
+        .fold(0.0, (sum, e) => sum + e.amountDue);
+  }
+
+  /// Pending share awaiting reimbursement for expenses the user paid.
+  double pendingRefundForUser(String userId) {
+    return _expenses
+        .where((e) => e.status == ExpenseStatus.pending && e.paidBy == userId)
         .fold(0.0, (sum, e) => sum + e.amountDue);
   }
 
@@ -40,22 +91,169 @@ class FinanceProvider extends ChangeNotifier {
     return totals;
   }
 
-  Future<void> load() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  Map<String, double> categoryTotalsInRange(DateTime from, DateTime to) {
+    final Map<String, double> totals = {};
+    for (final e in expensesInRange(from, to)) {
+      totals[e.category] = (totals[e.category] ?? 0) + e.amount;
+    }
+    return totals;
+  }
+
+  List<Expense> expensesInRange(DateTime from, DateTime to) {
+    final start = DateTime(from.year, from.month, from.day);
+    final end = DateTime(to.year, to.month, to.day, 23, 59, 59);
+    return _expenses
+        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  List<Expense> filteredExpenses(ExpenseStatus? status) {
+    if (status == null) {
+      return List<Expense>.from(_expenses);
+    }
+    return _expenses.where((e) => e.status == status).toList();
+  }
+
+  /// Positive = parent B owes parent A.
+  double netBalanceParentBOwesParentA({
+    required String parentAId,
+    required String parentBId,
+    DateTime? from,
+    DateTime? to,
+  }) {
+    var balance = 0.0;
+    final source = from != null && to != null
+        ? expensesInRange(from, to)
+            .where((e) => e.status == ExpenseStatus.accepted)
+        : _acceptedForBalance;
+
+    for (final expense in source) {
+      final due = expense.amountDue;
+      if (expense.paidBy == parentAId) {
+        balance += due;
+      } else if (expense.paidBy == parentBId) {
+        balance -= due;
+      }
+    }
+    return balance;
+  }
+
+  ParentNetBalance? netBalanceBetweenParents({
+    required String parentAId,
+    required String parentBId,
+    required String parentAName,
+    required String parentBName,
+    DateTime? from,
+    DateTime? to,
+  }) {
+    final net = netBalanceParentBOwesParentA(
+      parentAId: parentAId,
+      parentBId: parentBId,
+      from: from,
+      to: to,
+    );
+    if (net.abs() < 0.01) {
+      return null;
+    }
+    if (net > 0) {
+      return ParentNetBalance(
+        debtorId: parentBId,
+        debtorName: parentBName,
+        creditorId: parentAId,
+        creditorName: parentAName,
+        amount: net,
+      );
+    }
+    return ParentNetBalance(
+      debtorId: parentAId,
+      debtorName: parentAName,
+      creditorId: parentBId,
+      creditorName: parentBName,
+      amount: -net,
+    );
+  }
+
+  String balanceHeadline({
+    required String parentAId,
+    required String parentBId,
+    required String parentAName,
+    required String parentBName,
+    DateTime? from,
+    DateTime? to,
+  }) {
+    final balance = netBalanceBetweenParents(
+      parentAId: parentAId,
+      parentBId: parentBId,
+      parentAName: parentAName,
+      parentBName: parentBName,
+      from: from,
+      to: to,
+    );
+    if (balance == null) {
+      return 'Saldo wyrównane';
+    }
+    final debtorFirst = balance.debtorName.split(' ').first;
+    final creditorFirst = balance.creditorName.split(' ').first;
+    return '$debtorFirst winien $creditorFirst: ${balance.amount.toStringAsFixed(0)} PLN';
+  }
+
+  /// Signed amount from the viewer's perspective (positive = others owe the viewer).
+  double signedBalanceForUser({
+    required String userId,
+    required String parentAId,
+    required String parentBId,
+  }) {
+    final net = netBalanceParentBOwesParentA(
+      parentAId: parentAId,
+      parentBId: parentBId,
+    );
+    if (userId == parentAId) {
+      return net;
+    }
+    if (userId == parentBId) {
+      return -net;
+    }
+    return 0;
+  }
+
+  Future<void> load({bool silent = false}) async {
+    final generation = ++_loadGeneration;
+
+    if (!silent) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       final items = await _repository.getExpenses();
+      if (generation != _loadGeneration) {
+        return;
+      }
       _expenses
         ..clear()
         ..addAll(items);
       _loadedFromApi = true;
+      _lastSyncedAt = DateTime.now();
+      _error = null;
     } catch (error) {
-      _error = error.toString();
-      _loadedFromApi = false;
+      if (generation != _loadGeneration) {
+        return;
+      }
+      if (!silent) {
+        _error = error.toString();
+      }
+      if (_expenses.isEmpty) {
+        _loadedFromApi = false;
+      }
     } finally {
-      _isLoading = false;
+      if (generation != _loadGeneration) {
+        return;
+      }
+      if (!silent) {
+        _isLoading = false;
+      }
       notifyListeners();
     }
   }
@@ -152,9 +350,37 @@ class FinanceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addExpense(Expense expense) async {
+  Future<ReceiptParseResult> parseReceipt({
+    required String contentBase64,
+    required String mimeType,
+  }) {
+    return _repository.parseReceipt(
+      contentBase64: contentBase64,
+      mimeType: mimeType,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getReceipt(String expenseId) async {
     try {
-      final created = await _repository.createExpense(expense);
+      return await _repository.getReceipt(expenseId);
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<void> addExpense(
+    Expense expense, {
+    String? receiptContentBase64,
+    String? receiptMimeType,
+  }) async {
+    try {
+      final created = await _repository.createExpense(
+        expense,
+        receiptContentBase64: receiptContentBase64,
+        receiptMimeType: receiptMimeType,
+      );
       _expenses.insert(0, created);
       notifyListeners();
     } catch (error) {
@@ -164,17 +390,23 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateExpenseStatus(String expenseId, ExpenseStatus status) async {
+  Future<void> updateExpenseStatus(
+    String expenseId,
+    ExpenseStatus status, {
+    String? note,
+  }) async {
     try {
       final updated = await _repository.updateExpenseStatus(
         expenseId: expenseId,
         status: status,
+        note: note,
       );
       final index = _expenses.indexWhere((e) => e.id == expenseId);
       if (index >= 0) {
         _expenses[index] = updated;
       }
       notifyListeners();
+      await load(silent: true);
     } catch (error) {
       _error = error.toString();
       notifyListeners();

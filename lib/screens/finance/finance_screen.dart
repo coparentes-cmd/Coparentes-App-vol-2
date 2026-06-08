@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'dart:async';
+
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/exports_provider.dart';
+import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../services/receipt_attachment_service.dart';
 import '../../widgets/common_widgets.dart';
+
+enum _ReportPeriod { thisMonth, quarter, year }
+
+enum _FinanceReportType { chronological, statistical, balance }
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
@@ -16,11 +24,26 @@ class FinanceScreen extends StatefulWidget {
 class _FinanceScreenState extends State<FinanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  ExpenseStatus? _expenseFilter;
+  _ReportPeriod _reportPeriod = _ReportPeriod.thisMonth;
+  _FinanceReportType _reportType = _FinanceReportType.chronological;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final app = context.read<AppProvider>();
+      if (!app.isDemoMode) {
+        unawaited(context.read<FinanceProvider>().load(silent: true));
+        unawaited(context.read<OfflineSyncProvider>().pollFinanceNow());
+      }
+      final exports = context.read<ExportsProvider>();
+      if (exports.jobs.isEmpty && !exports.isLoading) {
+        exports.loadExports();
+      }
+    });
   }
 
   @override
@@ -40,13 +63,9 @@ class _FinanceScreenState extends State<FinanceScreen>
       appBar: AppBar(
         title: const Text('Finanse'),
         actions: [
-          if (!isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => _addExpense(context),
-            ),
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Eksport PDF',
             onPressed: () => _exportFinances(context),
           ),
         ],
@@ -56,7 +75,7 @@ class _FinanceScreenState extends State<FinanceScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: [
-            const Tab(text: 'Przegląd'),
+            const Tab(text: 'Saldo'),
             Tab(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -65,9 +84,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   const SizedBox(width: 4),
                   Consumer<FinanceProvider>(
                     builder: (_, fp, __) {
-                      final pending = fp.expenses
-                          .where((e) => e.status == ExpenseStatus.pending)
-                          .length;
+                      final pending = fp.pendingCount;
                       if (pending == 0) return const SizedBox.shrink();
                       return Container(
                         width: 16,
@@ -91,43 +108,211 @@ class _FinanceScreenState extends State<FinanceScreen>
                 ],
               ),
             ),
-            const Tab(text: 'Prognoza AI'),
+            const Tab(text: 'Raporty'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildOverviewTab(context, finance),
+          _buildBalanceTab(context, finance),
           _buildExpensesTab(context, finance, isReadOnly),
-          _buildForecastTab(context, finance),
+          _buildReportsTab(context, finance),
         ],
       ),
       floatingActionButton: isReadOnly
           ? null
-          : FloatingActionButton.extended(
-              onPressed: () => _addExpense(context),
-              icon: const Icon(Icons.add_a_photo),
-              label: const Text('Dodaj z paragonu'),
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'finance_new_expense',
+                  onPressed: () => _addExpense(context, ocrMode: false),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nowy wydatek'),
+                ),
+                const SizedBox(width: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'finance_receipt',
+                  onPressed: () => _addExpense(
+                    context,
+                    ocrMode: true,
+                    autoLaunchSource: ReceiptImageSource.camera,
+                  ),
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Z paragonu'),
+                ),
+              ],
             ),
     );
   }
 
-  Widget _buildOverviewTab(BuildContext context, FinanceProvider finance) {
+  (AppUser?, AppUser?) _resolveParents(AppProvider app) {
+    AppUser? parentA;
+    AppUser? parentB;
+    for (final member in app.currentWorkspace?.members ?? []) {
+      if (member.role == UserRole.parentA) {
+        parentA = member;
+      } else if (member.role == UserRole.parentB) {
+        parentB = member;
+      }
+    }
+    return (parentA, parentB);
+  }
+
+  String _formatSyncTime(DateTime syncedAt) {
+    final diff = DateTime.now().difference(syncedAt);
+    if (diff.inSeconds < 15) return 'przed chwilą';
+    if (diff.inMinutes < 1) return '${diff.inSeconds} s temu';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min temu';
+    return '${syncedAt.hour.toString().padLeft(2, '0')}:${syncedAt.minute.toString().padLeft(2, '0')}';
+  }
+
+  (DateTime, DateTime) _reportDateRange() {
+    final now = DateTime.now();
+    switch (_reportPeriod) {
+      case _ReportPeriod.thisMonth:
+        return (DateTime(now.year, now.month, 1), now);
+      case _ReportPeriod.quarter:
+        final quarterStartMonth = ((now.month - 1) ~/ 3) * 3 + 1;
+        return (DateTime(now.year, quarterStartMonth, 1), now);
+      case _ReportPeriod.year:
+        return (DateTime(now.year, 1, 1), now);
+    }
+  }
+
+  Widget _buildBalanceTab(BuildContext context, FinanceProvider finance) {
+    final app = context.watch<AppProvider>();
+    final (parentA, parentB) = _resolveParents(app);
+    final user = app.currentUser;
+    final currencyCode = app.currencyCode;
     final categoryTotals = finance.categoryTotals;
+
+    final balanceHeadline = parentA != null && parentB != null
+        ? finance.balanceHeadline(
+            parentAId: parentA.id,
+            parentBId: parentB.id,
+            parentAName: parentA.name,
+            parentBName: parentB.name,
+          )
+        : 'Saldo niedostępne';
+
+    final signedBalance = user != null && parentA != null && parentB != null
+        ? finance.signedBalanceForUser(
+            userId: user.id,
+            parentAId: parentA.id,
+            parentBId: parentB.id,
+          )
+        : 0.0;
+
+    final pendingRefund = user != null
+        ? finance.pendingRefundForUser(user.id)
+        : finance.totalPending;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // AI contextual tip for finance
           AiContextualTip(
             tips: AiTips.finance,
             intervalSeconds: 8,
           ),
           const SizedBox(height: 12),
-          // Summary cards
+
+          // Main balance card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: signedBalance.abs() < 0.01
+                    ? [const Color(0xFF546E7A), const Color(0xFF78909C)]
+                    : signedBalance > 0
+                    ? [const Color(0xFF2E7D32), const Color(0xFF66BB6A)]
+                    : [const Color(0xFFF57C00), const Color(0xFFFFB74D)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.balance, color: Colors.white, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Saldo netto',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  balanceHeadline,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  signedBalance.abs() < 0.01
+                      ? 'Po zaakceptowanych wydatkach oboje jesteście na zero.'
+                      : signedBalance > 0
+                      ? 'Drugi rodzic winien Tobie po akceptacji wydatków.'
+                      : 'Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Ostatnia synchronizacja: ${_formatSyncTime(finance.lastSyncedAt!)}',
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Status breakdown
+          Row(
+            children: [
+              Expanded(
+                child: _StatusCountChip(
+                  label: 'Zaakceptowane',
+                  count: finance.acceptedCount,
+                  color: AppTheme.successColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _StatusCountChip(
+                  label: 'Oczekujące',
+                  count: finance.pendingCount,
+                  color: AppTheme.warningColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _StatusCountChip(
+                  label: 'Sporne',
+                  count: finance.disputedCount,
+                  color: AppTheme.errorColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
           Row(
             children: [
               Expanded(
@@ -136,22 +321,23 @@ class _FinanceScreenState extends State<FinanceScreen>
                   amount: finance.totalThisMonth,
                   color: AppTheme.primaryTeal,
                   icon: Icons.calendar_month,
+                  currencyCode: currencyCode,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _SummaryCard(
-                  title: 'Do zwrotu',
-                  amount: finance.totalPending,
+                  title: 'Do zwrotu (oczekujące)',
+                  amount: pendingRefund,
                   color: AppTheme.warningColor,
                   icon: Icons.account_balance_wallet,
+                  currencyCode: currencyCode,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
 
-          // Category breakdown
           const Text(
             'Podział po kategoriach',
             style: TextStyle(
@@ -179,17 +365,21 @@ class _FinanceScreenState extends State<FinanceScreen>
                       category: entry.key,
                       amount: entry.value,
                       maxAmount: max,
+                      currencyCode: currencyCode,
                     ),
                   );
                 }).toList(),
               ),
+            )
+          else
+            const Text(
+              'Brak wydatków do podsumowania.',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
 
           const SizedBox(height: 20),
-
-          // Split overview
           const Text(
-            'Podział kosztów (50/50)',
+            'Kto zapłacił (wszystkie wydatki)',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -198,64 +388,6 @@ class _FinanceScreenState extends State<FinanceScreen>
           ),
           const SizedBox(height: 12),
           _SplitOverviewCard(finance: finance),
-
-          const SizedBox(height: 20),
-
-          // AI prediction banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Prognoza AI na następny miesiąc',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Na podstawie historii wydatków AI przewiduje ~820 PLN wydatków wspólnych w przyszłym miesiącu.',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _PredictionChip(
-                      label: 'Szkoła',
-                      amount: '280 PLN',
-                    ),
-                    const SizedBox(width: 8),
-                    _PredictionChip(
-                      label: 'Zdrowie',
-                      amount: '180 PLN',
-                    ),
-                    const SizedBox(width: 8),
-                    _PredictionChip(
-                      label: 'Zajęcia',
-                      amount: '360 PLN',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -266,60 +398,161 @@ class _FinanceScreenState extends State<FinanceScreen>
     FinanceProvider finance,
     bool isReadOnly,
   ) {
+    final filtered = finance.filteredExpenses(_expenseFilter);
+    final app = context.watch<AppProvider>();
+    final user = app.currentUser;
+    final members = app.currentWorkspace?.members ?? [];
+    final children = app.currentWorkspace?.children ?? [];
+
+    const filters = <({ExpenseStatus? status, String label})>[
+      (status: null, label: 'Wszystkie'),
+      (status: ExpenseStatus.pending, label: 'Oczekujące'),
+      (status: ExpenseStatus.accepted, label: 'Zaakceptowane'),
+      (status: ExpenseStatus.disputed, label: 'Sporne'),
+      (status: ExpenseStatus.settled, label: 'Rozliczone'),
+    ];
+
     return Column(
       children: [
-        // Filter row
+        if (!isReadOnly)
+          Container(
+            width: double.infinity,
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _addExpense(
+                      context,
+                      ocrMode: true,
+                      autoLaunchSource: ReceiptImageSource.camera,
+                    ),
+                    icon: const Icon(Icons.camera_alt, size: 18),
+                    label: const Text('Zrób zdjęcie paragonu'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  tooltip: 'Wybierz z galerii',
+                  onPressed: () => _addExpense(
+                    context,
+                    ocrMode: true,
+                    autoLaunchSource: ReceiptImageSource.gallery,
+                  ),
+                  icon: const Icon(Icons.photo_library_outlined),
+                ),
+              ],
+            ),
+          ),
         Container(
           color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              const Text(
-                'Filtruj:',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ...[null, ExpenseStatus.pending, ExpenseStatus.disputed].map(
-                (status) => Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: FilterChip(
-                    label: Text(
-                      status == null
-                          ? 'Wszystkie'
-                          : status == ExpenseStatus.pending
-                          ? 'Oczekujące'
-                          : 'Sporne',
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                    selected: status == null,
-                    onSelected: (_) {},
-                    selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
-                    checkmarkColor: AppTheme.primaryTeal,
-                    padding: EdgeInsets.zero,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Text(
+                  'Filtruj:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                ...filters.map(
+                  (filter) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(
+                        filter.label,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      selected: _expenseFilter == filter.status,
+                      onSelected: (_) {
+                        setState(() => _expenseFilter = filter.status);
+                      },
+                      selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
+                      checkmarkColor: AppTheme.primaryTeal,
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(
-          child: finance.expenses.isEmpty
-              ? const EmptyState(
+          child: filtered.isEmpty
+              ? EmptyState(
                   icon: Icons.receipt_long,
-                  title: 'Brak wydatków',
-                  subtitle: 'Dodaj pierwszy wydatek z paragonu lub ręcznie',
+                  title: _expenseFilter == null
+                      ? 'Brak wydatków'
+                      : 'Brak wydatków w tym filtrze',
+                  subtitle: _expenseFilter == null
+                      ? 'Dodaj pierwszy wydatek ręcznie lub z paragonu'
+                      : 'Spróbuj innego filtra statusu',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: finance.expenses.length,
+                  itemCount: filtered.length,
                   itemBuilder: (ctx, i) {
                     return _ExpenseCard(
-                      expense: finance.expenses[i],
+                      expense: filtered[i],
                       isReadOnly: isReadOnly,
+                      currentUserId: user?.id,
+                      finance: finance,
+                      members: members,
+                      children: children,
+                      onDispute: () => _showDisputeSheet(context, filtered[i]),
+                      onAccept: () async {
+                        try {
+                          await context
+                              .read<FinanceProvider>()
+                              .updateExpenseStatus(
+                            filtered[i].id,
+                            ExpenseStatus.accepted,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Wydatek zaakceptowany. Saldo zostało zaktualizowane.',
+                                ),
+                                backgroundColor: AppTheme.successColor,
+                              ),
+                            );
+                          }
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Nie udało się zaakceptować wydatku.'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      onSettled: () async {
+                        try {
+                          await context.read<FinanceProvider>().updateExpenseStatus(
+                            filtered[i].id,
+                            ExpenseStatus.settled,
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Oznaczono jako rozliczone poza aplikacją.',
+                                ),
+                                backgroundColor: AppTheme.successColor,
+                              ),
+                            );
+                          }
+                        } catch (_) {}
+                      },
                     );
                   },
                 ),
@@ -328,229 +561,406 @@ class _FinanceScreenState extends State<FinanceScreen>
     );
   }
 
-  Widget _buildForecastTab(BuildContext context, FinanceProvider finance) {
+  Widget _buildReportsTab(BuildContext context, FinanceProvider finance) {
+    final app = context.watch<AppProvider>();
+    final exports = context.watch<ExportsProvider>();
+    final (parentA, parentB) = _resolveParents(app);
+    final currencyCode = app.currencyCode;
+    final (from, to) = _reportDateRange();
+    final rangeExpenses = finance.expensesInRange(from, to);
+
+    Widget reportContent;
+    switch (_reportType) {
+      case _FinanceReportType.chronological:
+        reportContent = rangeExpenses.isEmpty
+            ? const Text(
+                'Brak wydatków w wybranym okresie.',
+                style: TextStyle(color: AppTheme.textSecondary),
+              )
+            : Column(
+                children: rangeExpenses
+                    .map(
+                      (e) => ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(e.categoryIcon, color: e.statusColor),
+                        title: Text(
+                          e.title,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        subtitle: Text(
+                          '${e.date.day}.${e.date.month}.${e.date.year} · ${e.statusLabel}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: Text(
+                          '${e.amount.toStringAsFixed(0)} $currencyCode',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+        break;
+      case _FinanceReportType.statistical:
+        final totals = finance.categoryTotalsInRange(from, to);
+        reportContent = totals.isEmpty
+            ? const Text(
+                'Brak danych statystycznych w tym okresie.',
+                style: TextStyle(color: AppTheme.textSecondary),
+              )
+            : Column(
+                children: totals.entries
+                    .map(
+                      (e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(e.key),
+                            Text(
+                              '${e.value.toStringAsFixed(0)} $currencyCode',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+        break;
+      case _FinanceReportType.balance:
+        final headline = parentA != null && parentB != null
+            ? finance.balanceHeadline(
+                parentAId: parentA.id,
+                parentBId: parentB.id,
+                parentAName: parentA.name,
+                parentBName: parentB.name,
+                from: from,
+                to: to,
+              )
+            : 'Saldo niedostępne';
+        reportContent = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              headline,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Saldo liczone tylko z zaakceptowanych wydatków w wybranym okresie.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+          ],
+        );
+        break;
+    }
+
+    final financeExports = exports.jobs
+        .where((j) => j.type == ExportType.finances)
+        .take(5)
+        .toList();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // AI disclaimer
-          const AiDisclaimerBanner(),
-          const SizedBox(height: 16),
-
           const Text(
-            'Prognoza miesięczna',
+            'Okres raportu',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Bar chart
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              _PeriodChip(
+                label: 'Ten miesiąc',
+                selected: _reportPeriod == _ReportPeriod.thisMonth,
+                onSelected: () =>
+                    setState(() => _reportPeriod = _ReportPeriod.thisMonth),
+              ),
+              _PeriodChip(
+                label: 'Kwartał',
+                selected: _reportPeriod == _ReportPeriod.quarter,
+                onSelected: () =>
+                    setState(() => _reportPeriod = _ReportPeriod.quarter),
+              ),
+              _PeriodChip(
+                label: 'Rok',
+                selected: _reportPeriod == _ReportPeriod.year,
+                onSelected: () =>
+                    setState(() => _reportPeriod = _ReportPeriod.year),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Typ raportu',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              _PeriodChip(
+                label: 'Chronologiczny',
+                selected: _reportType == _FinanceReportType.chronological,
+                onSelected: () => setState(
+                  () => _reportType = _FinanceReportType.chronological,
+                ),
+              ),
+              _PeriodChip(
+                label: 'Statystyczny',
+                selected: _reportType == _FinanceReportType.statistical,
+                onSelected: () => setState(
+                  () => _reportType = _FinanceReportType.statistical,
+                ),
+              ),
+              _PeriodChip(
+                label: 'Saldo',
+                selected: _reportType == _FinanceReportType.balance,
+                onSelected: () => setState(
+                  () => _reportType = _FinanceReportType.balance,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Wydatki ostatnie 6 miesięcy + prognoza',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
+            child: reportContent,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Generuj eksport PDF'),
+              onPressed: exports.isLoading
+                  ? null
+                  : () => _createFinanceExport(context),
+            ),
+          ),
+          if (exports.error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              exports.error!,
+              style: const TextStyle(color: AppTheme.errorColor, fontSize: 12),
+            ),
+          ],
+          if (financeExports.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Ostatnie eksporty finansów',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...financeExports.map(
+              (job) => Card(
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.receipt_long,
+                    color: AppTheme.successColor,
                   ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 180,
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: 1200,
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              final months = [
-                                'Paź',
-                                'Lis',
-                                'Gru',
-                                'Sty',
-                                'Lut',
-                                'Mar*',
-                              ];
-                              if (value.toInt() < months.length) {
-                                return Text(
-                                  months[value.toInt()],
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                );
-                              }
-                              return const Text('');
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              return Text(
-                                '${value.toInt()}',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppTheme.textSecondary,
+                  title: Text(
+                    '${job.fromDate.day}.${job.fromDate.month}.${job.fromDate.year}'
+                    ' – ${job.toDate.day}.${job.toDate.month}.${job.toDate.year}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  subtitle: Text(
+                    job.status == 'completed' ? 'Gotowy' : 'W kolejce',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: job.status == 'completed'
+                      ? IconButton(
+                          icon: const Icon(Icons.download),
+                          onPressed: () async {
+                            final data = await context
+                                .read<ExportsProvider>()
+                                .downloadExport(job.id);
+                            if (context.mounted && data != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Eksport pobrany.'),
+                                  backgroundColor: AppTheme.successColor,
                                 ),
                               );
-                            },
-                          ),
-                        ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                      ),
-                      gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
-                      barGroups: [
-                        _barGroup(0, 650, false),
-                        _barGroup(1, 820, false),
-                        _barGroup(2, 590, false),
-                        _barGroup(3, 740, false),
-                        _barGroup(4, 680, false),
-                        _barGroup(5, 820, true),
-                      ],
-                    ),
-                  ),
+                            }
+                          },
+                        )
+                      : null,
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _ChartLegendItem(
-                      color: AppTheme.primaryTeal,
-                      label: 'Rzeczywiste',
-                    ),
-                    const SizedBox(width: 16),
-                    _ChartLegendItem(
-                      color: AppTheme.primaryTeal.withValues(alpha: 0.4),
-                      label: 'Prognoza AI',
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Category predictions
-          const Text(
-            'Prognozy per kategoria',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...[
-            {
-              'category': 'Szkoła',
-              'predicted': 280.0,
-              'avg': 260.0,
-              'trend': 'up',
-            },
-            {
-              'category': 'Zdrowie',
-              'predicted': 180.0,
-              'avg': 200.0,
-              'trend': 'down',
-            },
-            {
-              'category': 'Zajęcia',
-              'predicted': 360.0,
-              'avg': 350.0,
-              'trend': 'stable',
-            },
-          ].map(
-            (pred) => _CategoryForecastCard(
-              category: pred['category'] as String,
-              predicted: pred['predicted'] as double,
-              average: pred['avg'] as double,
-              trend: pred['trend'] as String,
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  BarChartGroupData _barGroup(int x, double y, bool isForecast) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: isForecast
-              ? AppTheme.primaryTeal.withValues(alpha: 0.4)
-              : AppTheme.primaryTeal,
-          width: 20,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-        ),
-      ],
+  Future<void> _createFinanceExport(BuildContext context) async {
+    final (from, to) = _reportDateRange();
+    final job = await context.read<ExportsProvider>().createExport(
+      type: ExportType.finances,
+      fromDate: from,
+      toDate: to,
     );
+    if (!context.mounted) return;
+    if (job != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            job.status == 'completed'
+                ? 'Eksport finansów gotowy do pobrania.'
+                : 'Eksport finansów dodany do kolejki.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    }
   }
 
-  void _addExpense(BuildContext context) {
+  void _addExpense(
+    BuildContext context, {
+    required bool ocrMode,
+    ReceiptImageSource? autoLaunchSource,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => const _AddExpenseSheet(),
+      builder: (_) => _AddExpenseSheet(
+        initialOcrMode: ocrMode,
+        autoLaunchSource: autoLaunchSource,
+      ),
     );
   }
 
-  void _exportFinances(BuildContext context) {
-    showDialog(
+  void _showDisputeSheet(BuildContext context, Expense expense) {
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Eksport finansów'),
-        content: const Text(
-          'Generowanie raportu finansowego PDF/A z manifestem integralności SHA-256. Gotowy do użycia jako dowód w postępowaniu.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _DisputeExpenseSheet(expense: expense),
+    );
+  }
+
+  Future<void> _exportFinances(BuildContext context) async {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, 1);
+    final job = await context.read<ExportsProvider>().createExport(
+      type: ExportType.finances,
+      fromDate: from,
+      toDate: now,
+    );
+    if (!context.mounted) return;
+    if (job != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            job.status == 'completed'
+                ? 'Raport finansowy PDF wygenerowany.'
+                : 'Raport finansowy dodany do kolejki eksportów.',
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Eksport finansowy PDF wygenerowany'),
-                  backgroundColor: AppTheme.successColor,
-                ),
-              );
-            },
-            child: const Text('Generuj raport'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się wygenerować eksportu.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+}
+
+class _StatusCountChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+
+  const _StatusCountChip({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PeriodChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  const _PeriodChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
+      checkmarkColor: AppTheme.primaryTeal,
     );
   }
 }
@@ -560,12 +970,14 @@ class _SummaryCard extends StatelessWidget {
   final double amount;
   final Color color;
   final IconData icon;
+  final String currencyCode;
 
   const _SummaryCard({
     required this.title,
     required this.amount,
     required this.color,
     required this.icon,
+    required this.currencyCode,
   });
 
   @override
@@ -589,7 +1001,7 @@ class _SummaryCard extends StatelessWidget {
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 8),
           Text(
-            '${amount.toStringAsFixed(0)} PLN',
+            '${amount.toStringAsFixed(0)} $currencyCode',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -613,11 +1025,13 @@ class _CategoryBar extends StatelessWidget {
   final String category;
   final double amount;
   final double maxAmount;
+  final String currencyCode;
 
   const _CategoryBar({
     required this.category,
     required this.amount,
     required this.maxAmount,
+    required this.currencyCode,
   });
 
   @override
@@ -634,7 +1048,7 @@ class _CategoryBar extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
             ),
             Text(
-              '${amount.toStringAsFixed(0)} PLN',
+              '${amount.toStringAsFixed(0)} $currencyCode',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -677,18 +1091,20 @@ class _SplitOverviewCard extends StatelessWidget {
       }
     }
 
-    final totalMama = parentA == null
+    final totalA = parentA == null
         ? 0.0
         : finance.expenses
             .where((e) => e.paidBy == parentA!.id)
             .fold(0.0, (sum, e) => sum + e.amount);
-    final totalTata = parentB == null
+    final totalB = parentB == null
         ? 0.0
         : finance.expenses
             .where((e) => e.paidBy == parentB!.id)
             .fold(0.0, (sum, e) => sum + e.amount);
-    final total = totalMama + totalTata;
-    final mamaRatio = total > 0 ? totalMama / total : 0.5;
+    final total = totalA + totalB;
+    final ratioA = total > 0 ? totalA / total : 0.5;
+    final nameA = parentA?.name.split(' ').first ?? 'Rodzic A';
+    final nameB = parentB?.name.split(' ').first ?? 'Rodzic B';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -704,15 +1120,15 @@ class _SplitOverviewCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Parent A paid',
-                    style: TextStyle(
+                  Text(
+                    nameA,
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
                     ),
                   ),
                   Text(
-                    '${totalMama.toStringAsFixed(0)} $currencyCode',
+                    '${totalA.toStringAsFixed(0)} $currencyCode',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -724,15 +1140,15 @@ class _SplitOverviewCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
-                    'Parent B paid',
-                    style: TextStyle(
+                  Text(
+                    nameB,
+                    style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
                     ),
                   ),
                   Text(
-                    '${totalTata.toStringAsFixed(0)} $currencyCode',
+                    '${totalB.toStringAsFixed(0)} $currencyCode',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -747,164 +1163,148 @@ class _SplitOverviewCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: mamaRatio,
+              value: ratioA,
               backgroundColor: AppTheme.parentBColor.withValues(alpha: 0.3),
               color: AppTheme.parentAColor,
               minHeight: 10,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${(mamaRatio * 100).toStringAsFixed(0)}% / ${((1 - mamaRatio) * 100).toStringAsFixed(0)}%',
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-          ),
         ],
       ),
     );
   }
 }
 
-class _PredictionChip extends StatelessWidget {
-  final String label;
-  final String amount;
+class _ExpenseCard extends StatefulWidget {
+  final Expense expense;
+  final bool isReadOnly;
+  final String? currentUserId;
+  final FinanceProvider finance;
+  final List<AppUser> members;
+  final List<ChildProfile> children;
+  final VoidCallback onDispute;
+  final Future<void> Function() onAccept;
+  final VoidCallback onSettled;
 
-  const _PredictionChip({required this.label, required this.amount});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 10),
-          ),
-          Text(
-            amount,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryForecastCard extends StatelessWidget {
-  final String category;
-  final double predicted;
-  final double average;
-  final String trend;
-
-  const _CategoryForecastCard({
-    required this.category,
-    required this.predicted,
-    required this.average,
-    required this.trend,
+  const _ExpenseCard({
+    required this.expense,
+    required this.isReadOnly,
+    required this.currentUserId,
+    required this.finance,
+    required this.members,
+    required this.children,
+    required this.onDispute,
+    required this.onAccept,
+    required this.onSettled,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final currencyCode = context.watch<AppProvider>().currencyCode;
-    final isUp = trend == 'up';
-    final isDown = trend == 'down';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: const Icon(Icons.category, color: AppTheme.primaryTeal),
-        title: Text(
-          category,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+  State<_ExpenseCard> createState() => _ExpenseCardState();
+}
+
+class _ExpenseCardState extends State<_ExpenseCard> {
+  bool _showDetails = false;
+
+  String _memberName(String userId) {
+    for (final m in widget.members) {
+      if (m.id == userId) return m.name.split(' ').first;
+    }
+    return 'Rodzic';
+  }
+
+  String? _childName(String? childId) {
+    if (childId == null) return null;
+    for (final c in widget.children) {
+      if (c.id == childId) return c.name.split(' ').first;
+    }
+    return null;
+  }
+
+  String _splitLabel(double ratio) {
+    final pct = (ratio * 100).round();
+    return '$pct/${100 - pct}';
+  }
+
+  Future<void> _showReceipt(BuildContext context, String expenseId) async {
+    final data = await context.read<FinanceProvider>().getReceipt(expenseId);
+    if (!context.mounted) return;
+    if (data == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się pobrać paragonu.'),
+          backgroundColor: AppTheme.errorColor,
         ),
-        subtitle: Text(
-          'Średnia: ${average.toStringAsFixed(0)} $currencyCode',
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+      );
+      return;
+    }
+
+    final contentBase64 = data['contentBase64'] as String?;
+    if (contentBase64 == null || contentBase64.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Brak zapisanego paragonu.'),
+          backgroundColor: AppTheme.warningColor,
         ),
-        trailing: Row(
+      );
+      return;
+    }
+
+    final bytes = decodeReceiptBase64(contentBase64);
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${predicted.toStringAsFixed(0)} $currencyCode',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: isUp
-                    ? AppTheme.warningColor
-                    : isDown
-                    ? AppTheme.successColor
-                    : AppTheme.textPrimary,
-              ),
+            AppBar(
+              title: const Text('Paragon'),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            Icon(
-              isUp
-                  ? Icons.trending_up
-                  : isDown
-                  ? Icons.trending_down
-                  : Icons.trending_flat,
-              color: isUp
-                  ? AppTheme.warningColor
-                  : isDown
-                  ? AppTheme.successColor
-                  : AppTheme.textSecondary,
-              size: 18,
+            Flexible(
+              child: InteractiveViewer(
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _ChartLegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _ChartLegendItem({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-        ),
-      ],
-    );
+  String _otherParentName(String payerId) {
+    for (final m in widget.members) {
+      if (m.id != payerId &&
+          (m.role == UserRole.parentA || m.role == UserRole.parentB)) {
+        return m.name.split(' ').first;
+      }
+    }
+    return 'drugiego rodzica';
   }
-}
-
-class _ExpenseCard extends StatelessWidget {
-  final Expense expense;
-  final bool isReadOnly;
-
-  const _ExpenseCard({required this.expense, required this.isReadOnly});
 
   @override
   Widget build(BuildContext context) {
+    final expense = widget.expense;
     final currencyCode = context.watch<AppProvider>().currencyCode;
+    final payerName = _memberName(expense.paidBy);
+    final childName = _childName(expense.childId);
+    final otherShare = expense.amountDue;
+    final userId = widget.currentUserId;
+    final canRespond = !widget.isReadOnly &&
+        userId != null &&
+        widget.finance.canRespondToExpense(expense, userId);
+    final awaitingOther = !widget.isReadOnly &&
+        userId != null &&
+        widget.finance.isAwaitingOtherParent(expense, userId);
+    final otherParentName = _otherParentName(expense.paidBy);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -941,7 +1341,9 @@ class _ExpenseCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${expense.date.day}.${expense.date.month}.${expense.date.year} · ${expense.category}',
+                        '${expense.date.day}.${expense.date.month}.${expense.date.year}'
+                        ' · ${expense.category}'
+                        '${childName != null ? ' · $childName' : ''}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -962,7 +1364,7 @@ class _ExpenseCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Do zwrotu: ${expense.amountDue.toStringAsFixed(0)} $currencyCode',
+                      'Udział: ${otherShare.toStringAsFixed(0)} $currencyCode',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppTheme.warningColor,
@@ -972,34 +1374,47 @@ class _ExpenseCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 StatusChip(
-                  label: expense.statusLabel,
+                  label: expense.status == ExpenseStatus.settled
+                      ? 'Rozliczone'
+                      : expense.statusLabel,
                   color: expense.statusColor,
                 ),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.lock,
-                      size: 12,
-                      color: AppTheme.textHint,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'SHA: ${expense.hash.substring(7, 15)}...',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.textHint,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                Text(
+                  'Zapłacił: $payerName · ${_splitLabel(expense.splitRatio)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    _showDetails ? Icons.expand_less : Icons.info_outline,
+                    size: 18,
+                    color: AppTheme.textHint,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => setState(() => _showDetails = !_showDetails),
                 ),
               ],
             ),
+            if (expense.status == ExpenseStatus.settled) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Uregulowane poza aplikacją',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
             if (expense.note != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -1011,7 +1426,65 @@ class _ExpenseCard extends StatelessWidget {
                 ),
               ),
             ],
-            if (!isReadOnly && expense.status == ExpenseStatus.pending) ...[
+            if (_showDetails) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Hash integralności: ${expense.hash}',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.textHint,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+            if (expense.hasReceipt) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _showReceipt(context, expense.id),
+                  icon: const Icon(Icons.receipt, size: 16),
+                  label: const Text(
+                    'Zobacz paragon',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
+            if (awaitingOther) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppTheme.warningColor.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.hourglass_top,
+                      size: 16,
+                      color: AppTheme.warningColor,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Oczekuje na akceptację od $otherParentName',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (canRespond) ...[
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -1019,14 +1492,7 @@ class _ExpenseCard extends StatelessWidget {
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.close, size: 14),
                       label: const Text('Spór', style: TextStyle(fontSize: 12)),
-                      onPressed: () async {
-                        try {
-                          await context.read<FinanceProvider>().updateExpenseStatus(
-                            expense.id,
-                            ExpenseStatus.disputed,
-                          );
-                        } catch (_) {}
-                      },
+                      onPressed: widget.onDispute,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.errorColor,
                         side: const BorderSide(color: AppTheme.errorColor),
@@ -1042,14 +1508,7 @@ class _ExpenseCard extends StatelessWidget {
                         'Akceptuj',
                         style: TextStyle(fontSize: 12),
                       ),
-                      onPressed: () async {
-                        try {
-                          await context.read<FinanceProvider>().updateExpenseStatus(
-                            expense.id,
-                            ExpenseStatus.accepted,
-                          );
-                        } catch (_) {}
-                      },
+                      onPressed: () => widget.onAccept(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.successColor,
                         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1059,6 +1518,25 @@ class _ExpenseCard extends StatelessWidget {
                 ],
               ),
             ],
+            if (!widget.isReadOnly &&
+                expense.status == ExpenseStatus.accepted) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline, size: 14),
+                  label: const Text(
+                    'Oznacz jako rozliczone',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  onPressed: widget.onSettled,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondary,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1066,8 +1544,132 @@ class _ExpenseCard extends StatelessWidget {
   }
 }
 
+class _DisputeExpenseSheet extends StatefulWidget {
+  final Expense expense;
+
+  const _DisputeExpenseSheet({required this.expense});
+
+  @override
+  State<_DisputeExpenseSheet> createState() => _DisputeExpenseSheetState();
+}
+
+class _DisputeExpenseSheetState extends State<_DisputeExpenseSheet> {
+  final _noteController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final reason = _noteController.text.trim();
+    if (reason.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Podaj powód sporu.'),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      await context.read<FinanceProvider>().updateExpenseStatus(
+        widget.expense.id,
+        ExpenseStatus.disputed,
+        note: reason,
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Wydatek oznaczony jako sporny. Drugi rodzic zobaczy zmianę automatycznie.',
+            ),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nie udało się zgłosić sporu.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Zgłoś spór',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.expense.title,
+            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _noteController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Powód sporu',
+              hintText: 'Np. kwota przekracza uzgodniony limit',
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submitting ? null : _submit,
+              child: _submitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Zgłoś spór'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AddExpenseSheet extends StatefulWidget {
-  const _AddExpenseSheet();
+  final bool initialOcrMode;
+  final ReceiptImageSource? autoLaunchSource;
+
+  const _AddExpenseSheet({
+    this.initialOcrMode = false,
+    this.autoLaunchSource,
+  });
 
   @override
   State<_AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -1076,18 +1678,155 @@ class _AddExpenseSheet extends StatefulWidget {
 class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
   String _selectedCategory = 'Szkoła';
-  bool _ocrMode = true;
+  String? _selectedChildId;
+  DateTime _selectedDate = DateTime.now();
+  double _splitRatio = 0.5;
+  late bool _ocrMode;
+  PendingReceiptImage? _pendingReceipt;
+  bool _isParsingReceipt = false;
+
+  static const _categories = [
+    'Szkoła',
+    'Zdrowie',
+    'Zajęcia',
+    'Ubrania',
+    'Jedzenie',
+    'Transport',
+    'Inne',
+  ];
+
+  static const _splitPresets = [
+    (label: '50/50', ratio: 0.5),
+    (label: '70/30', ratio: 0.7),
+    (label: '80/20', ratio: 0.8),
+    (label: '100/0', ratio: 1.0),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _ocrMode = widget.initialOcrMode;
+    if (widget.autoLaunchSource != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _pickAndParseReceipt(widget.autoLaunchSource!);
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
+    _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  String _normalizeCategory(String? category) {
+    if (category == null || category.isEmpty) return 'Inne';
+    if (_categories.contains(category)) return category;
+    return 'Inne';
+  }
+
+  Future<void> _pickAndParseReceipt(ReceiptImageSource source) async {
+    if (_isParsingReceipt) return;
+
+    final app = context.read<AppProvider>();
+    if (app.isDemoMode) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'OCR paragonu wymaga konta produkcyjnego (nie trybu demo).',
+          ),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final picked = await ReceiptAttachmentPicker.pickReceiptImage(
+        source: source,
+      );
+      if (picked == null || !mounted) return;
+
+      setState(() {
+        _isParsingReceipt = true;
+        _pendingReceipt = picked;
+      });
+
+      final parsed = await context.read<FinanceProvider>().parseReceipt(
+        contentBase64: picked.contentBase64,
+        mimeType: picked.mimeType,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _ocrMode = false;
+        _isParsingReceipt = false;
+        if (parsed.title != null && parsed.title!.trim().isNotEmpty) {
+          _titleController.text = parsed.title!.trim();
+        }
+        if (parsed.amount != null && parsed.amount! > 0) {
+          _amountController.text = parsed.amount!.toStringAsFixed(2);
+        }
+        _selectedCategory = _normalizeCategory(parsed.category);
+        if (parsed.date != null) {
+          _selectedDate = parsed.date!;
+        }
+      });
+
+      final confidenceLabel = parsed.confidence == 'medium'
+          ? 'Rozpoznano dane z paragonu. Sprawdź przed zapisem.'
+          : 'Rozpoznanie niepewne — uzupełnij brakujące pola ręcznie.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(confidenceLabel),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isParsingReceipt = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message
+                : 'Nie udało się odczytać paragonu. Spróbuj jaśniejszego zdjęcia.',
+          ),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final children = workspace?.children ?? [];
+
+    if (_selectedChildId == null && children.isNotEmpty) {
+      _selectedChildId = children.first.id;
+    }
+
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -1100,9 +1839,9 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Nowy wydatek',
-              style: TextStyle(
+            Text(
+              _ocrMode ? 'Wydatek z paragonu' : 'Nowy wydatek',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
@@ -1110,133 +1849,28 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
             ),
             const SizedBox(height: 16),
 
-            // OCR / Manual toggle
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _ocrMode = true),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _ocrMode
-                            ? AppTheme.primaryTeal
-                            : Colors.white,
-                        borderRadius: const BorderRadius.horizontal(
-                          left: Radius.circular(10),
-                        ),
-                        border: Border.all(color: AppTheme.primaryTeal),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.camera_alt,
-                            color: _ocrMode ? Colors.white : AppTheme.primaryTeal,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Paragon OCR',
-                            style: TextStyle(
-                              color: _ocrMode
-                                  ? Colors.white
-                                  : AppTheme.primaryTeal,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _ocrMode = false),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: !_ocrMode
-                            ? AppTheme.primaryTeal
-                            : Colors.white,
-                        borderRadius: const BorderRadius.horizontal(
-                          right: Radius.circular(10),
-                        ),
-                        border: Border.all(color: AppTheme.primaryTeal),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.edit,
-                            color: !_ocrMode ? Colors.white : AppTheme.primaryTeal,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Ręcznie',
-                            style: TextStyle(
-                              color: !_ocrMode
-                                  ? Colors.white
-                                  : AppTheme.primaryTeal,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
             if (_ocrMode) ...[
-              // OCR upload area
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'AI OCR: analizuję paragon... (symulacja)',
-                      ),
-                    ),
-                  );
-                  Future.delayed(const Duration(seconds: 1), () {
-                    if (context.mounted) {
-                      setState(() {
-                        _ocrMode = false;
-                        _titleController.text = 'Wizyta u dentysty';
-                        _amountController.text = '280.00';
-                        _selectedCategory = 'Zdrowie';
-                      });
-                    }
-                  });
-                },
-                child: Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryTeal.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.primaryTeal.withValues(alpha: 0.3),
-                      style: BorderStyle.solid,
-                    ),
+              if (_pendingReceipt != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    _pendingReceipt!.bytes,
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
                   ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (_isParsingReceipt)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
                     children: [
-                      Icon(
-                        Icons.add_a_photo,
-                        color: AppTheme.primaryTeal,
-                        size: 32,
-                      ),
-                      SizedBox(height: 8),
+                      CircularProgressIndicator(strokeWidth: 2),
+                      SizedBox(height: 12),
                       Text(
-                        'Zrób zdjęcie paragonu\nAI automatycznie wypełni dane',
-                        textAlign: TextAlign.center,
+                        'Odczytuję paragon…',
                         style: TextStyle(
                           color: AppTheme.primaryTeal,
                           fontSize: 13,
@@ -1244,9 +1878,57 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                       ),
                     ],
                   ),
+                )
+              else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () =>
+                        _pickAndParseReceipt(ReceiptImageSource.camera),
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Zrób zdjęcie aparatem'),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _pickAndParseReceipt(ReceiptImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Wybierz z galerii'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Po zrobieniu zdjęcia odczytamy kwotę, sklep i datę z paragonu.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
             ] else ...[
+              if (_pendingReceipt != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    _pendingReceipt!.bytes,
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Paragon: ${_pendingReceipt!.fileName}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: _titleController,
                 decoration: const InputDecoration(
@@ -1256,12 +1938,54 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _amountController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Kwota (PLN)',
                   suffixText: 'PLN',
                 ),
               ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: _pickDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Data wydatku',
+                  ),
+                  child: Text(
+                    '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year}',
+                  ),
+                ),
+              ),
+              if (children.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Dziecko',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: children
+                      .map(
+                        (child) => ChoiceChip(
+                          label: Text(
+                            child.name.split(' ').first,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          selected: _selectedChildId == child.id,
+                          onSelected: (_) =>
+                              setState(() => _selectedChildId = child.id),
+                          selectedColor:
+                              AppTheme.primaryTeal.withValues(alpha: 0.15),
+                          checkmarkColor: AppTheme.primaryTeal,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
               const SizedBox(height: 12),
               const Text(
                 'Kategoria',
@@ -1273,35 +1997,68 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: [
-                  'Szkoła',
-                  'Zdrowie',
-                  'Zajęcia',
-                  'Ubrania',
-                  'Jedzenie',
-                  'Transport',
-                  'Inne',
-                ].map(
-                  (cat) => ChoiceChip(
-                    label: Text(cat, style: const TextStyle(fontSize: 12)),
-                    selected: _selectedCategory == cat,
-                    onSelected: (_) =>
-                        setState(() => _selectedCategory = cat),
-                    selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
-                    checkmarkColor: AppTheme.primaryTeal,
-                  ),
-                ).toList(),
+                runSpacing: 4,
+                children: _categories
+                    .map(
+                      (cat) => ChoiceChip(
+                        label: Text(cat, style: const TextStyle(fontSize: 12)),
+                        selected: _selectedCategory == cat,
+                        onSelected: (_) =>
+                            setState(() => _selectedCategory = cat),
+                        selectedColor:
+                            AppTheme.primaryTeal.withValues(alpha: 0.15),
+                        checkmarkColor: AppTheme.primaryTeal,
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Podział kosztów (udział drugiego rodzica)',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: _splitPresets
+                    .map(
+                      (preset) => ChoiceChip(
+                        label: Text(
+                          preset.label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        selected: _splitRatio == preset.ratio,
+                        onSelected: (_) =>
+                            setState(() => _splitRatio = preset.ratio),
+                        selectedColor:
+                            AppTheme.primaryTeal.withValues(alpha: 0.15),
+                        checkmarkColor: AppTheme.primaryTeal,
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _noteController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Notatka (opcjonalnie)',
+                ),
               ),
             ],
 
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saveExpense,
-                child: const Text('Zapisz wydatek'),
+            if (!_ocrMode)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saveExpense,
+                  child: const Text('Zapisz wydatek'),
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -1325,7 +2082,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
 
     final app = context.read<AppProvider>();
     final user = app.currentUser;
-    final workspace = app.currentWorkspace;
+    final note = _noteController.text.trim();
 
     try {
       await context.read<FinanceProvider>().addExpense(
@@ -1334,19 +2091,19 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
           title: title,
           amount: amount,
           category: _selectedCategory,
-          childId: workspace?.children.isNotEmpty == true
-              ? workspace!.children.first.id
-              : null,
+          childId: _selectedChildId,
           paidBy: user?.id ?? 'unknown',
-          splitRatio: 0.5,
-          date: DateTime.now(),
+          splitRatio: _splitRatio,
+          date: _selectedDate,
           status: ExpenseStatus.pending,
-          note: _ocrMode ? 'Dodano z trybu OCR demo' : null,
+          note: note.isEmpty ? null : note,
           hash: 'sha256_exp_${DateTime.now().millisecondsSinceEpoch}',
         ),
+        receiptContentBase64: _pendingReceipt?.contentBase64,
+        receiptMimeType: _pendingReceipt?.mimeType,
       );
     } catch (_) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Nie udało się zapisać wydatku.'),
@@ -1356,12 +2113,14 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
       return;
     }
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     Navigator.pop(context);
     messenger.showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'Wydatek zapisany z hashiem SHA-256. Wysłano wniosek o zwrot.',
+          _pendingReceipt != null
+              ? 'Wydatek z paragonem zapisany. Oczekuje na akceptację drugiego rodzica.'
+              : 'Wydatek zapisany. Oczekuje na akceptację drugiego rodzica.',
         ),
         backgroundColor: AppTheme.successColor,
       ),

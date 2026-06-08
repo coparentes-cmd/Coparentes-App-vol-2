@@ -1,4 +1,5 @@
 import '../../models/models.dart';
+import '../../services/receipt_attachment_service.dart';
 import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../serializers/finance_serializers.dart';
@@ -34,9 +35,31 @@ class FinanceRepository {
     }
   }
 
-  Future<Expense> createExpense(Expense expense) async {
+  Future<ReceiptParseResult> parseReceipt({
+    required String contentBase64,
+    required String mimeType,
+  }) async {
+    final payload = await _apiClient.postJson('/finances/receipts/parse', {
+      'contentBase64': contentBase64,
+      'mimeType': mimeType,
+    });
+    return ReceiptParseResult.fromJson(
+      Map<String, dynamic>.from(payload as Map),
+    );
+  }
+
+  Future<Map<String, dynamic>> getReceipt(String expenseId) async {
+    final payload = await _apiClient.getJson('/finances/expenses/$expenseId/receipt');
+    return Map<String, dynamic>.from(payload as Map);
+  }
+
+  Future<Expense> createExpense(
+    Expense expense, {
+    String? receiptContentBase64,
+    String? receiptMimeType,
+  }) async {
     try {
-      final payload = await _apiClient.postJson('/finances/expenses', {
+      final body = <String, dynamic>{
         'title': expense.title,
         'amount': expense.amount,
         'currency': expense.currency,
@@ -48,7 +71,12 @@ class FinanceRepository {
         'receiptUrl': expense.receiptUrl,
         'status': expenseStatusToApi(expense.status),
         'note': expense.note,
-      });
+      };
+      if (receiptContentBase64 != null) {
+        body['receiptContentBase64'] = receiptContentBase64;
+        body['receiptMimeType'] = receiptMimeType ?? 'image/jpeg';
+      }
+      final payload = await _apiClient.postJson('/finances/expenses', body);
       final created = expenseFromJson(payload);
       await _upsertExpense(created);
       return created;
@@ -69,6 +97,7 @@ class FinanceRepository {
         splitRatio: expense.splitRatio,
         date: expense.date,
         receiptUrl: expense.receiptUrl,
+        hasReceipt: expense.hasReceipt || receiptContentBase64 != null,
         status: expense.status,
         note: expense.note,
         hash: 'pending_${now.microsecondsSinceEpoch}',
@@ -88,6 +117,9 @@ class FinanceRepository {
           'splitRatio': local.splitRatio,
           'date': local.date.toIso8601String(),
           'receiptUrl': local.receiptUrl,
+          if (receiptContentBase64 != null)
+            'receiptContentBase64': receiptContentBase64,
+          if (receiptMimeType != null) 'receiptMimeType': receiptMimeType,
           'status': expenseStatusToApi(local.status),
           'note': local.note,
         },
@@ -99,11 +131,18 @@ class FinanceRepository {
   Future<Expense> updateExpenseStatus({
     required String expenseId,
     required ExpenseStatus status,
+    String? note,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'status': expenseStatusToApi(status),
+      };
+      if (note != null) {
+        body['note'] = note;
+      }
       final payload = await _apiClient.postJson(
         '/finances/expenses/$expenseId/status',
-        {'status': expenseStatusToApi(status)},
+        body,
       );
       final updated = expenseFromJson(payload);
       await _upsertExpense(updated);
@@ -131,8 +170,9 @@ class FinanceRepository {
         splitRatio: existing.splitRatio,
         date: existing.date,
         receiptUrl: existing.receiptUrl,
+        hasReceipt: existing.hasReceipt,
         status: status,
-        note: existing.note,
+        note: note ?? existing.note,
         hash: existing.hash,
       );
       cached[index] = optimistic;
@@ -144,6 +184,7 @@ class FinanceRepository {
         'payload': {
           'expenseId': expenseId,
           'status': expenseStatusToApi(status),
+          if (note != null) 'note': note,
         },
       });
       return optimistic;
@@ -189,6 +230,8 @@ class FinanceRepository {
               'splitRatio': payload['splitRatio'],
               'date': payload['date'],
               'receiptUrl': payload['receiptUrl'],
+              'receiptContentBase64': payload['receiptContentBase64'],
+              'receiptMimeType': payload['receiptMimeType'],
               'status': payload['status'],
               'note': payload['note'],
             });
@@ -201,9 +244,15 @@ class FinanceRepository {
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
             var expenseId = payload['expenseId'] as String;
             expenseId = localExpenseIdMap[expenseId] ?? expenseId;
+            final statusBody = <String, dynamic>{
+              'status': payload['status'],
+            };
+            if (payload['note'] != null) {
+              statusBody['note'] = payload['note'];
+            }
             final response = await _apiClient.postJson(
               '/finances/expenses/$expenseId/status',
-              {'status': payload['status']},
+              statusBody,
             );
             final updated = expenseFromJson(response);
             _replaceExpenseId(cached, expenseId, updated);

@@ -356,6 +356,7 @@ class Expense {
   final double splitRatio;
   final DateTime date;
   final String? receiptUrl;
+  final bool hasReceipt;
   final ExpenseStatus status;
   final String? note;
   final String hash;
@@ -371,6 +372,7 @@ class Expense {
     required this.splitRatio,
     required this.date,
     this.receiptUrl,
+    this.hasReceipt = false,
     required this.status,
     this.note,
     required this.hash,

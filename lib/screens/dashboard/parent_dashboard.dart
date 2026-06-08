@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/offline_sync_provider.dart';
@@ -34,6 +35,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
     ExportsScreen(),
   ];
 
+  void _refreshFinanceNow() {
+    final app = context.read<AppProvider>();
+    if (app.isDemoMode) {
+      return;
+    }
+    unawaited(context.read<FinanceProvider>().load(silent: true));
+    unawaited(context.read<OfflineSyncProvider>().pollFinanceNow());
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
@@ -58,6 +68,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
             setState(() => _selectedIndex = i);
             if (i == 1) {
               context.read<OfflineSyncProvider>().pollMessagingNow();
+            }
+            if (i == 0 || i == 3) {
+              _refreshFinanceNow();
             }
           },
           type: BottomNavigationBarType.fixed,
@@ -162,6 +175,22 @@ class _DashboardHome extends StatelessWidget {
     final unreadMessages = user?.id == null
         ? 0
         : countUnreadThreadsForViewer(messaging.threads, user!.id);
+
+    AppUser? parentA;
+    AppUser? parentB;
+    for (final member in workspace?.members ?? []) {
+      if (member.role == UserRole.parentA) parentA = member;
+      if (member.role == UserRole.parentB) parentB = member;
+    }
+
+    final netBalanceLabel = user != null && parentA != null && parentB != null
+        ? _formatNetBalanceLabel(
+            finance: finance,
+            userId: user.id,
+            parentA: parentA,
+            parentB: parentB,
+          )
+        : '${finance.totalPending.toStringAsFixed(0)} PLN';
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -350,9 +379,8 @@ class _DashboardHome extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _StatCard(
-                          label: 'Do zwrotu',
-                          value:
-                              '${finance.totalPending.toStringAsFixed(0)} PLN',
+                          label: 'Saldo netto',
+                          value: netBalanceLabel,
                           icon: Icons.account_balance_wallet,
                           color: AppTheme.warningColor,
                           onTap: () {},
@@ -411,7 +439,12 @@ class _DashboardHome extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _FinanceSnapshotCard(finance: finance),
+                _FinanceSnapshotCard(
+                  finance: finance,
+                  user: user,
+                  parentA: parentA,
+                  parentB: parentB,
+                ),
 
                 const SizedBox(height: 20),
 
@@ -816,16 +849,57 @@ class _MessageThreadPreview extends StatelessWidget {
   }
 }
 
+String _formatNetBalanceLabel({
+  required FinanceProvider finance,
+  required String userId,
+  required AppUser parentA,
+  required AppUser parentB,
+}) {
+  final signed = finance.signedBalanceForUser(
+    userId: userId,
+    parentAId: parentA.id,
+    parentBId: parentB.id,
+  );
+  if (signed.abs() < 0.01) {
+    return '0 PLN';
+  }
+  if (signed > 0) {
+    return '+${signed.toStringAsFixed(0)} PLN';
+  }
+  return '-${signed.abs().toStringAsFixed(0)} PLN';
+}
+
 class _FinanceSnapshotCard extends StatelessWidget {
   final FinanceProvider finance;
+  final AppUser? user;
+  final AppUser? parentA;
+  final AppUser? parentB;
 
-  const _FinanceSnapshotCard({required this.finance});
+  const _FinanceSnapshotCard({
+    required this.finance,
+    this.user,
+    this.parentA,
+    this.parentB,
+  });
 
   @override
   Widget build(BuildContext context) {
     final pending = finance.expenses
         .where((e) => e.status == ExpenseStatus.pending)
         .toList();
+
+    final balanceHeadline = user != null && parentA != null && parentB != null
+        ? finance.balanceHeadline(
+            parentAId: parentA!.id,
+            parentBId: parentB!.id,
+            parentAName: parentA!.name,
+            parentBName: parentB!.name,
+          )
+        : 'Saldo niedostępne';
+
+    final pendingRefund = user != null
+        ? finance.pendingRefundForUser(user!.id)
+        : finance.totalPending;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -871,18 +945,27 @@ class _FinanceSnapshotCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     const Text(
-                      'Do zwrotu',
+                      'Saldo netto',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
                       ),
                     ),
                     Text(
-                      '${finance.totalPending.toStringAsFixed(0)} PLN',
+                      balanceHeadline,
+                      textAlign: TextAlign.right,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.warningColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Oczekujące: ${pendingRefund.toStringAsFixed(0)} PLN',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
