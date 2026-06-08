@@ -67,7 +67,7 @@ class FinanceRepository {
         'childId': expense.childId,
         'paidBy': expense.paidBy,
         'splitRatio': expense.splitRatio,
-        'date': expense.date.toIso8601String(),
+        'date': expenseDateToApi(expense.date),
         'receiptUrl': expense.receiptUrl,
         'status': expenseStatusToApi(expense.status),
         'note': expense.note,
@@ -115,7 +115,7 @@ class FinanceRepository {
           'childId': local.childId,
           'paidBy': local.paidBy,
           'splitRatio': local.splitRatio,
-          'date': local.date.toIso8601String(),
+          'date': expenseDateToApi(local.date),
           'receiptUrl': local.receiptUrl,
           if (receiptContentBase64 != null)
             'receiptContentBase64': receiptContentBase64,

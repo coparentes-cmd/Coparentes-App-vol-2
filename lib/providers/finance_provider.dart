@@ -191,7 +191,7 @@ class FinanceProvider extends ChangeNotifier {
       to: to,
     );
     if (balance == null) {
-      return 'Saldo wyrównane';
+      return 'Saldo';
     }
     final debtorFirst = balance.debtorName.split(' ').first;
     final creditorFirst = balance.creditorName.split(' ').first;

@@ -220,40 +220,32 @@ class _FinanceScreenState extends State<FinanceScreen>
           ),
           const SizedBox(height: 12),
 
-          // Main balance card
+          // Main balance card — szerokość i styl jak baner AI Coach
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: signedBalance.abs() < 0.01
-                    ? [const Color(0xFF546E7A), const Color(0xFF78909C)]
+                    ? [AppTheme.warningColor, const Color(0xFFFFB74D)]
                     : signedBalance > 0
                     ? [const Color(0xFF2E7D32), const Color(0xFF66BB6A)]
-                    : [const Color(0xFFF57C00), const Color(0xFFFFB74D)],
+                    : [AppTheme.warningColor, const Color(0xFFFFB74D)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.warningColor.withValues(alpha: 0.22),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.balance, color: Colors.white, size: 22),
-                    SizedBox(width: 8),
-                    Text(
-                      'Saldo netto',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 Text(
                   balanceHeadline,
                   style: const TextStyle(

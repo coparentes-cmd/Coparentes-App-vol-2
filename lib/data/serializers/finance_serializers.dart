@@ -15,6 +15,11 @@ ExpenseStatus expenseStatusFromApi(String value) {
   }
 }
 
+/// Backend (Zod) wymaga ISO 8601 ze strefą czasową — np. końcówka `Z`.
+String expenseDateToApi(DateTime date) {
+  return DateTime.utc(date.year, date.month, date.day).toIso8601String();
+}
+
 String expenseStatusToApi(ExpenseStatus status) {
   switch (status) {
     case ExpenseStatus.pending:
@@ -57,7 +62,7 @@ Map<String, dynamic> expenseToJson(Expense expense) {
     'childId': expense.childId,
     'paidBy': expense.paidBy,
     'splitRatio': expense.splitRatio,
-    'date': expense.date.toIso8601String(),
+    'date': expenseDateToApi(expense.date),
     'receiptUrl': expense.receiptUrl,
     'hasReceipt': expense.hasReceipt,
     'status': expenseStatusToApi(expense.status),
