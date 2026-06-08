@@ -112,8 +112,17 @@ class _CalendarScreenState extends State<CalendarScreen>
           ? null
           : [
               ParentHeaderActionButton(
+                label: 'Nowe zdarzenie',
+                icon: Icons.add,
+                backgroundColor: AppTheme.purpleColor,
+                prominent: true,
+                onPressed: () => _addEvent(context),
+              ),
+              ParentHeaderActionButton(
                 label: 'Zamiana',
                 icon: Icons.swap_horiz,
+                backgroundColor: AppTheme.purpleColor,
+                prominent: true,
                 onPressed: () => _requestSwap(context),
               ),
             ],
@@ -161,14 +170,6 @@ class _CalendarScreenState extends State<CalendarScreen>
           _buildSwapsTab(context, calendar),
         ],
       ),
-      floatingActionButton: isReadOnly
-          ? null
-          : FloatingActionButton.extended(
-              heroTag: 'calendar_new_event',
-              onPressed: () => _addEvent(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Nowe zdarzenie'),
-            ),
     );
   }
 

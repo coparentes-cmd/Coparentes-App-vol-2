@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../theme/app_theme.dart';
 
 bool threadHasUnreadForViewer(MessageThread thread, String viewerUserId) {
   return thread.messages.any(
@@ -107,5 +108,72 @@ BorderRadius imessageBubbleRadius({
   );
 }
 
-/// iMessage-style chat canvas background.
-const Color imessageChatBackground = Color(0xFFE9E9EB);
+/// iMessage-style chat canvas background — light and airy.
+const Color imessageChatBackground = Color(0xFFF6F7FA);
+
+UserRole? senderRoleForMessage(Message message, Workspace? workspace) {
+  if (workspace == null) {
+    return null;
+  }
+  for (final member in workspace.members) {
+    if (member.id == message.senderId) {
+      return member.role;
+    }
+  }
+  return null;
+}
+
+class MessageBubbleStyle {
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color secondaryTextColor;
+  final Color senderNameColor;
+  final Color attachmentBackground;
+  final Color attachmentForeground;
+
+  const MessageBubbleStyle({
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.secondaryTextColor,
+    required this.senderNameColor,
+    required this.attachmentBackground,
+    required this.attachmentForeground,
+  });
+}
+
+MessageBubbleStyle messageBubbleStyleForRole(UserRole? role) {
+  switch (role) {
+    case UserRole.parentA:
+      return MessageBubbleStyle(
+        backgroundColor: AppTheme.coralColor.withValues(alpha: 0.12),
+        borderColor: AppTheme.coralColor.withValues(alpha: 0.2),
+        textColor: const Color(0xFF3A2A28),
+        secondaryTextColor: const Color(0xFF6E5653),
+        senderNameColor: AppTheme.coralColor,
+        attachmentBackground: AppTheme.coralColor.withValues(alpha: 0.16),
+        attachmentForeground: const Color(0xFF5C3330),
+      );
+    case UserRole.parentB:
+      return MessageBubbleStyle(
+        backgroundColor: AppTheme.accentColor.withValues(alpha: 0.1),
+        borderColor: AppTheme.accentColor.withValues(alpha: 0.22),
+        textColor: const Color(0xFF1A3348),
+        secondaryTextColor: const Color(0xFF4A6278),
+        senderNameColor: AppTheme.accentColor,
+        attachmentBackground: AppTheme.accentColor.withValues(alpha: 0.14),
+        attachmentForeground: const Color(0xFF1A4A7A),
+      );
+    default:
+      return const MessageBubbleStyle(
+        backgroundColor: Color(0xFFF1F3F6),
+        borderColor: Color(0xFFE3E7EE),
+        textColor: AppTheme.textPrimary,
+        secondaryTextColor: AppTheme.textSecondary,
+        senderNameColor: AppTheme.textSecondary,
+        attachmentBackground: Color(0xFFE8ECF2),
+        attachmentForeground: AppTheme.textSecondary,
+      );
+  }
+}

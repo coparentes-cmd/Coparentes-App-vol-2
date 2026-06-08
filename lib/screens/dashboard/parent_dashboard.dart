@@ -248,7 +248,7 @@ class _DashboardHome extends StatelessWidget {
     final firstName = user?.name.split(' ').first ?? '';
 
     return ParentTabScaffold(
-      headerColor: roleColor,
+      headerColor: AppTheme.brandHeaderBlue,
       headerHeight: 130,
       header: Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),

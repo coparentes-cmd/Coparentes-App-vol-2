@@ -64,6 +64,28 @@ class _FinanceScreenState extends State<FinanceScreen>
     return ParentTabScaffold(
       title: 'Finanse',
       actions: [
+        if (!isReadOnly) ...[
+          ParentHeaderActionButton(
+            label: 'Nowy wydatek',
+            icon: Icons.add,
+            backgroundColor: AppTheme.purpleColor,
+            prominent: true,
+            onPressed: () => _addExpense(context, ocrMode: false),
+          ),
+          ParentHeaderActionButton(
+            label: 'Z paragonu',
+            icon: Icons.camera_alt,
+            backgroundColor: AppTheme.purpleColor,
+            prominent: true,
+            onPressed: () => _addExpense(
+              context,
+              ocrMode: true,
+              autoLaunchSource: kIsWeb
+                  ? ReceiptImageSource.gallery
+                  : ReceiptImageSource.camera,
+            ),
+          ),
+        ],
         IconButton(
           icon: const Icon(Icons.picture_as_pdf_outlined),
           tooltip: 'Eksport PDF',
@@ -120,32 +142,6 @@ class _FinanceScreenState extends State<FinanceScreen>
           _buildReportsTab(context, finance),
         ],
       ),
-      floatingActionButton: isReadOnly
-          ? null
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: 'finance_new_expense',
-                  onPressed: () => _addExpense(context, ocrMode: false),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Nowy wydatek'),
-                ),
-                const SizedBox(width: 12),
-                FloatingActionButton.extended(
-                  heroTag: 'finance_receipt',
-                  onPressed: () => _addExpense(
-                    context,
-                    ocrMode: true,
-                    autoLaunchSource: kIsWeb
-                        ? ReceiptImageSource.gallery
-                        : ReceiptImageSource.camera,
-                  ),
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Z paragonu'),
-                ),
-              ],
-            ),
     );
   }
 
@@ -222,19 +218,18 @@ class _FinanceScreenState extends State<FinanceScreen>
           ),
           const SizedBox(height: 12),
 
-          // Main balance card — kompaktowa, ciemna pigułka
+          // Main balance card — kompaktowa, brandowy niebieski
           Align(
             alignment: Alignment.centerLeft,
             child: Container(
               constraints: const BoxConstraints(maxWidth: 320),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: ParentHeaderActionButton.buttonColor,
+                color: AppTheme.brandHeaderBlue,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: ParentHeaderActionButton.buttonColor
-                        .withValues(alpha: 0.2),
+                    color: AppTheme.brandHeaderBlue.withValues(alpha: 0.22),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),

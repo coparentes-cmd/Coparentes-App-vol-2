@@ -5,6 +5,8 @@ class AppTheme {
   static const Color primaryDark = Color(0xFF009C75);
   static const Color primaryLight = Color(0xFF63E0BC);
   static const Color accentColor = Color(0xFF0080FF);
+  /// Średnio ciemny niebieski nagłówka Start — ciemniejszy odcień accentColor.
+  static const Color brandHeaderBlue = Color(0xFF006BB3);
   static const Color coralColor = Color(0xFFFF6B68);
   static const Color yellowColor = Color(0xFFFDD835);
   static const Color purpleColor = Color(0xFF9C27B0);

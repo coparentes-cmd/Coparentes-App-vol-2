@@ -104,6 +104,8 @@ class _MessagingScreenState extends State<MessagingScreen> {
           ParentHeaderActionButton(
             label: 'Nowy wątek',
             icon: Icons.edit_note,
+            backgroundColor: AppTheme.purpleColor,
+            prominent: true,
             onPressed: () => _newThread(context),
           ),
       ],
@@ -1419,6 +1421,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
   Widget build(BuildContext context) {
     final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
     final calendar = context.watch<CalendarProvider>();
+    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final senderRole = senderRoleForMessage(widget.message, workspace);
+    final bubbleStyle = messageBubbleStyleForRole(senderRole);
     final swap = isSwapScheduleThread(widget.threadCategory)
         ? findPendingSwapForMessage(
             messageContent: widget.message.content,
@@ -1451,20 +1456,19 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     padding: const EdgeInsets.only(left: 6, bottom: 4),
                     child: Text(
                       widget.message.senderName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppTheme.textSecondary,
+                        color: bubbleStyle.senderNameColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 Container(
                   constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-                  padding: const EdgeInsets.fromLTRB(14, 9, 12, 8),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
                   decoration: BoxDecoration(
-                    color: widget.isMe
-                        ? AppTheme.primaryTeal
-                        : AppTheme.accentColor,
+                    color: bubbleStyle.backgroundColor,
+                    border: Border.all(color: bubbleStyle.borderColor),
                     borderRadius: imessageBubbleRadius(
                       isMe: widget.isMe,
                       isFirstInGroup: widget.group.isFirstInGroup,
@@ -1482,14 +1486,14 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             Icon(
                               Icons.shield,
                               size: 12,
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: bubbleStyle.secondaryTextColor,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               'AI Shield – wersja logistyczna',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.9),
+                                color: bubbleStyle.secondaryTextColor,
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -1498,10 +1502,10 @@ class _MessageBubbleState extends State<_MessageBubble> {
                         const SizedBox(height: 6),
                         Text(
                           _extractLogistics(widget.message.content),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             height: 1.35,
-                            color: Colors.white,
+                            color: bubbleStyle.textColor,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -1511,7 +1515,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             'Pokaż oryginał',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.92),
+                              color: bubbleStyle.senderNameColor,
                               decoration: TextDecoration.underline,
                             ),
                           ),
@@ -1520,10 +1524,10 @@ class _MessageBubbleState extends State<_MessageBubble> {
                         if (widget.message.content.isNotEmpty)
                           Text(
                             widget.message.content,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               height: 1.35,
-                              color: Colors.white,
+                              color: bubbleStyle.textColor,
                             ),
                           ),
                         if (_isShielded && _showOriginal) ...[
@@ -1534,7 +1538,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                               'Ukryj oryginał',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.white.withValues(alpha: 0.92),
+                                color: bubbleStyle.senderNameColor,
                                 decoration: TextDecoration.underline,
                               ),
                             ),
@@ -1558,7 +1562,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
+                                  color: bubbleStyle.attachmentBackground,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -1569,7 +1573,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                                           ? Icons.hourglass_top
                                           : Icons.attach_file,
                                       size: 14,
-                                      color: Colors.white.withValues(alpha: 0.92),
+                                      color: bubbleStyle.attachmentForeground,
                                     ),
                                     const SizedBox(width: 6),
                                     Flexible(
@@ -1577,8 +1581,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
                                         '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color:
-                                              Colors.white.withValues(alpha: 0.92),
+                                          color: bubbleStyle.attachmentForeground,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -1604,7 +1607,6 @@ class _MessageBubbleState extends State<_MessageBubble> {
                             message: widget.message,
                             isMe: widget.isMe,
                             sentAt: widget.message.sentAt,
-                            onColoredBubble: true,
                           ),
                         ),
                       ),

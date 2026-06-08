@@ -24,7 +24,7 @@ class MessageReceiptFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final timeColor = onColoredBubble
         ? Colors.white.withValues(alpha: 0.78)
-        : (isMe ? Colors.white70 : AppTheme.textHint);
+        : AppTheme.textHint;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -42,11 +42,18 @@ class MessageReceiptFooter extends StatelessWidget {
   }
 
   Widget _buildReceiptIcon() {
+    final pendingColor = onColoredBubble
+        ? Colors.white.withValues(alpha: 0.65)
+        : AppTheme.textHint;
+    final deliveredColor = onColoredBubble
+        ? Colors.white.withValues(alpha: 0.85)
+        : AppTheme.textSecondary;
+
     if (!message.isDelivered) {
       return Icon(
         Icons.schedule,
         size: 12,
-        color: Colors.white.withValues(alpha: 0.65),
+        color: pendingColor,
       );
     }
 
@@ -61,7 +68,7 @@ class MessageReceiptFooter extends StatelessWidget {
     return Icon(
       Icons.done,
       size: 14,
-      color: Colors.white.withValues(alpha: 0.85),
+      color: deliveredColor,
     );
   }
 
