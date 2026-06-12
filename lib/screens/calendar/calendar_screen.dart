@@ -104,6 +104,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         : AppTheme.parentBColor;
 
     final pendingRequests = calendar.pendingRequestCount;
+    final hasActiveSchedule = calendar.hasActiveSchedule;
 
     return ParentTabScaffold(
       title: 'Kalendarz opieki',
@@ -111,7 +112,7 @@ class _CalendarScreenState extends State<CalendarScreen>
           ? null
           : [
               ParentHeaderActionButton(
-                label: 'Grafik opieki',
+                label: hasActiveSchedule ? 'Zmiana grafiku' : 'Grafik opieki',
                 icon: Icons.view_week,
                 backgroundColor: AppTheme.primaryTeal,
                 prominent: true,
@@ -212,6 +213,8 @@ class _CalendarScreenState extends State<CalendarScreen>
             onAccept: () => _respondToSchedule(context, approve: true),
             onReject: () => _respondToSchedule(context, approve: false),
           ),
+        if (!isReadOnly && calendar.hasActiveSchedule)
+          const _ActiveScheduleBanner(),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
           child: AiContextualTip(
@@ -287,6 +290,34 @@ class _CalendarScreenState extends State<CalendarScreen>
   }
 
   Future<void> _openScheduleWizard(BuildContext context) async {
+    final calendar = context.read<CalendarProvider>();
+    if (calendar.hasLockedSchedule) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Zmiana grafiku wymaga akceptacji'),
+          content: Text(
+            calendar.hasActiveSchedule
+                ? 'Obecny grafik pozostaje w mocy do czasu akceptacji nowej propozycji przez drugiego rodzica.'
+                : 'Masz już oczekującą propozycję grafiku. Nowa propozycja zastąpi poprzednią w oczekiwaniu.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Kontynuuj'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true || !context.mounted) {
+        return;
+      }
+    }
+
     final accepted = await showCustodyScheduleWizard(context);
     if (accepted == true && context.mounted) {
       await _refreshSwapMessaging(context);
@@ -394,24 +425,37 @@ class _CalendarScreenState extends State<CalendarScreen>
                           ),
                           if (!isReadOnly) ...[
                             const SizedBox(height: 12),
-                            _DayActionButtons(
-                              day: day,
-                              slot: slot,
-                              onChangeCustodian: () {
-                                Navigator.pop(ctx);
-                                _showExceptionSheet(context, day, slot);
-                              },
-                              onEditHandover: slot == null
-                                  ? null
-                                  : () {
-                                      Navigator.pop(ctx);
-                                      _showHandoverSheet(context, slot);
-                                    },
-                              onRequestSwap: () {
-                                Navigator.pop(ctx);
-                                _requestSwapForDay(context, day);
-                              },
-                            ),
+                            if (calendar.hasActiveSchedule && !isPending)
+                              _DayActionButtons(
+                                day: day,
+                                slot: slot,
+                                onChangeCustodian: () {
+                                  Navigator.pop(ctx);
+                                  _showExceptionSheet(context, day, slot);
+                                },
+                                onRequestSwap: () {
+                                  Navigator.pop(ctx);
+                                  _requestSwapForDay(context, day);
+                                },
+                              )
+                            else if (calendar.hasPendingScheduleApproval &&
+                                !calendar.hasActiveSchedule)
+                              const Text(
+                                'Grafik oczekuje na akceptację. Po zatwierdzeniu '
+                                'zmiany dni będą możliwe tylko przez prośby.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              )
+                            else if (isPending)
+                              const Text(
+                                'Ten dzień ma już oczekującą prośbę o zmianę opiekuna.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
                           ],
                         ],
                       ),
@@ -441,17 +485,6 @@ class _CalendarScreenState extends State<CalendarScreen>
         day: day,
         currentCustodian: slot?.custodian,
       ),
-    );
-  }
-
-  void _showHandoverSheet(BuildContext context, CustodySlot slot) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _HandoverEditSheet(slot: slot),
     );
   }
 
@@ -1718,13 +1751,32 @@ class _SwapRejectSheetState extends State<_SwapRejectSheet> {
   }
 }
 
+String _formatScheduleRange(CustodySchedule schedule) {
+  final start =
+      '${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}';
+  final end = schedule.endDate;
+  if (end == null) {
+    return start;
+  }
+  return '$start – ${end.day}.${end.month}.${end.year}';
+}
+
 String _calendarActionError(Object error, String actionLabel) {
+  if (error is StateError && error.message == 'schedule_locked') {
+    return 'Grafik jest zablokowany. Zmiany wymagają akceptacji drugiego rodzica.';
+  }
   if (error is ApiException) {
     if (error.message == 'invalid_request') {
       return 'Nieprawidłowe dane $actionLabel. Sprawdź wybrane daty.';
     }
     if (error.message == 'swap_not_allowed') {
       return 'Nie możesz odpowiedzieć na własny wniosek o zamianę.';
+    }
+    if (error.message == 'schedule_not_active') {
+      return 'Zmiany dni są możliwe dopiero po zaakceptowaniu grafiku opieki.';
+    }
+    if (error.message == 'schedule_locked') {
+      return 'Grafik jest zablokowany. Zmiany wymagają akceptacji drugiego rodzica.';
     }
     if (error.message == 'schedule_not_allowed' ||
         error.message == 'exception_not_allowed') {
@@ -1755,6 +1807,26 @@ class _ScheduleSetupBanner extends StatelessWidget {
         actions: [
           TextButton(onPressed: onPressed, child: const Text('Utwórz grafik')),
         ],
+      ),
+    );
+  }
+}
+
+class _ActiveScheduleBanner extends StatelessWidget {
+  const _ActiveScheduleBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: MaterialBanner(
+        backgroundColor: AppTheme.successColor.withValues(alpha: 0.08),
+        content: const Text(
+          'Grafik opieki jest zatwierdzony. Zmiany dni, przekazań i całego '
+          'grafiku wymagają akceptacji drugiego rodzica.',
+        ),
+        leading: const Icon(Icons.lock_outline, color: AppTheme.successColor),
+        actions: const [SizedBox.shrink()],
       ),
     );
   }
@@ -1794,7 +1866,9 @@ class _PendingScheduleBanner extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '${schedule.patternLabel} · start ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
+                schedule.endDate != null
+                    ? '${schedule.patternLabel} · ${_formatScheduleRange(schedule)}'
+                    : '${schedule.patternLabel} · start ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
@@ -1867,7 +1941,9 @@ class _ScheduleRequestCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text('Szablon: ${schedule.patternLabel}'),
                   Text(
-                    'Start: ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
+                    schedule.endDate != null
+                        ? 'Okres: ${_formatScheduleRange(schedule)}'
+                        : 'Start: ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
                   ),
                   if (schedule.handoverTime != null)
                     Text('Przekazanie: ${schedule.handoverTime}'),
@@ -2010,14 +2086,12 @@ class _DayActionButtons extends StatelessWidget {
   final DateTime day;
   final CustodySlot? slot;
   final VoidCallback onChangeCustodian;
-  final VoidCallback? onEditHandover;
   final VoidCallback onRequestSwap;
 
   const _DayActionButtons({
     required this.day,
     required this.slot,
     required this.onChangeCustodian,
-    required this.onEditHandover,
     required this.onRequestSwap,
   });
 
@@ -2026,19 +2100,16 @@ class _DayActionButtons extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const Text(
+          'Zmiany w zatwierdzonym grafiku wymagają akceptacji drugiego rodzica.',
+          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: onChangeCustodian,
           icon: const Icon(Icons.person_outline, size: 18),
-          label: const Text('Zmień opiekuna'),
+          label: const Text('Zaproponuj zmianę opiekuna'),
         ),
-        if (onEditHandover != null) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: onEditHandover,
-            icon: const Icon(Icons.schedule, size: 18),
-            label: const Text('Edytuj przekazanie'),
-          ),
-        ],
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: onRequestSwap,
@@ -2128,8 +2199,13 @@ class _ExceptionRequestSheetState extends State<_ExceptionRequestSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Zmiana opiekuna',
+            'Zaproponuj zmianę opiekuna',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Drugi rodzic musi zaakceptować zmianę, zanim zacznie obowiązywać.',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
@@ -2160,111 +2236,6 @@ class _ExceptionRequestSheetState extends State<_ExceptionRequestSheet> {
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
               child: Text(_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HandoverEditSheet extends StatefulWidget {
-  final CustodySlot slot;
-
-  const _HandoverEditSheet({required this.slot});
-
-  @override
-  State<_HandoverEditSheet> createState() => _HandoverEditSheetState();
-}
-
-class _HandoverEditSheetState extends State<_HandoverEditSheet> {
-  late final TextEditingController _timeController;
-  late final TextEditingController _locationController;
-  bool _isSubmitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _timeController =
-        TextEditingController(text: widget.slot.handoverTime ?? '');
-    _locationController =
-        TextEditingController(text: widget.slot.handoverLocation ?? '');
-  }
-
-  @override
-  void dispose() {
-    _timeController.dispose();
-    _locationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_isSubmitting) return;
-    setState(() => _isSubmitting = true);
-    try {
-      await context.read<CalendarProvider>().updateSlotHandover(
-            slotId: widget.slot.id,
-            handoverTime: _timeController.text.trim().isEmpty
-                ? null
-                : _timeController.text.trim(),
-            handoverLocation: _locationController.text.trim().isEmpty
-                ? null
-                : _locationController.text.trim(),
-          );
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Przekazanie zaktualizowane.'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_calendarActionError(error, 'aktualizacji przekazania')),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Edytuj przekazanie',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _timeController,
-            decoration: const InputDecoration(labelText: 'Godzina'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _locationController,
-            decoration: const InputDecoration(labelText: 'Miejsce'),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submit,
-              child: Text(_isSubmitting ? 'Zapisuję...' : 'Zapisz'),
             ),
           ),
         ],

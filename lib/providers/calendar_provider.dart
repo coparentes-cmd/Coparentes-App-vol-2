@@ -56,6 +56,13 @@ class CalendarProvider extends ChangeNotifier {
   bool get hasPendingScheduleApproval =>
       _custodySchedule?.status == CustodyScheduleStatus.pendingApproval;
 
+  bool get hasActiveSchedule =>
+      _custodySchedule?.status == CustodyScheduleStatus.active;
+
+  /// Grafik zapisany (oczekujący lub aktywny) — bezpośrednie edycje są zablokowane.
+  bool get hasLockedSchedule =>
+      hasActiveSchedule || hasPendingScheduleApproval;
+
   bool canRespondToPendingSchedule(String? userId) {
     final schedule = _custodySchedule;
     if (schedule == null ||
@@ -495,6 +502,7 @@ class CalendarProvider extends ChangeNotifier {
   Future<CustodySchedule> proposeSchedule({
     required CustodySchedulePattern patternType,
     required DateTime startDate,
+    DateTime? endDate,
     CustodyWeekPattern? weekA,
     CustodyWeekPattern? weekB,
     String? handoverTime,
@@ -504,6 +512,7 @@ class CalendarProvider extends ChangeNotifier {
       final schedule = await _repository.proposeSchedule(
         patternType: patternType,
         startDate: startDate,
+        endDate: endDate,
         weekA: weekA,
         weekB: weekB,
         handoverTime: handoverTime,
@@ -524,6 +533,7 @@ class CalendarProvider extends ChangeNotifier {
     required String proposedById,
     required CustodySchedulePattern patternType,
     required DateTime startDate,
+    DateTime? endDate,
     CustodyWeekPattern? weekA,
     CustodyWeekPattern? weekB,
     String? handoverTime,
@@ -533,6 +543,9 @@ class CalendarProvider extends ChangeNotifier {
       id: 'demo_schedule_${DateTime.now().millisecondsSinceEpoch}',
       patternType: patternType,
       startDate: DateTime(startDate.year, startDate.month, startDate.day),
+      endDate: endDate == null
+          ? null
+          : DateTime(endDate.year, endDate.month, endDate.day),
       weekA: weekA ?? const CustodyWeekPattern({}),
       weekB: weekB ?? const CustodyWeekPattern({}),
       handoverTime: handoverTime,
@@ -619,6 +632,9 @@ class CalendarProvider extends ChangeNotifier {
     String? handoverTime,
     String? handoverLocation,
   }) async {
+    if (hasLockedSchedule) {
+      throw StateError('schedule_locked');
+    }
     try {
       final updated = await _repository.updateSlotHandover(
         slotId: slotId,

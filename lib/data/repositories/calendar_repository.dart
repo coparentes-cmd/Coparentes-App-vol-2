@@ -329,6 +329,7 @@ class CalendarRepository {
   Future<CustodySchedule> proposeSchedule({
     required CustodySchedulePattern patternType,
     required DateTime startDate,
+    DateTime? endDate,
     CustodyWeekPattern? weekA,
     CustodyWeekPattern? weekB,
     String? handoverTime,
@@ -337,6 +338,7 @@ class CalendarRepository {
     final payload = await _apiClient.postJson('/calendar/schedules', {
       'patternType': custodySchedulePatternToApi(patternType),
       'startDate': calendarDateToApiIso(startDate),
+      if (endDate != null) 'endDate': calendarDateToApiIso(endDate),
       if (weekA != null) 'weekA': weekPatternToApi(weekA),
       if (weekB != null) 'weekB': weekPatternToApi(weekB),
       if (handoverTime != null) 'handoverTime': handoverTime,
