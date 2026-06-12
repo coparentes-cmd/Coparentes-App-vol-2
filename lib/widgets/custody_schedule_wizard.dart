@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/api/app_api_client.dart';
 import '../models/models.dart';
-import '../providers/calendar_provider.dart';
+import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 
 class CustodyScheduleWizard extends StatefulWidget {
@@ -108,55 +109,49 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.82;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottomInset),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              _stepTitle,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            _stepTitle,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SingleChildScrollView(
-                child: switch (_step) {
-                  0 => _buildPatternStep(),
-                  1 => _buildDetailsStep(),
-                  _ => _buildSummaryStep(),
-                },
-              ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: SingleChildScrollView(
+              child: switch (_step) {
+                0 => _buildPatternStep(),
+                1 => _buildDetailsStep(),
+                _ => _buildSummaryStep(),
+              },
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (_step > 0)
-                  TextButton(
-                    onPressed: _isSubmitting ? null : () => setState(() => _step--),
-                    child: const Text('Wstecz'),
-                  ),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: _isSubmitting ? null : _onPrimaryAction,
-                  child: Text(
-                    _step < 2
-                        ? 'Dalej'
-                        : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
-                  ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              if (_step > 0)
+                TextButton(
+                  onPressed: _isSubmitting ? null : () => setState(() => _step--),
+                  child: const Text('Wstecz'),
                 ),
-              ],
-            ),
-          ],
-        ),
+              const Spacer(),
+              ElevatedButton(
+                onPressed: _isSubmitting ? null : _onPrimaryAction,
+                child: Text(
+                  _step < 2
+                      ? 'Dalej'
+                      : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -165,23 +160,26 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _PatternTile(
+        _PatternOption(
           title: 'Co tydzień na zmianę',
           subtitle: 'Cały tydzień u jednego rodzica, potem u drugiego',
-          selected: _pattern == CustodySchedulePattern.weekAlternating,
-          onTap: () => _selectPattern(CustodySchedulePattern.weekAlternating),
+          value: CustodySchedulePattern.weekAlternating,
+          groupValue: _pattern,
+          onChanged: _selectPattern,
         ),
-        _PatternTile(
+        _PatternOption(
           title: 'Co drugi weekend',
           subtitle: 'Tygodnie robocze i weekendy na zmianę',
-          selected: _pattern == CustodySchedulePattern.everyOtherWeekend,
-          onTap: () => _selectPattern(CustodySchedulePattern.everyOtherWeekend),
+          value: CustodySchedulePattern.everyOtherWeekend,
+          groupValue: _pattern,
+          onChanged: _selectPattern,
         ),
-        _PatternTile(
+        _PatternOption(
           title: 'Własny tydzień',
           subtitle: 'Ustaw każdy dzień tygodnia A i B ręcznie',
-          selected: _pattern == CustodySchedulePattern.customWeek,
-          onTap: () => _selectPattern(CustodySchedulePattern.customWeek),
+          value: CustodySchedulePattern.customWeek,
+          groupValue: _pattern,
+          onChanged: _selectPattern,
         ),
       ],
     );
@@ -289,24 +287,44 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
 
     setState(() => _isSubmitting = true);
     try {
-      await context.read<CalendarProvider>().proposeSchedule(
-            patternType: _pattern,
-            startDate: _startDate,
-            weekA: CustodyWeekPattern(_weekA),
-            weekB: CustodyWeekPattern(_weekB),
-            handoverTime: _handoverTimeController.text.trim().isEmpty
-                ? null
-                : _handoverTimeController.text.trim(),
-            handoverLocation: _handoverLocationController.text.trim().isEmpty
-                ? null
-                : _handoverLocationController.text.trim(),
-          );
+      final app = context.read<AppProvider>();
+      final calendar = context.read<CalendarProvider>();
+      final weekA = CustodyWeekPattern(_weekA);
+      final weekB = CustodyWeekPattern(_weekB);
+      final handoverTime = _handoverTimeController.text.trim().isEmpty
+          ? null
+          : _handoverTimeController.text.trim();
+      final handoverLocation = _handoverLocationController.text.trim().isEmpty
+          ? null
+          : _handoverLocationController.text.trim();
+
+      if (app.isDemoMode) {
+        calendar.proposeScheduleDemo(
+          proposedById: app.currentUser?.id ?? 'demo_user',
+          patternType: _pattern,
+          startDate: _startDate,
+          weekA: weekA,
+          weekB: weekB,
+          handoverTime: handoverTime,
+          handoverLocation: handoverLocation,
+        );
+      } else {
+        await calendar.proposeSchedule(
+          patternType: _pattern,
+          startDate: _startDate,
+          weekA: weekA,
+          weekB: weekB,
+          handoverTime: handoverTime,
+          handoverLocation: handoverLocation,
+        );
+      }
+
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nie udało się wysłać grafiku: $error')),
+        SnackBar(content: Text(_scheduleErrorMessage(error))),
       );
     } finally {
       if (mounted) {
@@ -316,79 +334,63 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   }
 }
 
-class _PatternTile extends StatelessWidget {
+class _PatternOption extends StatelessWidget {
   final String title;
   final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
+  final CustodySchedulePattern value;
+  final CustodySchedulePattern groupValue;
+  final ValueChanged<CustodySchedulePattern> onChanged;
 
-  const _PatternTile({
+  const _PatternOption({
     required this.title,
     required this.subtitle,
-    required this.selected,
-    required this.onTap,
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        selected ? AppTheme.accentColor : AppTheme.dividerColor;
+    final selected = value == groupValue;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: selected
             ? AppTheme.accentColor.withValues(alpha: 0.06)
             : Colors.white,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
+          onTap: () => onChanged(value),
           child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: borderColor,
+                color: selected ? AppTheme.accentColor : AppTheme.dividerColor,
                 width: selected ? 2 : 1,
               ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: selected ? AppTheme.accentColor : AppTheme.textHint,
-                  size: 22,
+            child: RadioListTile<CustodySchedulePattern>(
+              value: value,
+              groupValue: groupValue,
+              onChanged: (next) {
+                if (next != null) {
+                  onChanged(next);
+                }
+              },
+              activeColor: AppTheme.accentColor,
+              title: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+              subtitle: Text(
+                subtitle,
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
             ),
           ),
         ),
@@ -508,22 +510,52 @@ class _RoleToggle extends StatelessWidget {
   }
 }
 
+String _scheduleErrorMessage(Object error) {
+  if (error is ApiException) {
+    switch (error.message) {
+      case 'invalid_request':
+        return 'Nieprawidłowe dane grafiku. Sprawdź datę startu i szablon.';
+      case 'schedule_not_allowed':
+        return 'Nie masz uprawnień do zaproponowania grafiku.';
+      case 'invalid_json':
+      case 'invalid_response':
+        return 'Błąd odpowiedzi serwera. Sprawdź, czy backend jest zaktualizowany.';
+      default:
+        if (error.statusCode >= 500) {
+          return 'Błąd serwera (${error.statusCode}). Backend mógł nie dostać migracji bazy.';
+        }
+        return 'Nie udało się wysłać grafiku (${error.message}).';
+    }
+  }
+  return 'Nie udało się wysłać grafiku: $error';
+}
+
 Future<bool?> showCustodyScheduleWizard(BuildContext context) {
-  return showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
-    enableDrag: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  return Navigator.of(context).push<bool>(
+    MaterialPageRoute<bool>(
+      fullscreenDialog: true,
+      builder: (context) => const _CustodyScheduleWizardPage(),
     ),
-    builder: (sheetContext) {
-      final sheetHeight = MediaQuery.sizeOf(sheetContext).height * 0.82;
-      return SizedBox(
-        height: sheetHeight,
-        child: const CustodyScheduleWizard(),
-      );
-    },
   );
+}
+
+class _CustodyScheduleWizardPage extends StatelessWidget {
+  const _CustodyScheduleWizardPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Grafik opieki'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: const SafeArea(
+        child: CustodyScheduleWizard(),
+      ),
+    );
+  }
 }

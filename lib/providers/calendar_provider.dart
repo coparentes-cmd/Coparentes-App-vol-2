@@ -520,6 +520,32 @@ class CalendarProvider extends ChangeNotifier {
     }
   }
 
+  CustodySchedule proposeScheduleDemo({
+    required String proposedById,
+    required CustodySchedulePattern patternType,
+    required DateTime startDate,
+    CustodyWeekPattern? weekA,
+    CustodyWeekPattern? weekB,
+    String? handoverTime,
+    String? handoverLocation,
+  }) {
+    final schedule = CustodySchedule(
+      id: 'demo_schedule_${DateTime.now().millisecondsSinceEpoch}',
+      patternType: patternType,
+      startDate: DateTime(startDate.year, startDate.month, startDate.day),
+      weekA: weekA ?? const CustodyWeekPattern({}),
+      weekB: weekB ?? const CustodyWeekPattern({}),
+      handoverTime: handoverTime,
+      handoverLocation: handoverLocation,
+      status: CustodyScheduleStatus.pendingApproval,
+      proposedById: proposedById,
+      createdAt: DateTime.now(),
+    );
+    _custodySchedule = schedule;
+    notifyListeners();
+    return schedule;
+  }
+
   Future<void> respondToSchedule({
     required String scheduleId,
     required bool approve,
