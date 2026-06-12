@@ -17,13 +17,13 @@ class DocumentsProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> load() async {
+  Future<void> load({String? viewerUserId}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final documents = await _repository.getDocuments();
+      final documents = await _repository.getDocuments(viewerUserId: viewerUserId);
       _documents
         ..clear()
         ..addAll(documents);
@@ -41,6 +41,9 @@ class DocumentsProvider extends ChangeNotifier {
     String? childId,
     String? fileUrl,
     String? fileName,
+    String? contentBase64,
+    String? mimeType,
+    String? uploadedById,
   }) async {
     try {
       final created = await _repository.createDocument(
@@ -49,13 +52,25 @@ class DocumentsProvider extends ChangeNotifier {
         childId: childId,
         fileUrl: fileUrl,
         fileName: fileName ?? title,
-        mimeType: 'application/octet-stream',
+        mimeType: mimeType ?? 'application/octet-stream',
+        contentBase64: contentBase64,
+        uploadedById: uploadedById,
       );
       _documents.insert(0, created);
       notifyListeners();
       return created;
     } catch (_) {
       _error = 'Nie udało się dodać dokumentu.';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> downloadDocument(String documentId) async {
+    try {
+      return await _repository.downloadDocument(documentId);
+    } catch (_) {
+      _error = 'Nie udało się pobrać dokumentu.';
       notifyListeners();
       return null;
     }

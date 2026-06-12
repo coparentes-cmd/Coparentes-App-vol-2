@@ -70,7 +70,7 @@ class _ObserverDashboardState extends State<ObserverDashboard> {
           BottomNavigationBarItem(
             icon: Icon(Icons.folder_open_outlined),
             activeIcon: Icon(Icons.folder_open),
-            label: 'Documents',
+            label: 'Dokumenty',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.folder_special_outlined),

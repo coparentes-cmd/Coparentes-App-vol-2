@@ -10,6 +10,7 @@ FamilyDocument familyDocumentFromJson(Map<String, dynamic> json) {
     fileName: json['fileName'] as String?,
     mimeType: json['mimeType'] as String?,
     fileUrl: json['fileUrl'] as String?,
+    uploadedById: json['uploadedBy'] as String? ?? json['uploadedById'] as String?,
     sizeBytes: json['sizeBytes'] as int? ?? 0,
     hasFile: json['hasFile'] as bool? ?? false,
     createdAt: DateTime.parse(json['createdAt'] as String),
@@ -27,11 +28,28 @@ Map<String, dynamic> familyDocumentToJson(FamilyDocument document) {
     'fileName': document.fileName,
     'mimeType': document.mimeType,
     'fileUrl': document.fileUrl,
+    'uploadedBy': document.uploadedById,
     'sizeBytes': document.sizeBytes,
     'hasFile': document.hasFile,
     'createdAt': document.createdAt.toIso8601String(),
     'updatedAt': document.updatedAt.toIso8601String(),
   };
+}
+
+List<FamilyDocument> filterDocumentsForViewer(
+  List<FamilyDocument> documents,
+  String? viewerUserId,
+) {
+  if (viewerUserId == null) {
+    return documents;
+  }
+
+  return documents
+      .where(
+        (document) =>
+            !document.isPrivate || document.uploadedById == viewerUserId,
+      )
+      .toList();
 }
 
 EmailInvite emailInviteFromJson(Map<String, dynamic> json) {

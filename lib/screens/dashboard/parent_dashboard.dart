@@ -159,7 +159,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
             const BottomNavigationBarItem(
               icon: Icon(Icons.folder_open_outlined),
               activeIcon: Icon(Icons.folder_open),
-              label: 'Documents',
+              label: 'Dokumenty',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.folder_special_outlined),

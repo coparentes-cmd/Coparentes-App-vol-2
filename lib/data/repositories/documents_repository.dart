@@ -2,6 +2,7 @@ import '../../models/models.dart';
 import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../serializers/document_serializers.dart';
+import '../../services/document_attachment_service.dart';
 
 class DocumentsRepository {
   final AppApiClient _apiClient;
@@ -13,22 +14,25 @@ class DocumentsRepository {
   })  : _apiClient = apiClient,
         _offlineStore = offlineStore;
 
-  Future<List<FamilyDocument>> getDocuments() async {
+  Future<List<FamilyDocument>> getDocuments({String? viewerUserId}) async {
     await syncPendingActions();
 
     try {
       final payload = await _apiClient.getJson('/documents');
-      final documents = (payload['documents'] as List<dynamic>)
-          .map(
-            (item) => familyDocumentFromJson(
-              Map<String, dynamic>.from(item as Map),
-            ),
-          )
-          .toList();
+      final documents = filterDocumentsForViewer(
+        (payload['documents'] as List<dynamic>)
+            .map(
+              (item) => familyDocumentFromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            )
+            .toList(),
+        viewerUserId,
+      );
       await _saveDocuments(documents);
       return documents;
     } catch (error) {
-      final cached = _getCachedDocuments();
+      final cached = _getCachedDocuments(viewerUserId: viewerUserId);
       if (cached.isNotEmpty) {
         return cached;
       }
@@ -44,6 +48,7 @@ class DocumentsRepository {
     String? mimeType,
     String? fileUrl,
     String? contentBase64,
+    String? uploadedById,
   }) async {
     try {
       final payload = await _apiClient.postJson('/documents', {
@@ -64,6 +69,9 @@ class DocumentsRepository {
       }
 
       final now = DateTime.now();
+      final fileBytesLength = contentBase64 == null
+          ? 0
+          : decodeDocumentBase64(contentBase64).length;
       final local = FamilyDocument(
         id: 'local_doc_${now.microsecondsSinceEpoch}',
         title: title,
@@ -72,6 +80,8 @@ class DocumentsRepository {
         fileName: fileName,
         mimeType: mimeType,
         fileUrl: fileUrl,
+        uploadedById: uploadedById,
+        sizeBytes: fileBytesLength,
         hasFile: fileUrl != null || contentBase64 != null,
         createdAt: now,
         updatedAt: now,
@@ -105,7 +115,10 @@ class DocumentsRepository {
       return;
     }
 
-    final cachedDocuments = _getCachedDocuments();
+    final cachedDocuments = _offlineStore
+        .getDocuments()
+        .map(familyDocumentFromJson)
+        .toList();
     final rewrittenQueue = <Map<String, dynamic>>[];
     var networkFailed = false;
 
@@ -155,12 +168,15 @@ class DocumentsRepository {
     await _offlineStore.savePendingActions(rewrittenQueue);
   }
 
-  List<FamilyDocument> _getCachedDocuments() {
-    return _offlineStore
-        .getDocuments()
-        .map(familyDocumentFromJson)
-        .toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  List<FamilyDocument> _getCachedDocuments({String? viewerUserId}) {
+    return filterDocumentsForViewer(
+      _offlineStore
+          .getDocuments()
+          .map(familyDocumentFromJson)
+          .toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)),
+      viewerUserId,
+    );
   }
 
   Future<void> _saveDocuments(List<FamilyDocument> documents) {
@@ -170,7 +186,10 @@ class DocumentsRepository {
   }
 
   Future<void> _upsertDocument(FamilyDocument document) async {
-    final cached = _getCachedDocuments();
+    final cached = _offlineStore
+        .getDocuments()
+        .map(familyDocumentFromJson)
+        .toList();
     final index = cached.indexWhere((item) => item.id == document.id);
     if (index >= 0) {
       cached[index] = document;

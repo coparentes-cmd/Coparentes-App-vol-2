@@ -151,7 +151,9 @@ class CoparentesApp extends StatelessWidget {
               await context.read<ExportsProvider>().loadExports();
               await context.read<CalendarProvider>().load(silent: true);
               await context.read<FinanceProvider>().load(silent: true);
-              await context.read<DocumentsProvider>().load();
+              await context.read<DocumentsProvider>().load(
+                    viewerUserId: appProvider.currentUser?.id,
+                  );
             },
           ),
         ),
@@ -280,7 +282,7 @@ class _AppGateState extends State<_AppGate> {
         await offlineProvider.refreshStatus();
         await calendarProvider.load();
         await financeProvider.load();
-        await documentsProvider.load();
+        await documentsProvider.load(viewerUserId: appProvider.currentUser?.id);
       }
     });
   }

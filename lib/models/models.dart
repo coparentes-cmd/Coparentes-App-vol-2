@@ -430,6 +430,8 @@ class Expense {
 // ─── Documents ───────────────────────────────────────────────────────────────
 
 class FamilyDocument {
+  static const privateCategory = 'Private';
+
   final String id;
   final String title;
   final String category;
@@ -438,6 +440,7 @@ class FamilyDocument {
   final String? fileName;
   final String? mimeType;
   final String? fileUrl;
+  final String? uploadedById;
   final int sizeBytes;
   final bool hasFile;
   final DateTime createdAt;
@@ -452,11 +455,14 @@ class FamilyDocument {
     this.fileName,
     this.mimeType,
     this.fileUrl,
+    this.uploadedById,
     this.sizeBytes = 0,
     this.hasFile = false,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  bool get isPrivate => category == privateCategory;
 }
 
 class EmailInvite {
