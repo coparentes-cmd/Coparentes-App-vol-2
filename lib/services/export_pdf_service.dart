@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -11,7 +12,42 @@ class ExportPdfService {
   static final _dateFormat = DateFormat('dd.MM.yyyy');
   static final _dateTimeFormat = DateFormat('dd.MM.yyyy HH:mm');
 
+  static pw.Font? _regularFont;
+  static pw.Font? _boldFont;
+  static pw.ThemeData? _theme;
+
+  static Future<pw.ThemeData> _loadTheme() async {
+    if (_theme != null) {
+      return _theme!;
+    }
+
+    final regularData =
+        await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final boldData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+    _regularFont = pw.Font.ttf(regularData);
+    _boldFont = pw.Font.ttf(boldData);
+    _theme = pw.ThemeData.withFont(
+      base: _regularFont!,
+      bold: _boldFont!,
+    );
+    return _theme!;
+  }
+
+  static pw.TextStyle _textStyle({
+    double fontSize = 12,
+    bool bold = false,
+    PdfColor? color,
+  }) {
+    return pw.TextStyle(
+      font: bold ? _boldFont : _regularFont,
+      fontSize: fontSize,
+      fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+      color: color,
+    );
+  }
+
   static Future<Uint8List> buildPdf(Map<String, dynamic> downloadResponse) async {
+    final theme = await _loadTheme();
     final payload = Map<String, dynamic>.from(
       downloadResponse['payload'] as Map? ?? const {},
     );
@@ -34,6 +70,7 @@ class ExportPdfService {
 
     pdf.addPage(
       pw.MultiPage(
+        theme: theme,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
         build: (context) {
@@ -42,9 +79,9 @@ class ExportPdfService {
               level: 0,
               child: pw.Text(
                 'Coparentes',
-                style: pw.TextStyle(
+                style: _textStyle(
                   fontSize: 22,
-                  fontWeight: pw.FontWeight.bold,
+                  bold: true,
                   color: PdfColors.blue800,
                 ),
               ),
@@ -52,10 +89,7 @@ class ExportPdfService {
             pw.SizedBox(height: 4),
             pw.Text(
               _typeLabel(type),
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: _textStyle(fontSize: 16, bold: true),
             ),
             pw.SizedBox(height: 12),
             _infoRow('Rodzina', workspaceName),
@@ -76,7 +110,7 @@ class ExportPdfService {
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
               'Strona ${context.pageNumber} / ${context.pagesCount}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+              style: _textStyle(fontSize: 9, color: PdfColors.grey600),
             ),
           );
         },
@@ -172,7 +206,7 @@ class ExportPdfService {
       return [
         pw.Text(
           'Brak danych w wybranym okresie.',
-          style: const pw.TextStyle(color: PdfColors.grey700),
+          style: _textStyle(color: PdfColors.grey700),
         ),
       ];
     }
@@ -203,21 +237,21 @@ class ExportPdfService {
       return [
         pw.Text(
           'Wiadomości',
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          style: _textStyle(fontSize: 14, bold: true),
         ),
         pw.SizedBox(height: 8),
         ..._buildMessageSections(messages.isEmpty ? items : messages),
         pw.SizedBox(height: 16),
         pw.Text(
           'Kalendarz',
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          style: _textStyle(fontSize: 14, bold: true),
         ),
         pw.SizedBox(height: 8),
         ..._buildCalendarSections(calendar),
         pw.SizedBox(height: 16),
         pw.Text(
           'Finanse',
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+          style: _textStyle(fontSize: 14, bold: true),
         ),
         pw.SizedBox(height: 8),
         ..._buildFinanceSections(finances),
@@ -245,15 +279,12 @@ class ExportPdfService {
               children: [
                 pw.Text(
                   item['subject'] as String? ?? 'Wątek',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  style: _textStyle(bold: true),
                 ),
                 if (item['category'] != null)
                   pw.Text(
                     'Kategoria: ${item['category']}',
-                    style: const pw.TextStyle(
-                      fontSize: 10,
-                      color: PdfColors.grey700,
-                    ),
+                    style: _textStyle(fontSize: 10, color: PdfColors.grey700),
                   ),
                 pw.SizedBox(height: 8),
                 ...((item['messages'] as List<dynamic>? ?? const [])
@@ -280,17 +311,20 @@ class ExportPdfService {
         children: [
           pw.Text(
             '${message['senderName'] ?? 'Nadawca'} • ${_formatDateTime(sentAt)}',
-            style: pw.TextStyle(
+            style: _textStyle(
               fontSize: 10,
-              fontWeight: pw.FontWeight.bold,
+              bold: true,
               color: PdfColors.blue800,
             ),
           ),
-          pw.Text(message['content'] as String? ?? ''),
+          pw.Text(
+            message['content'] as String? ?? '',
+            style: _textStyle(fontSize: 10),
+          ),
           if ((message['attachments'] as List<dynamic>? ?? const []).isNotEmpty)
             pw.Text(
               'Załączniki: ${(message['attachments'] as List).length}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+              style: _textStyle(fontSize: 9, color: PdfColors.grey700),
             ),
         ],
       ),
@@ -302,7 +336,7 @@ class ExportPdfService {
       return [
         pw.Text(
           'Brak wpisów kalendarza.',
-          style: const pw.TextStyle(color: PdfColors.grey700),
+          style: _textStyle(color: PdfColors.grey700),
         ),
       ];
     }
@@ -352,7 +386,7 @@ class ExportPdfService {
       return [
         pw.Text(
           'Brak wydatków.',
-          style: const pw.TextStyle(color: PdfColors.grey700),
+          style: _textStyle(color: PdfColors.grey700),
         ),
       ];
     }
@@ -360,8 +394,8 @@ class ExportPdfService {
     return [
       pw.TableHelper.fromTextArray(
         headers: ['Data', 'Tytuł', 'Kwota', 'Kategoria', 'Status'],
-        headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
-        cellStyle: const pw.TextStyle(fontSize: 10),
+        headerStyle: _textStyle(bold: true, fontSize: 10),
+        cellStyle: _textStyle(fontSize: 10),
         data: items.map((item) {
           final amount = item['amount'];
           final currency = item['currency'] as String? ?? 'PLN';
@@ -392,11 +426,11 @@ class ExportPdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text(title, style: _textStyle(bold: true)),
           ...lines.map(
             (line) => pw.Padding(
               padding: const pw.EdgeInsets.only(top: 2),
-              child: pw.Text(line, style: const pw.TextStyle(fontSize: 10)),
+              child: pw.Text(line, style: _textStyle(fontSize: 10)),
             ),
           ),
         ],
@@ -407,7 +441,7 @@ class ExportPdfService {
   static pw.Widget _genericItem(Map<String, dynamic> item) {
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 8),
-      child: pw.Text(item.toString(), style: const pw.TextStyle(fontSize: 10)),
+      child: pw.Text(item.toString(), style: _textStyle(fontSize: 10)),
     );
   }
 
@@ -419,9 +453,9 @@ class ExportPdfService {
           children: [
             pw.TextSpan(
               text: '$label: ',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              style: _textStyle(bold: true),
             ),
-            pw.TextSpan(text: value),
+            pw.TextSpan(text: value, style: _textStyle()),
           ],
         ),
       ),

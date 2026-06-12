@@ -35,3 +35,5 @@ flutter:
   assets:
     - assets/icon/
     - assets/branding/
+    - assets/fonts/NotoSans-Regular.ttf
+    - assets/fonts/NotoSans-Bold.ttf
