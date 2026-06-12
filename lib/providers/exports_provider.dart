@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../data/repositories/export_repository.dart';
 import '../models/models.dart';
+import '../services/export_pdf_service.dart';
+import '../utils/file_download.dart';
 
 class ExportsProvider extends ChangeNotifier {
   final ExportRepository _repository;
@@ -71,6 +73,43 @@ class ExportsProvider extends ChangeNotifier {
       _error = error.toString();
       notifyListeners();
       return null;
+    }
+  }
+
+  Future<bool> saveExportAsPdf(ExportJob job) async {
+    _error = null;
+    notifyListeners();
+
+    if (job.status != 'completed') {
+      _error = 'Eksport nie jest jeszcze gotowy.';
+      notifyListeners();
+      return false;
+    }
+
+    Map<String, dynamic>? data = await downloadExport(job.id);
+    if (data == null && job.id.startsWith('export_demo_')) {
+      data = ExportPdfService.demoDownloadPayload(job);
+      _error = null;
+    }
+
+    if (data == null || data['payload'] == null) {
+      _error ??= 'Nie udało się pobrać danych eksportu.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final bytes = await ExportPdfService.buildPdf(data);
+      await saveBytesAsFile(
+        fileName: ExportPdfService.fileNameForJob(job),
+        mimeType: 'application/pdf',
+        bytes: bytes,
+      );
+      return true;
+    } catch (error) {
+      _error = 'Nie udało się zapisać PDF: $error';
+      notifyListeners();
+      return false;
     }
   }
 

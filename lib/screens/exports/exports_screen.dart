@@ -34,62 +34,12 @@ class _ExportsScreenState extends State<ExportsScreen> {
     final exportsProvider = context.watch<ExportsProvider>();
 
     return ParentTabScaffold(
-      title: 'Eksporty dowodowe',
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showInfo(context),
-        ),
-      ],
+      title: 'Eksporty',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // eIDAS notice
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF90CAF9)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.gavel, color: Color(0xFF1565C0), size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Dowodowość w Polsce (eIDAS)',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1565C0),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Eksporty coparentes zawieraja metadane i manifest integralnosci SHA-256. To pomaga uporzadkowac material roboczy dla prawnika lub mediatora, ale nie stanowi gwarancji procesowej.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF1565C0)),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Ocena przydatnosci i wiarygodnosci materialu zawsze nalezy do organu lub profesjonalisty prowadzacego sprawe.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF1565C0),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
             // New export
             const Text(
               'Nowy eksport',
@@ -157,61 +107,19 @@ class _ExportsScreenState extends State<ExportsScreen> {
 
     if (!context.mounted || created == null) return;
 
+    final saved = await context.read<ExportsProvider>().saveExportAsPdf(created);
+
+    if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Pakiet "${created.typeLabel}" wygenerowany z manifestem SHA-256',
+          saved
+              ? 'Pakiet "${created.typeLabel}" zapisany jako PDF.'
+              : context.read<ExportsProvider>().error ??
+                  'Eksport utworzony, ale nie udało się zapisać PDF.',
         ),
-        backgroundColor: AppTheme.successColor,
-      ),
-    );
-  }
-
-  void _showInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('O eksportach dowodowych'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Format eksportu:',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              SizedBox(height: 4),
-              Text('• JSON dla MVP'),
-              Text('• Zakres dat i typ pakietu'),
-              Text('• Manifest integralnosci'),
-              SizedBox(height: 12),
-              Text(
-                'Manifest zawiera:',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              SizedBox(height: 4),
-              Text('• SHA-256 calego payloadu'),
-              Text('• Id eksportu i czas generacji'),
-              Text('• Metadane: czas, użytkownik, wersja'),
-              SizedBox(height: 12),
-              Text(
-                'Jak przekazać prawnikowi:',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Pobierz paczke robocza i przekaz prawnikowi albo mediatorowi. W MVP eksport sluzy do porzadkowania materialu, a nie do skladania obietnic procesowych.',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+        backgroundColor: saved ? AppTheme.successColor : AppTheme.errorColor,
       ),
     );
   }
@@ -269,7 +177,7 @@ class _ExportTypeCard extends StatelessWidget {
               if (type == ExportType.fullPack) ...[
                 const SizedBox(height: 2),
                 const Text(
-                  'PDF + ZIP + manifest',
+                  'PDF',
                   style: TextStyle(
                     fontSize: 10,
                     color: AppTheme.textSecondary,
@@ -339,62 +247,40 @@ class _ExportJobCard extends StatelessWidget {
                 _ExportStatusChip(status: job.status),
               ],
             ),
-            if (job.manifestHash != null) ...[
-              const SizedBox(height: 10),
-              HashIntegrityFooter(hash: job.manifestHash!),
-            ],
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.verified, size: 14),
-                    label: const Text(
-                      'Weryfikuj',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Manifest ${job.manifestHash ?? 'niedostepny'} jest zapisany przy eksporcie.',
-                          ),
-                          backgroundColor: AppTheme.successColor,
-                        ),
-                      );
-                    },
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 14),
+                label: const Text(
+                  'Pobierz PDF',
+                  style: TextStyle(fontSize: 12),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.download, size: 14),
-                    label: const Text(
-                      'Pobierz',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    onPressed: () async {
-                      final payload = await context
-                          .read<ExportsProvider>()
-                          .downloadExport(job.id);
-                      if (!context.mounted || payload == null) {
-                        return;
-                      }
+                onPressed: job.status == 'completed'
+                    ? () async {
+                        final saved = await context
+                            .read<ExportsProvider>()
+                            .saveExportAsPdf(job);
+                        if (!context.mounted) {
+                          return;
+                        }
 
-                      final itemCount =
-                          (payload['payload']?['items'] as List<dynamic>? ?? [])
-                              .length;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Eksport gotowy: $itemCount element(ow) w paczce.',
+                        final provider = context.read<ExportsProvider>();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              saved
+                                  ? 'PDF zapisany na urządzeniu.'
+                                  : provider.error ??
+                                      'Nie udało się zapisać PDF.',
+                            ),
+                            backgroundColor: saved
+                                ? AppTheme.successColor
+                                : AppTheme.errorColor,
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                        );
+                      }
+                    : null,
+              ),
             ),
           ],
         ),
@@ -458,7 +344,6 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
   DateTime _fromDate = DateTime.now().subtract(const Duration(days: 90));
   DateTime _toDate = DateTime.now();
   bool _includeAttachments = true;
-  bool _includeManifest = true;
   bool _isGenerating = false;
 
   @override
@@ -514,15 +399,6 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
             activeThumbColor: AppTheme.primaryTeal,
             contentPadding: EdgeInsets.zero,
           ),
-          SwitchListTile(
-            title: const Text('Manifest integralności SHA-256'),
-            subtitle: const Text('Wymagany do weryfikacji dowodowej'),
-            value: _includeManifest,
-            onChanged: (v) => setState(() => _includeManifest = v),
-            activeThumbColor: AppTheme.primaryTeal,
-            contentPadding: EdgeInsets.zero,
-          ),
-
           const SizedBox(height: 16),
 
           SizedBox(

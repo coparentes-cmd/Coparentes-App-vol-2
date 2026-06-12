@@ -515,7 +515,7 @@ class ExportJob {
       case ExportType.finances:
         return 'Finanse';
       case ExportType.fullPack:
-        return 'Pełny pakiet dowodowy';
+        return 'Pełny pakiet';
     }
   }
 
@@ -544,7 +544,7 @@ extension ExportTypeExtension on ExportType {
       case ExportType.finances:
         return 'Finanse';
       case ExportType.fullPack:
-        return 'Pełny pakiet dowodowy';
+        return 'Pełny pakiet';
     }
   }
 

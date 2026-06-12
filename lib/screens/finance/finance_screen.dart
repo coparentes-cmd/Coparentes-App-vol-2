@@ -903,19 +903,28 @@ class _FinanceScreenState extends State<FinanceScreen>
                   ),
                   trailing: job.status == 'completed'
                       ? IconButton(
-                          icon: const Icon(Icons.download),
+                          icon: const Icon(Icons.picture_as_pdf_outlined),
                           onPressed: () async {
-                            final data = await context
+                            final saved = await context
                                 .read<ExportsProvider>()
-                                .downloadExport(job.id);
-                            if (context.mounted && data != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Eksport pobrany.'),
-                                  backgroundColor: AppTheme.successColor,
-                                ),
-                              );
+                                .saveExportAsPdf(job);
+                            if (!context.mounted) {
+                              return;
                             }
+                            final provider = context.read<ExportsProvider>();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  saved
+                                      ? 'PDF zapisany na urządzeniu.'
+                                      : provider.error ??
+                                          'Nie udało się zapisać PDF.',
+                                ),
+                                backgroundColor: saved
+                                    ? AppTheme.successColor
+                                    : AppTheme.errorColor,
+                              ),
+                            );
                           },
                         )
                       : null,
@@ -937,14 +946,23 @@ class _FinanceScreenState extends State<FinanceScreen>
     );
     if (!context.mounted) return;
     if (job != null) {
+      final saved = job.status == 'completed'
+          ? await context.read<ExportsProvider>().saveExportAsPdf(job)
+          : false;
+      if (!context.mounted) return;
+      final provider = context.read<ExportsProvider>();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            job.status == 'completed'
-                ? 'Eksport finansów gotowy do pobrania.'
-                : 'Eksport finansów dodany do kolejki.',
+            saved
+                ? 'Raport finansowy zapisany jako PDF.'
+                : job.status == 'completed'
+                    ? provider.error ?? 'Nie udało się zapisać PDF.'
+                    : 'Eksport finansów dodany do kolejki.',
           ),
-          backgroundColor: AppTheme.successColor,
+          backgroundColor: saved || job.status != 'completed'
+              ? AppTheme.successColor
+              : AppTheme.errorColor,
         ),
       );
     }
@@ -996,14 +1014,23 @@ class _FinanceScreenState extends State<FinanceScreen>
     );
     if (!context.mounted) return;
     if (job != null) {
+      final saved = job.status == 'completed'
+          ? await context.read<ExportsProvider>().saveExportAsPdf(job)
+          : false;
+      if (!context.mounted) return;
+      final provider = context.read<ExportsProvider>();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            job.status == 'completed'
-                ? 'Raport finansowy PDF wygenerowany.'
-                : 'Raport finansowy dodany do kolejki eksportów.',
+            saved
+                ? 'Raport finansowy zapisany jako PDF.'
+                : job.status == 'completed'
+                    ? provider.error ?? 'Nie udało się zapisać PDF.'
+                    : 'Raport finansowy dodany do kolejki eksportów.',
           ),
-          backgroundColor: AppTheme.successColor,
+          backgroundColor: saved || job.status != 'completed'
+              ? AppTheme.successColor
+              : AppTheme.errorColor,
         ),
       );
     } else {

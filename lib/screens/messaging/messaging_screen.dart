@@ -1328,12 +1328,24 @@ class _ThreadScreenState extends State<ThreadScreen> {
                 return;
               }
 
+              final saved =
+                  await context.read<ExportsProvider>().saveExportAsPdf(created);
+
+              if (!context.mounted) {
+                return;
+              }
+
+              final provider = context.read<ExportsProvider>();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Eksport ${created.typeLabel} zostal wygenerowany.',
+                    saved
+                        ? 'Eksport wątku zapisany jako PDF.'
+                        : provider.error ??
+                            'Eksport utworzony, ale nie udało się zapisać PDF.',
                   ),
-                  backgroundColor: AppTheme.successColor,
+                  backgroundColor:
+                      saved ? AppTheme.successColor : AppTheme.errorColor,
                 ),
               );
             },
