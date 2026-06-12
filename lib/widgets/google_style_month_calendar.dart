@@ -7,8 +7,18 @@ import '../utils/calendar_date_utils.dart';
 
 const _maxVisibleEvents = 3;
 
+DateTime _monthStart(DateTime date) => DateTime(date.year, date.month, 1);
+
+int _monthIndex(DateTime from, DateTime to) {
+  return (to.year - from.year) * 12 + (to.month - from.month);
+}
+
+DateTime _monthByIndex(DateTime firstMonth, int index) {
+  return DateTime(firstMonth.year, firstMonth.month + index, 1);
+}
+
 /// Month grid styled like Google Calendar — day cells show event chips inline.
-class GoogleStyleMonthCalendar extends StatelessWidget {
+class GoogleStyleMonthCalendar extends StatefulWidget {
   final DateTime focusedDay;
   final DateTime selectedDay;
   final Color accentColor;
@@ -37,19 +47,74 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
   });
 
   @override
+  State<GoogleStyleMonthCalendar> createState() => _GoogleStyleMonthCalendarState();
+}
+
+class _GoogleStyleMonthCalendarState extends State<GoogleStyleMonthCalendar> {
+  late final DateTime _firstMonth;
+  late final DateTime _lastMonth;
+  late final int _monthCount;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _firstMonth = _monthStart(
+      DateTime.now().subtract(const Duration(days: 365)),
+    );
+    _lastMonth = _monthStart(
+      DateTime.now().add(const Duration(days: 730)),
+    );
+    _monthCount = _monthIndex(_firstMonth, _lastMonth) + 1;
+    _pageController = PageController(
+      initialPage: _monthIndex(_firstMonth, _monthStart(widget.focusedDay)),
+    );
+  }
+
+  @override
+  void didUpdateWidget(GoogleStyleMonthCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldMonth = _monthStart(oldWidget.focusedDay);
+    final newMonth = _monthStart(widget.focusedDay);
+    if (oldMonth == newMonth || !_pageController.hasClients) {
+      return;
+    }
+
+    final targetPage = _monthIndex(_firstMonth, newMonth);
+    final currentPage = _pageController.page?.round();
+    if (currentPage != targetPage) {
+      _pageController.jumpToPage(targetPage);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onVerticalPageChanged(int index) {
+    final month = _monthByIndex(_firstMonth, index);
+    final focusedMonth = _monthStart(widget.focusedDay);
+    if (focusedMonth.year != month.year || focusedMonth.month != month.month) {
+      widget.onMonthChanged(month);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _MonthHeader(
-          focusedDay: focusedDay,
-          onPrevious: () => onMonthChanged(
-            DateTime(focusedDay.year, focusedDay.month - 1, 1),
+          focusedDay: widget.focusedDay,
+          onPrevious: () => widget.onMonthChanged(
+            DateTime(widget.focusedDay.year, widget.focusedDay.month - 1, 1),
           ),
-          onNext: () => onMonthChanged(
-            DateTime(focusedDay.year, focusedDay.month + 1, 1),
+          onNext: () => widget.onMonthChanged(
+            DateTime(widget.focusedDay.year, widget.focusedDay.month + 1, 1),
           ),
-          onTodayPressed: onTodayPressed,
+          onTodayPressed: widget.onTodayPressed,
         ),
         Expanded(
           child: DecoratedBox(
@@ -60,97 +125,144 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                 bottom: BorderSide(color: AppTheme.dividerColor),
               ),
             ),
-            child: TableCalendar<void>(
-              firstDay: DateTime.now().subtract(const Duration(days: 365)),
-              lastDay: DateTime.now().add(const Duration(days: 730)),
-              focusedDay: focusedDay,
-              selectedDayPredicate: (day) => isSameDay(day, selectedDay),
-              locale: 'pl_PL',
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              availableGestures: AvailableGestures.horizontalSwipe,
-              pageAnimationEnabled: true,
-              sixWeekMonthsEnforced: true,
-              daysOfWeekHeight: 30,
-              rowHeight: 96,
-              onDaySelected: (selected, focused) => onDaySelected(selected),
-              onPageChanged: onMonthChanged,
-              headerVisible: false,
-              calendarBuilders: CalendarBuilders<void>(
-                defaultBuilder: (context, day, focused) => _DayCell(
-                  day: day,
-                  isToday: isSameDay(day, DateTime.now()),
-                  isSelected: isSameDay(day, selectedDay),
-                  isOutside: day.month != focusedDay.month,
-                  slots: getSlotsForDay(day),
-                  events: getEventsForDay(day),
-                  accentColor: accentColor,
-                  onDoubleTap: onDayDoubleTap,
-                  isException: isExceptionDay?.call(day) ?? false,
-                  hasPending: hasPendingException?.call(day) ?? false,
-                ),
-                todayBuilder: (context, day, focused) => _DayCell(
-                  day: day,
-                  isToday: true,
-                  isSelected: isSameDay(day, selectedDay),
-                  isOutside: day.month != focusedDay.month,
-                  slots: getSlotsForDay(day),
-                  events: getEventsForDay(day),
-                  accentColor: accentColor,
-                  onDoubleTap: onDayDoubleTap,
-                  isException: isExceptionDay?.call(day) ?? false,
-                  hasPending: hasPendingException?.call(day) ?? false,
-                ),
-                selectedBuilder: (context, day, focused) => _DayCell(
-                  day: day,
-                  isToday: isSameDay(day, DateTime.now()),
-                  isSelected: true,
-                  isOutside: day.month != focusedDay.month,
-                  slots: getSlotsForDay(day),
-                  events: getEventsForDay(day),
-                  accentColor: accentColor,
-                  onDoubleTap: onDayDoubleTap,
-                  isException: isExceptionDay?.call(day) ?? false,
-                  hasPending: hasPendingException?.call(day) ?? false,
-                ),
-                outsideBuilder: (context, day, focused) => _DayCell(
-                  day: day,
-                  isToday: isSameDay(day, DateTime.now()),
-                  isSelected: isSameDay(day, selectedDay),
-                  isOutside: true,
-                  slots: getSlotsForDay(day),
-                  events: getEventsForDay(day),
-                  accentColor: accentColor,
-                  onDoubleTap: onDayDoubleTap,
-                  isException: isExceptionDay?.call(day) ?? false,
-                  hasPending: hasPendingException?.call(day) ?? false,
-                ),
-              ),
-              calendarStyle: CalendarStyle(
-                cellMargin: EdgeInsets.zero,
-                cellPadding: EdgeInsets.zero,
-                tablePadding: EdgeInsets.zero,
-                tableBorder: const TableBorder(
-                  horizontalInside: BorderSide(color: AppTheme.dividerColor, width: 0.5),
-                  verticalInside: BorderSide(color: AppTheme.dividerColor, width: 0.5),
-                ),
-                outsideDaysVisible: true,
-              ),
-              daysOfWeekStyle: const DaysOfWeekStyle(
-                weekdayStyle: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
-                ),
-                weekendStyle: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
+            child: PageView.builder(
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              onPageChanged: _onVerticalPageChanged,
+              itemCount: _monthCount,
+              itemBuilder: (context, index) {
+                final month = _monthByIndex(_firstMonth, index);
+                return _MonthGrid(
+                  month: month,
+                  selectedDay: widget.selectedDay,
+                  accentColor: widget.accentColor,
+                  getSlotsForDay: widget.getSlotsForDay,
+                  getEventsForDay: widget.getEventsForDay,
+                  isExceptionDay: widget.isExceptionDay,
+                  hasPendingException: widget.hasPendingException,
+                  onDaySelected: widget.onDaySelected,
+                  onDayDoubleTap: widget.onDayDoubleTap,
+                );
+              },
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MonthGrid extends StatelessWidget {
+  final DateTime month;
+  final DateTime selectedDay;
+  final Color accentColor;
+  final List<CustodySlot> Function(DateTime day) getSlotsForDay;
+  final List<CalendarEvent> Function(DateTime day) getEventsForDay;
+  final bool Function(DateTime day)? isExceptionDay;
+  final bool Function(DateTime day)? hasPendingException;
+  final ValueChanged<DateTime> onDaySelected;
+  final ValueChanged<DateTime>? onDayDoubleTap;
+
+  const _MonthGrid({
+    required this.month,
+    required this.selectedDay,
+    required this.accentColor,
+    required this.getSlotsForDay,
+    required this.getEventsForDay,
+    this.isExceptionDay,
+    this.hasPendingException,
+    required this.onDaySelected,
+    this.onDayDoubleTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TableCalendar<void>(
+      firstDay: DateTime.now().subtract(const Duration(days: 365)),
+      lastDay: DateTime.now().add(const Duration(days: 730)),
+      focusedDay: month,
+      selectedDayPredicate: (day) => isSameDay(day, selectedDay),
+      locale: 'pl_PL',
+      startingDayOfWeek: StartingDayOfWeek.monday,
+      availableGestures: AvailableGestures.none,
+      pageAnimationEnabled: false,
+      sixWeekMonthsEnforced: true,
+      daysOfWeekHeight: 30,
+      rowHeight: 96,
+      onDaySelected: (selected, focused) => onDaySelected(selected),
+      headerVisible: false,
+      calendarBuilders: CalendarBuilders<void>(
+        defaultBuilder: (context, day, focused) => _DayCell(
+          day: day,
+          isToday: isSameDay(day, DateTime.now()),
+          isSelected: isSameDay(day, selectedDay),
+          isOutside: day.month != month.month,
+          slots: getSlotsForDay(day),
+          events: getEventsForDay(day),
+          accentColor: accentColor,
+          onDoubleTap: onDayDoubleTap,
+          isException: isExceptionDay?.call(day) ?? false,
+          hasPending: hasPendingException?.call(day) ?? false,
+        ),
+        todayBuilder: (context, day, focused) => _DayCell(
+          day: day,
+          isToday: true,
+          isSelected: isSameDay(day, selectedDay),
+          isOutside: day.month != month.month,
+          slots: getSlotsForDay(day),
+          events: getEventsForDay(day),
+          accentColor: accentColor,
+          onDoubleTap: onDayDoubleTap,
+          isException: isExceptionDay?.call(day) ?? false,
+          hasPending: hasPendingException?.call(day) ?? false,
+        ),
+        selectedBuilder: (context, day, focused) => _DayCell(
+          day: day,
+          isToday: isSameDay(day, DateTime.now()),
+          isSelected: true,
+          isOutside: day.month != month.month,
+          slots: getSlotsForDay(day),
+          events: getEventsForDay(day),
+          accentColor: accentColor,
+          onDoubleTap: onDayDoubleTap,
+          isException: isExceptionDay?.call(day) ?? false,
+          hasPending: hasPendingException?.call(day) ?? false,
+        ),
+        outsideBuilder: (context, day, focused) => _DayCell(
+          day: day,
+          isToday: isSameDay(day, DateTime.now()),
+          isSelected: isSameDay(day, selectedDay),
+          isOutside: true,
+          slots: getSlotsForDay(day),
+          events: getEventsForDay(day),
+          accentColor: accentColor,
+          onDoubleTap: onDayDoubleTap,
+          isException: isExceptionDay?.call(day) ?? false,
+          hasPending: hasPendingException?.call(day) ?? false,
+        ),
+      ),
+      calendarStyle: CalendarStyle(
+        cellMargin: EdgeInsets.zero,
+        cellPadding: EdgeInsets.zero,
+        tablePadding: EdgeInsets.zero,
+        tableBorder: const TableBorder(
+          horizontalInside: BorderSide(color: AppTheme.dividerColor, width: 0.5),
+          verticalInside: BorderSide(color: AppTheme.dividerColor, width: 0.5),
+        ),
+        outsideDaysVisible: true,
+      ),
+      daysOfWeekStyle: const DaysOfWeekStyle(
+        weekdayStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textSecondary,
+        ),
+        weekendStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textSecondary,
+        ),
+      ),
     );
   }
 }
@@ -176,7 +288,7 @@ class _MonthHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(Icons.keyboard_arrow_up),
             tooltip: 'Poprzedni miesiąc',
             onPressed: onPrevious,
           ),
@@ -193,7 +305,7 @@ class _MonthHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(Icons.keyboard_arrow_down),
             tooltip: 'Następny miesiąc',
             onPressed: onNext,
           ),
@@ -362,13 +474,23 @@ class _DayCell extends StatelessWidget {
   }
 
   Color _cellBackground(Color? custodyColor) {
-    if (isSelected) {
-      return AppTheme.accentColor.withValues(alpha: 0.08);
-    }
     if (custodyColor == null) {
       return Colors.white;
     }
-    return custodyColor.withValues(alpha: 0.07);
+
+    final isParentA = slots.first.custodian == UserRole.parentA;
+    final baseTint = isParentA
+        ? AppTheme.parentAColor.withValues(alpha: isOutside ? 0.10 : 0.16)
+        : AppTheme.parentBColor.withValues(alpha: isOutside ? 0.10 : 0.16);
+
+    if (isSelected) {
+      return Color.alphaBlend(
+        AppTheme.accentColor.withValues(alpha: 0.10),
+        baseTint,
+      );
+    }
+
+    return baseTint;
   }
 }
 

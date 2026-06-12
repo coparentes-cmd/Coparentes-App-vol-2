@@ -58,6 +58,13 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     super.dispose();
   }
 
+  void _selectPattern(CustodySchedulePattern pattern) {
+    setState(() {
+      _pattern = pattern;
+      _applyPatternPreset(pattern);
+    });
+  }
+
   void _applyPatternPreset(CustodySchedulePattern pattern) {
     switch (pattern) {
       case CustodySchedulePattern.weekAlternating:
@@ -88,88 +95,93 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     }
   }
 
+  String get _stepTitle {
+    switch (_step) {
+      case 0:
+        return 'Krok 1: Wybierz szablon';
+      case 1:
+        return 'Krok 2: Start i przekazanie';
+      default:
+        return 'Krok 3: Podsumowanie';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _step == 0
-                ? 'Krok 1: Wybierz szablon'
-                : _step == 1
-                    ? 'Krok 2: Start i przekazanie'
-                    : 'Krok 3: Podsumowanie',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_step == 0) _buildPatternStep(),
-          if (_step == 1) _buildDetailsStep(),
-          if (_step == 2) _buildSummaryStep(),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              if (_step > 0)
-                TextButton(
-                  onPressed: _isSubmitting ? null : () => setState(() => _step--),
-                  child: const Text('Wstecz'),
-                ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _onPrimaryAction,
-                child: Text(
-                  _step < 2
-                      ? 'Dalej'
-                      : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
-                ),
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.82;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottomInset),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              _stepTitle,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                child: switch (_step) {
+                  0 => _buildPatternStep(),
+                  1 => _buildDetailsStep(),
+                  _ => _buildSummaryStep(),
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (_step > 0)
+                  TextButton(
+                    onPressed: _isSubmitting ? null : () => setState(() => _step--),
+                    child: const Text('Wstecz'),
+                  ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: _isSubmitting ? null : _onPrimaryAction,
+                  child: Text(
+                    _step < 2
+                        ? 'Dalej'
+                        : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPatternStep() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _PatternTile(
           title: 'Co tydzień na zmianę',
           subtitle: 'Cały tydzień u jednego rodzica, potem u drugiego',
           selected: _pattern == CustodySchedulePattern.weekAlternating,
-          onTap: () => setState(() {
-            _pattern = CustodySchedulePattern.weekAlternating;
-            _applyPatternPreset(_pattern);
-          }),
+          onTap: () => _selectPattern(CustodySchedulePattern.weekAlternating),
         ),
         _PatternTile(
           title: 'Co drugi weekend',
           subtitle: 'Tygodnie robocze i weekendy na zmianę',
           selected: _pattern == CustodySchedulePattern.everyOtherWeekend,
-          onTap: () => setState(() {
-            _pattern = CustodySchedulePattern.everyOtherWeekend;
-            _applyPatternPreset(_pattern);
-          }),
+          onTap: () => _selectPattern(CustodySchedulePattern.everyOtherWeekend),
         ),
         _PatternTile(
           title: 'Własny tydzień',
           subtitle: 'Ustaw każdy dzień tygodnia A i B ręcznie',
           selected: _pattern == CustodySchedulePattern.customWeek,
-          onTap: () => setState(() {
-            _pattern = CustodySchedulePattern.customWeek;
-            _applyPatternPreset(_pattern);
-          }),
+          onTap: () => _selectPattern(CustodySchedulePattern.customWeek),
         ),
       ],
     );
@@ -319,22 +331,67 @@ class _PatternTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
+    final borderColor =
+        selected ? AppTheme.accentColor : AppTheme.dividerColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: selected
+            ? AppTheme.accentColor.withValues(alpha: 0.06)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: selected ? AppTheme.accentColor : AppTheme.dividerColor,
-          width: selected ? 2 : 1,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: borderColor,
+                width: selected ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: selected ? AppTheme.accentColor : AppTheme.textHint,
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-      child: ListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle),
-        trailing: selected
-            ? const Icon(Icons.check_circle, color: AppTheme.accentColor)
-            : null,
-        onTap: onTap,
       ),
     );
   }
@@ -399,7 +456,6 @@ class _WeekGrid extends StatelessWidget {
               ),
               Expanded(
                 child: _RoleToggle(
-                  label: 'Tydz. A',
                   role: weekA[key] ?? UserRole.parentA,
                   onChanged: (role) {
                     final nextA = Map<String, UserRole>.from(weekA);
@@ -411,7 +467,6 @@ class _WeekGrid extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _RoleToggle(
-                  label: 'Tydz. B',
                   role: weekB[key] ?? UserRole.parentB,
                   onChanged: (role) {
                     final nextB = Map<String, UserRole>.from(weekB);
@@ -429,12 +484,10 @@ class _WeekGrid extends StatelessWidget {
 }
 
 class _RoleToggle extends StatelessWidget {
-  final String label;
   final UserRole role;
   final ValueChanged<UserRole> onChanged;
 
   const _RoleToggle({
-    required this.label,
     required this.role,
     required this.onChanged,
   });
@@ -459,9 +512,18 @@ Future<bool?> showCustodyScheduleWizard(BuildContext context) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    enableDrag: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => const CustodyScheduleWizard(),
+    builder: (sheetContext) {
+      final sheetHeight = MediaQuery.sizeOf(sheetContext).height * 0.82;
+      return SizedBox(
+        height: sheetHeight,
+        child: const CustodyScheduleWizard(),
+      );
+    },
   );
 }
