@@ -219,12 +219,23 @@ class MessageAttachment {
 
 // ─── Calendar ────────────────────────────────────────────────────────────────
 
+enum CustodySlotSource { schedule, exception, manual, swap }
+
+enum CustodySchedulePattern { weekAlternating, everyOtherWeekend, customWeek }
+
+enum CustodyScheduleStatus { draft, pendingApproval, active, superseded }
+
+enum CustodyExceptionType { singleDay, range, holiday }
+
+enum CustodyExceptionStatus { pending, accepted, rejected }
+
 class CustodySlot {
   final String id;
   final DateTime date;
   final UserRole custodian;
   final String? handoverLocation;
   final String? handoverTime;
+  final CustodySlotSource source;
 
   CustodySlot({
     required this.id,
@@ -232,7 +243,125 @@ class CustodySlot {
     required this.custodian,
     this.handoverLocation,
     this.handoverTime,
+    this.source = CustodySlotSource.schedule,
   });
+
+  CustodySlot copyWith({
+    String? id,
+    DateTime? date,
+    UserRole? custodian,
+    String? handoverLocation,
+    String? handoverTime,
+    CustodySlotSource? source,
+  }) {
+    return CustodySlot(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      custodian: custodian ?? this.custodian,
+      handoverLocation: handoverLocation ?? this.handoverLocation,
+      handoverTime: handoverTime ?? this.handoverTime,
+      source: source ?? this.source,
+    );
+  }
+}
+
+class CustodyWeekPattern {
+  final Map<String, UserRole> days;
+
+  const CustodyWeekPattern(this.days);
+
+  UserRole forWeekday(int weekday) {
+    const keys = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ];
+    final index = weekday - 1;
+    if (index < 0 || index >= keys.length) {
+      return UserRole.parentA;
+    }
+    return days[keys[index]] ?? UserRole.parentA;
+  }
+}
+
+class CustodySchedule {
+  final String id;
+  final CustodySchedulePattern patternType;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final CustodyWeekPattern weekA;
+  final CustodyWeekPattern weekB;
+  final String? handoverTime;
+  final String? handoverLocation;
+  final CustodyScheduleStatus status;
+  final String proposedById;
+  final String? approvedById;
+  final DateTime? approvedAt;
+  final DateTime createdAt;
+
+  CustodySchedule({
+    required this.id,
+    required this.patternType,
+    required this.startDate,
+    this.endDate,
+    required this.weekA,
+    required this.weekB,
+    this.handoverTime,
+    this.handoverLocation,
+    required this.status,
+    required this.proposedById,
+    this.approvedById,
+    this.approvedAt,
+    required this.createdAt,
+  });
+
+  String get patternLabel {
+    switch (patternType) {
+      case CustodySchedulePattern.weekAlternating:
+        return 'Co tydzień na zmianę';
+      case CustodySchedulePattern.everyOtherWeekend:
+        return 'Co drugi weekend';
+      case CustodySchedulePattern.customWeek:
+        return 'Własny tydzień';
+    }
+  }
+}
+
+class CustodyException {
+  final String id;
+  final DateTime fromDate;
+  final DateTime toDate;
+  final UserRole custodian;
+  final CustodyExceptionType exceptionType;
+  final String? reason;
+  final CustodyExceptionStatus status;
+  final String requesterId;
+  final String? responseNote;
+  final DateTime createdAt;
+
+  CustodyException({
+    required this.id,
+    required this.fromDate,
+    required this.toDate,
+    required this.custodian,
+    required this.exceptionType,
+    this.reason,
+    required this.status,
+    required this.requesterId,
+    this.responseNote,
+    required this.createdAt,
+  });
+
+  bool coversDay(DateTime day) {
+    final target = DateTime(day.year, day.month, day.day);
+    final from = DateTime(fromDate.year, fromDate.month, fromDate.day);
+    final to = DateTime(toDate.year, toDate.month, toDate.day);
+    return !target.isBefore(from) && !target.isAfter(to);
+  }
 }
 
 class CalendarEvent {

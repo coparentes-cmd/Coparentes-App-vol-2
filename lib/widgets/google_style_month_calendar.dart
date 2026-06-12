@@ -14,6 +14,8 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
   final Color accentColor;
   final List<CustodySlot> Function(DateTime day) getSlotsForDay;
   final List<CalendarEvent> Function(DateTime day) getEventsForDay;
+  final bool Function(DateTime day)? isExceptionDay;
+  final bool Function(DateTime day)? hasPendingException;
   final ValueChanged<DateTime> onDaySelected;
   final ValueChanged<DateTime>? onDayDoubleTap;
   final ValueChanged<DateTime> onMonthChanged;
@@ -26,6 +28,8 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
     required this.accentColor,
     required this.getSlotsForDay,
     required this.getEventsForDay,
+    this.isExceptionDay,
+    this.hasPendingException,
     required this.onDaySelected,
     this.onDayDoubleTap,
     required this.onMonthChanged,
@@ -81,6 +85,8 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   events: getEventsForDay(day),
                   accentColor: accentColor,
                   onDoubleTap: onDayDoubleTap,
+                  isException: isExceptionDay?.call(day) ?? false,
+                  hasPending: hasPendingException?.call(day) ?? false,
                 ),
                 todayBuilder: (context, day, focused) => _DayCell(
                   day: day,
@@ -91,6 +97,8 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   events: getEventsForDay(day),
                   accentColor: accentColor,
                   onDoubleTap: onDayDoubleTap,
+                  isException: isExceptionDay?.call(day) ?? false,
+                  hasPending: hasPendingException?.call(day) ?? false,
                 ),
                 selectedBuilder: (context, day, focused) => _DayCell(
                   day: day,
@@ -101,6 +109,8 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   events: getEventsForDay(day),
                   accentColor: accentColor,
                   onDoubleTap: onDayDoubleTap,
+                  isException: isExceptionDay?.call(day) ?? false,
+                  hasPending: hasPendingException?.call(day) ?? false,
                 ),
                 outsideBuilder: (context, day, focused) => _DayCell(
                   day: day,
@@ -111,6 +121,8 @@ class GoogleStyleMonthCalendar extends StatelessWidget {
                   events: getEventsForDay(day),
                   accentColor: accentColor,
                   onDoubleTap: onDayDoubleTap,
+                  isException: isExceptionDay?.call(day) ?? false,
+                  hasPending: hasPendingException?.call(day) ?? false,
                 ),
               ),
               calendarStyle: CalendarStyle(
@@ -230,6 +242,8 @@ class _DayCell extends StatelessWidget {
   final List<CalendarEvent> events;
   final Color accentColor;
   final ValueChanged<DateTime>? onDoubleTap;
+  final bool isException;
+  final bool hasPending;
 
   const _DayCell({
     required this.day,
@@ -240,6 +254,8 @@ class _DayCell extends StatelessWidget {
     required this.events,
     required this.accentColor,
     this.onDoubleTap,
+    this.isException = false,
+    this.hasPending = false,
   });
 
   @override
@@ -267,10 +283,40 @@ class _DayCell extends StatelessWidget {
           children: [
             Align(
               alignment: Alignment.topRight,
-              child: _DayNumber(
-                day: day.day,
-                isToday: isToday,
-                isOutside: isOutside,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isException)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 2, top: 1),
+                      child: Icon(
+                        Icons.star,
+                        size: 10,
+                        color: isOutside
+                            ? AppTheme.textHint
+                            : AppTheme.warningColor,
+                      ),
+                    ),
+                  if (hasPending)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 2, top: 1),
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isOutside
+                              ? AppTheme.textHint
+                              : AppTheme.warningColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  _DayNumber(
+                    day: day.day,
+                    isToday: isToday,
+                    isOutside: isOutside,
+                  ),
+                ],
               ),
             ),
             Expanded(

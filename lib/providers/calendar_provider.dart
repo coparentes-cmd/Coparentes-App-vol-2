@@ -14,6 +14,8 @@ class CalendarProvider extends ChangeNotifier {
   final List<CustodySlot> _custodySlots = [];
   final List<CalendarEvent> _events = [];
   final List<SwapRequest> _swapRequests = [];
+  CustodySchedule? _custodySchedule;
+  final List<CustodyException> _custodyExceptions = [];
   bool _isLoading = false;
   String? _error;
   bool _loadedFromApi = false;
@@ -22,12 +24,77 @@ class CalendarProvider extends ChangeNotifier {
   List<CustodySlot> get custodySlots => _custodySlots;
   List<CalendarEvent> get events => _events;
   List<SwapRequest> get swapRequests => _swapRequests;
+  CustodySchedule? get custodySchedule => _custodySchedule;
+  List<CustodyException> get custodyExceptions => _custodyExceptions;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get loadedFromApi => _loadedFromApi;
 
   bool get isEmpty =>
-      _custodySlots.isEmpty && _events.isEmpty && _swapRequests.isEmpty;
+      _custodySlots.isEmpty &&
+      _events.isEmpty &&
+      _swapRequests.isEmpty &&
+      _custodySchedule == null &&
+      _custodyExceptions.isEmpty;
+
+  List<CustodyException> get pendingExceptions => _custodyExceptions
+      .where((item) => item.status == CustodyExceptionStatus.pending)
+      .toList();
+
+  bool hasPendingExceptionForDay(DateTime day) {
+    return pendingExceptions.any((item) => item.coversDay(day));
+  }
+
+  bool isExceptionDay(DateTime day) {
+    final slot = getSlotsForDay(day);
+    return slot.isNotEmpty && slot.first.source == CustodySlotSource.exception;
+  }
+
+  bool get shouldPromptScheduleSetup =>
+      _custodySchedule == null && _custodySlots.isEmpty;
+
+  bool get hasPendingScheduleApproval =>
+      _custodySchedule?.status == CustodyScheduleStatus.pendingApproval;
+
+  bool canRespondToPendingSchedule(String? userId) {
+    final schedule = _custodySchedule;
+    if (schedule == null ||
+        schedule.status != CustodyScheduleStatus.pendingApproval) {
+      return false;
+    }
+    if (userId == null || userId == schedule.proposedById) {
+      return false;
+    }
+    return true;
+  }
+
+  bool canRespondToException(CustodyException exception, String? userId) {
+    if (exception.status != CustodyExceptionStatus.pending) {
+      return false;
+    }
+    if (userId == null || userId == exception.requesterId) {
+      return false;
+    }
+    return true;
+  }
+
+  int get pendingRequestCount =>
+      swapRequests.where((item) => item.status == SwapStatus.pending).length +
+      pendingExceptions.length +
+      (hasPendingScheduleApproval ? 1 : 0);
+
+  CustodySlot? getNextHandover({DateTime? after}) {
+    final base = after ?? DateTime.now();
+    final today = DateTime(base.year, base.month, base.day);
+    final upcoming = _custodySlots
+        .where((slot) {
+          final day = DateTime(slot.date.year, slot.date.month, slot.date.day);
+          return !day.isBefore(today) && slot.handoverTime != null;
+        })
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return upcoming.isEmpty ? null : upcoming.first;
+  }
 
   Future<void> load({bool silent = false}) async {
     final generation = ++_loadGeneration;
@@ -73,6 +140,8 @@ class CalendarProvider extends ChangeNotifier {
     _custodySlots.clear();
     _events.clear();
     _swapRequests.clear();
+    _custodySchedule = null;
+    _custodyExceptions.clear();
     _loadedFromApi = false;
     _error = null;
 
@@ -223,6 +292,8 @@ class CalendarProvider extends ChangeNotifier {
     _custodySlots.clear();
     _events.clear();
     _swapRequests.clear();
+    _custodySchedule = null;
+    _custodyExceptions.clear();
     _error = null;
     _isLoading = false;
     _loadedFromApi = false;
@@ -306,6 +377,7 @@ class CalendarProvider extends ChangeNotifier {
       custodian: proposedCustodian,
       handoverLocation: originalSlot.handoverLocation,
       handoverTime: originalSlot.handoverTime,
+      source: CustodySlotSource.swap,
     );
     _custodySlots[proposedIndex] = CustodySlot(
       id: proposedSlot.id,
@@ -313,6 +385,7 @@ class CalendarProvider extends ChangeNotifier {
       custodian: originalCustodian,
       handoverLocation: proposedSlot.handoverLocation,
       handoverTime: proposedSlot.handoverTime,
+      source: CustodySlotSource.swap,
     );
     notifyListeners();
   }
@@ -419,6 +492,126 @@ class CalendarProvider extends ChangeNotifier {
     }
   }
 
+  Future<CustodySchedule> proposeSchedule({
+    required CustodySchedulePattern patternType,
+    required DateTime startDate,
+    CustodyWeekPattern? weekA,
+    CustodyWeekPattern? weekB,
+    String? handoverTime,
+    String? handoverLocation,
+  }) async {
+    try {
+      final schedule = await _repository.proposeSchedule(
+        patternType: patternType,
+        startDate: startDate,
+        weekA: weekA,
+        weekB: weekB,
+        handoverTime: handoverTime,
+        handoverLocation: handoverLocation,
+      );
+      _custodySchedule = schedule;
+      notifyListeners();
+      await _reloadBestEffort();
+      return schedule;
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> respondToSchedule({
+    required String scheduleId,
+    required bool approve,
+    String? responseNote,
+  }) async {
+    try {
+      await _repository.respondToSchedule(
+        scheduleId: scheduleId,
+        approve: approve,
+        responseNote: responseNote,
+      );
+      await _reloadBestEffort();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> requestException({
+    required DateTime fromDate,
+    DateTime? toDate,
+    required UserRole custodian,
+    CustodyExceptionType? exceptionType,
+    String? reason,
+  }) async {
+    try {
+      final created = await _repository.createException(
+        fromDate: fromDate,
+        toDate: toDate,
+        custodian: custodian,
+        exceptionType: exceptionType,
+        reason: reason,
+      );
+      _custodyExceptions.insert(0, created);
+      notifyListeners();
+      await _reloadBestEffort();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> respondToException({
+    required String exceptionId,
+    required bool approve,
+    String? responseNote,
+  }) async {
+    try {
+      final updated = await _repository.respondToException(
+        exceptionId: exceptionId,
+        approve: approve,
+        responseNote: responseNote,
+      );
+      final index = _custodyExceptions.indexWhere((item) => item.id == exceptionId);
+      if (index >= 0) {
+        _custodyExceptions[index] = updated;
+      }
+      notifyListeners();
+      await _reloadBestEffort();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateSlotHandover({
+    required String slotId,
+    String? handoverTime,
+    String? handoverLocation,
+  }) async {
+    try {
+      final updated = await _repository.updateSlotHandover(
+        slotId: slotId,
+        handoverTime: handoverTime,
+        handoverLocation: handoverLocation,
+      );
+      final index = _custodySlots.indexWhere((item) => item.id == slotId);
+      if (index >= 0) {
+        _custodySlots[index] = updated;
+      }
+      notifyListeners();
+      await _reloadBestEffort();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   void _applySnapshot(CalendarSnapshot snapshot) {
     _custodySlots
       ..clear()
@@ -430,6 +623,10 @@ class CalendarProvider extends ChangeNotifier {
     _swapRequests
       ..clear()
       ..addAll(snapshot.swapRequests);
+    _custodySchedule = snapshot.custodySchedule;
+    _custodyExceptions
+      ..clear()
+      ..addAll(snapshot.custodyExceptions);
   }
 
   DateTime _normalizeEventStart(DateTime startDate) {

@@ -201,6 +201,8 @@ class _DashboardHome extends StatelessWidget {
     final pendingSwaps = calendar.swapRequests
         .where((s) => s.status == SwapStatus.pending)
         .length;
+    final pendingRequests = calendar.pendingRequestCount;
+    final nextHandover = calendar.getNextHandover();
     final unreadMessages = user?.id == null
         ? 0
         : countUnreadThreadsForViewer(messaging.threads, user!.id);
@@ -232,9 +234,9 @@ class _DashboardHome extends StatelessWidget {
         : 'Finanse · ${finance.pendingCount} oczekuje';
 
     final calendarActivity = _latestCalendarActivity(calendar);
-    final calendarDetail = pendingSwaps == 0
+    final calendarDetail = pendingRequests == 0
         ? 'Kalendarz'
-        : 'Kalendarz · $pendingSwaps zamiany';
+        : 'Kalendarz · $pendingRequests prośby';
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -363,6 +365,7 @@ class _DashboardHome extends StatelessWidget {
                     pendingSwaps: pendingSwaps,
                     roleColor: roleColor,
                     custodyLabel: todaySlots.isNotEmpty ? custodyText : null,
+                    nextHandover: nextHandover,
                     onTap: () => onOpenCalendarDay(now),
                   ),
                 ),
@@ -534,6 +537,7 @@ class _TodayCard extends StatelessWidget {
   final int pendingSwaps;
   final Color roleColor;
   final String? custodyLabel;
+  final CustodySlot? nextHandover;
   final VoidCallback onTap;
 
   const _TodayCard({
@@ -542,6 +546,7 @@ class _TodayCard extends StatelessWidget {
     required this.pendingSwaps,
     required this.roleColor,
     this.custodyLabel,
+    this.nextHandover,
     required this.onTap,
   });
 
@@ -636,6 +641,30 @@ class _TodayCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (nextHandover != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.swap_horiz,
+                      color: roleColor.withValues(alpha: 0.7),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Następne przekazanie: ${nextHandover!.date.day}.${nextHandover!.date.month}'
+                        '${nextHandover!.handoverTime != null ? ' o ${nextHandover!.handoverTime}' : ''}'
+                        '${nextHandover!.handoverLocation != null ? ' · ${nextHandover!.handoverLocation}' : ''}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                     ),
                   ],

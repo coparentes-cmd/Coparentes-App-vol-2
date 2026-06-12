@@ -284,11 +284,19 @@ class CalendarRepository {
     final swaps = (payload['swapRequests'] as List<dynamic>? ?? [])
         .map((item) => swapRequestFromJson(Map<String, dynamic>.from(item as Map)))
         .toList();
+    final schedule = custodyScheduleFromJson(
+      payload['custodySchedule'] as Map<String, dynamic>?,
+    );
+    final exceptions = (payload['custodyExceptions'] as List<dynamic>? ?? [])
+        .map((item) => custodyExceptionFromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
 
     return CalendarSnapshot(
       custodySlots: slots,
       events: events,
       swapRequests: swaps,
+      custodySchedule: schedule,
+      custodyExceptions: exceptions,
     );
   }
 
@@ -299,6 +307,7 @@ class CalendarRepository {
         custodySlots: [],
         events: [],
         swapRequests: [],
+        custodyExceptions: [],
       );
     }
     return _snapshotFromPayload(raw);
@@ -309,7 +318,112 @@ class CalendarRepository {
       'custodySlots': snapshot.custodySlots.map(custodySlotToJson).toList(),
       'events': snapshot.events.map(calendarEventToJson).toList(),
       'swapRequests': snapshot.swapRequests.map(swapRequestToJson).toList(),
+      if (snapshot.custodySchedule != null)
+        'custodySchedule': custodyScheduleToJson(snapshot.custodySchedule!),
+      'custodyExceptions':
+          snapshot.custodyExceptions.map(custodyExceptionToJson).toList(),
     });
+  }
+
+  Future<CustodySchedule> proposeSchedule({
+    required CustodySchedulePattern patternType,
+    required DateTime startDate,
+    CustodyWeekPattern? weekA,
+    CustodyWeekPattern? weekB,
+    String? handoverTime,
+    String? handoverLocation,
+  }) async {
+    final payload = await _apiClient.postJson('/calendar/schedules', {
+      'patternType': custodySchedulePatternToApi(patternType),
+      'startDate': calendarDateToApiIso(startDate),
+      if (weekA != null) 'weekA': weekPatternToApi(weekA),
+      if (weekB != null) 'weekB': weekPatternToApi(weekB),
+      if (handoverTime != null) 'handoverTime': handoverTime,
+      if (handoverLocation != null) 'handoverLocation': handoverLocation,
+    });
+    final schedule = custodyScheduleFromJson(payload)!;
+    final snapshot = _getCachedSnapshot();
+    await _saveSnapshot(
+      CalendarSnapshot(
+        custodySlots: snapshot.custodySlots,
+        events: snapshot.events,
+        swapRequests: snapshot.swapRequests,
+        custodySchedule: schedule,
+        custodyExceptions: snapshot.custodyExceptions,
+      ),
+    );
+    return schedule;
+  }
+
+  Future<CustodySchedule> respondToSchedule({
+    required String scheduleId,
+    required bool approve,
+    String? responseNote,
+  }) async {
+    final payload = await _apiClient.postJson(
+      '/calendar/schedules/$scheduleId/respond',
+      {
+        'approve': approve,
+        if (responseNote != null) 'responseNote': responseNote,
+      },
+    );
+    return custodyScheduleFromJson(payload)!;
+  }
+
+  Future<CustodyException> createException({
+    required DateTime fromDate,
+    DateTime? toDate,
+    required UserRole custodian,
+    CustodyExceptionType? exceptionType,
+    String? reason,
+  }) async {
+    final payload = await _apiClient.postJson('/calendar/exceptions', {
+      'fromDate': calendarDateToApiIso(fromDate),
+      'toDate': calendarDateToApiIso(toDate ?? fromDate),
+      'custodian': userRoleToApi(custodian),
+      if (exceptionType != null)
+        'exceptionType': custodyExceptionTypeToApi(exceptionType),
+      if (reason != null) 'reason': reason,
+    });
+    final exception = custodyExceptionFromJson(payload);
+    final snapshot = _getCachedSnapshot();
+    snapshot.custodyExceptions.insert(0, exception);
+    await _saveSnapshot(snapshot);
+    return exception;
+  }
+
+  Future<CustodyException> respondToException({
+    required String exceptionId,
+    required bool approve,
+    String? responseNote,
+  }) async {
+    final payload = await _apiClient.postJson(
+      '/calendar/exceptions/$exceptionId/respond',
+      {
+        'approve': approve,
+        if (responseNote != null) 'responseNote': responseNote,
+      },
+    );
+    return custodyExceptionFromJson(payload);
+  }
+
+  Future<CustodySlot> updateSlotHandover({
+    required String slotId,
+    String? handoverTime,
+    String? handoverLocation,
+  }) async {
+    final payload = await _apiClient.patchJson('/calendar/slots/$slotId', {
+      if (handoverTime != null) 'handoverTime': handoverTime,
+      if (handoverLocation != null) 'handoverLocation': handoverLocation,
+    });
+    final slot = custodySlotFromJson(payload);
+    final snapshot = _getCachedSnapshot();
+    final index = snapshot.custodySlots.indexWhere((item) => item.id == slotId);
+    if (index >= 0) {
+      snapshot.custodySlots[index] = slot;
+    }
+    await _saveSnapshot(snapshot);
+    return slot;
   }
 
   Future<void> _upsertSwapInCache(SwapRequest swap) async {

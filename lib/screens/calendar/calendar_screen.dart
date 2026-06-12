@@ -11,6 +11,7 @@ import '../../utils/calendar_date_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import '../../widgets/google_style_month_calendar.dart';
+import '../../widgets/custody_schedule_wizard.dart';
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? focusDay;
@@ -102,15 +103,20 @@ class _CalendarScreenState extends State<CalendarScreen>
         ? AppTheme.parentAColor
         : AppTheme.parentBColor;
 
-    final pendingSwaps = calendar.swapRequests
-        .where((s) => s.status == SwapStatus.pending)
-        .toList();
+    final pendingRequests = calendar.pendingRequestCount;
 
     return ParentTabScaffold(
       title: 'Kalendarz opieki',
       actions: isReadOnly
           ? null
           : [
+              ParentHeaderActionButton(
+                label: 'Grafik opieki',
+                icon: Icons.view_week,
+                backgroundColor: AppTheme.primaryTeal,
+                prominent: true,
+                onPressed: () => _openScheduleWizard(context),
+              ),
               ParentHeaderActionButton(
                 label: 'Nowe zdarzenie',
                 icon: Icons.add,
@@ -137,8 +143,8 @@ class _CalendarScreenState extends State<CalendarScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Zamiany'),
-                if (pendingSwaps.isNotEmpty) ...[
+                const Text('Prośby'),
+                if (pendingRequests > 0) ...[
                   const SizedBox(width: 4),
                   Container(
                     width: 16,
@@ -148,7 +154,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      '${pendingSwaps.length}',
+                      '$pendingRequests',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 10,
@@ -166,8 +172,8 @@ class _CalendarScreenState extends State<CalendarScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildCalendarTab(context, calendar, roleColor),
-          _buildSwapsTab(context, calendar),
+          _buildCalendarTab(context, calendar, roleColor, isReadOnly, user?.id),
+          _buildRequestsTab(context, calendar, user?.id),
         ],
       ),
     );
@@ -177,6 +183,8 @@ class _CalendarScreenState extends State<CalendarScreen>
     BuildContext context,
     CalendarProvider calendar,
     Color roleColor,
+    bool isReadOnly,
+    String? userId,
   ) {
     return Column(
       children: [
@@ -194,6 +202,15 @@ class _CalendarScreenState extends State<CalendarScreen>
                 child: const Text('Odśwież'),
               ),
             ],
+          ),
+        if (!isReadOnly && calendar.shouldPromptScheduleSetup)
+          _ScheduleSetupBanner(onPressed: () => _openScheduleWizard(context)),
+        if (!isReadOnly && calendar.hasPendingScheduleApproval)
+          _PendingScheduleBanner(
+            schedule: calendar.custodySchedule!,
+            canRespond: calendar.canRespondToPendingSchedule(userId),
+            onAccept: () => _respondToSchedule(context, approve: true),
+            onReject: () => _respondToSchedule(context, approve: false),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
@@ -214,13 +231,16 @@ class _CalendarScreenState extends State<CalendarScreen>
             accentColor: roleColor,
             getSlotsForDay: calendar.getSlotsForDay,
             getEventsForDay: calendar.getEventsForDay,
+            isExceptionDay: calendar.isExceptionDay,
+            hasPendingException: calendar.hasPendingExceptionForDay,
             onDaySelected: (day) {
               setState(() {
                 _selectedDay = day;
                 _focusedDay = day;
               });
             },
-            onDayDoubleTap: (day) => _showDayDetailSheet(context, calendar, day),
+            onDayDoubleTap: (day) =>
+                _showDayDetailSheet(context, calendar, day, isReadOnly),
             onMonthChanged: (month) {
               setState(() => _focusedDay = month);
             },
@@ -247,6 +267,18 @@ class _CalendarScreenState extends State<CalendarScreen>
                 color: AppTheme.parentBColor,
                 label: 'U Taty',
               ),
+              const SizedBox(width: 20),
+              _LegendItem(
+                color: AppTheme.warningColor,
+                label: 'Wyjątek',
+                icon: Icons.star,
+              ),
+              const SizedBox(width: 20),
+              _LegendItem(
+                color: AppTheme.warningColor,
+                label: 'Oczekuje',
+                dot: true,
+              ),
             ],
           ),
         ),
@@ -254,10 +286,63 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
+  Future<void> _openScheduleWizard(BuildContext context) async {
+    final accepted = await showCustodyScheduleWizard(context);
+    if (accepted == true && context.mounted) {
+      await _refreshSwapMessaging(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Grafik wysłany do akceptacji. Drugi rodzic zobaczy go w Prośbach i w czacie.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    }
+  }
+
+  Future<void> _respondToSchedule(
+    BuildContext context, {
+    required bool approve,
+  }) async {
+    final schedule = context.read<CalendarProvider>().custodySchedule;
+    if (schedule == null) {
+      return;
+    }
+
+    try {
+      await context.read<CalendarProvider>().respondToSchedule(
+            scheduleId: schedule.id,
+            approve: approve,
+          );
+      if (!context.mounted) return;
+      await _refreshSwapMessaging(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            approve
+                ? 'Grafik zaakceptowany — kalendarz został zaktualizowany.'
+                : 'Propozycja grafiku została odrzucona.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_calendarActionError(error, 'odpowiedzi na grafik')),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
   void _showDayDetailSheet(
     BuildContext context,
     CalendarProvider calendar,
     DateTime day,
+    bool isReadOnly,
   ) {
     setState(() {
       _selectedDay = day;
@@ -266,6 +351,9 @@ class _CalendarScreenState extends State<CalendarScreen>
 
     final slots = calendar.getSlotsForDay(day);
     final events = calendar.getEventsForDay(day);
+    final slot = slots.isNotEmpty ? slots.first : null;
+    final isPending = calendar.hasPendingExceptionForDay(day);
+    final isException = calendar.isExceptionDay(day);
 
     showModalBottomSheet<void>(
       context: context,
@@ -274,7 +362,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        final maxHeight = MediaQuery.of(ctx).size.height * 0.55;
+        final maxHeight = MediaQuery.of(ctx).size.height * 0.65;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -294,10 +382,38 @@ class _CalendarScreenState extends State<CalendarScreen>
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: maxHeight),
                     child: SingleChildScrollView(
-                      child: _SelectedDayCard(
-                        day: day,
-                        slot: slots.isNotEmpty ? slots.first : null,
-                        events: events,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _SelectedDayCard(
+                            day: day,
+                            slot: slot,
+                            events: events,
+                            isException: isException,
+                            isPending: isPending,
+                          ),
+                          if (!isReadOnly) ...[
+                            const SizedBox(height: 12),
+                            _DayActionButtons(
+                              day: day,
+                              slot: slot,
+                              onChangeCustodian: () {
+                                Navigator.pop(ctx);
+                                _showExceptionSheet(context, day, slot);
+                              },
+                              onEditHandover: slot == null
+                                  ? null
+                                  : () {
+                                      Navigator.pop(ctx);
+                                      _showHandoverSheet(context, slot);
+                                    },
+                              onRequestSwap: () {
+                                Navigator.pop(ctx);
+                                _requestSwapForDay(context, day);
+                              },
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -310,63 +426,166 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  Widget _buildSwapsTab(BuildContext context, CalendarProvider calendar) {
-    final swaps = calendar.swapRequests;
-    final user = context.watch<AppProvider>().currentUser;
+  void _showExceptionSheet(
+    BuildContext context,
+    DateTime day,
+    CustodySlot? slot,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ExceptionRequestSheet(
+        day: day,
+        currentCustodian: slot?.custodian,
+      ),
+    );
+  }
 
-    if (swaps.isEmpty) {
+  void _showHandoverSheet(BuildContext context, CustodySlot slot) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _HandoverEditSheet(slot: slot),
+    );
+  }
+
+  void _requestSwapForDay(BuildContext context, DateTime day) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _SwapRequestSheet(
+        selectedDay: day,
+        onSubmitted: () => _refreshSwapMessaging(context),
+      ),
+    );
+  }
+
+  Widget _buildRequestsTab(
+    BuildContext context,
+    CalendarProvider calendar,
+    String? userId,
+  ) {
+    final schedule = calendar.custodySchedule;
+    final pendingExceptions = calendar.pendingExceptions;
+    final swaps = calendar.swapRequests
+        .where((item) => item.status == SwapStatus.pending)
+        .toList();
+
+    if (schedule?.status != CustodyScheduleStatus.pendingApproval &&
+        pendingExceptions.isEmpty &&
+        swaps.isEmpty) {
       return const EmptyState(
-        icon: Icons.swap_horiz,
-        title: 'Brak wniosków o zamianę',
-        subtitle: 'Wnioski o zamianę dni opieki pojawią się tutaj',
+        icon: Icons.inbox_outlined,
+        title: 'Brak oczekujących próśb',
+        subtitle:
+            'Propozycje grafiku, wyjątki i zamiany dni pojawią się tutaj',
       );
     }
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      itemCount: swaps.length,
-      itemBuilder: (ctx, i) {
-        final swap = swaps[i];
-        final isMyRequest = swap.requesterId == user?.id;
-        final canRespond =
-            swap.status == SwapStatus.pending && !isMyRequest;
-        return _SwapCard(
-          swap: swap,
-          isMyRequest: isMyRequest,
-          canRespond: canRespond,
-          onAccept: () async {
-            try {
-              await calendar.respondToSwap(
-                swap.id,
-                SwapStatus.accepted,
-                note: 'Akceptuję',
-              );
-              if (!context.mounted) return;
-              await _refreshSwapMessaging(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Zamiana zaakceptowana. Grafik opieki został zaktualizowany.',
-                  ),
-                  backgroundColor: AppTheme.successColor,
-                ),
-              );
-            } catch (error) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    _calendarActionError(error, 'akceptacji zamiany'),
-                  ),
-                  backgroundColor: AppTheme.errorColor,
-                ),
-              );
-            }
+      children: [
+        if (schedule?.status == CustodyScheduleStatus.pendingApproval)
+          _ScheduleRequestCard(
+            schedule: schedule!,
+            canRespond: calendar.canRespondToPendingSchedule(userId),
+            onAccept: () => _respondToSchedule(context, approve: true),
+            onReject: () => _respondToSchedule(context, approve: false),
+          ),
+        ...pendingExceptions.map(
+          (exception) => _ExceptionRequestCard(
+            exception: exception,
+            canRespond: calendar.canRespondToException(exception, userId),
+            onAccept: () => _respondToException(context, exception, true),
+            onReject: () => _respondToException(context, exception, false),
+          ),
+        ),
+        ...swaps.map(
+          (swap) {
+            final isMyRequest = swap.requesterId == userId;
+            final canRespond =
+                swap.status == SwapStatus.pending && !isMyRequest;
+            return _SwapCard(
+              swap: swap,
+              isMyRequest: isMyRequest,
+              canRespond: canRespond,
+              onAccept: () async {
+                try {
+                  await calendar.respondToSwap(
+                    swap.id,
+                    SwapStatus.accepted,
+                    note: 'Akceptuję',
+                  );
+                  if (!context.mounted) return;
+                  await _refreshSwapMessaging(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Zamiana zaakceptowana. Grafik opieki został zaktualizowany.',
+                      ),
+                      backgroundColor: AppTheme.successColor,
+                    ),
+                  );
+                } catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        _calendarActionError(error, 'akceptacji zamiany'),
+                      ),
+                      backgroundColor: AppTheme.errorColor,
+                    ),
+                  );
+                }
+              },
+              onReject: () => _showSwapRejectSheet(context, swap),
+            );
           },
-          onReject: () => _showSwapRejectSheet(context, swap),
-        );
-      },
+        ),
+      ],
     );
+  }
+
+  Future<void> _respondToException(
+    BuildContext context,
+    CustodyException exception,
+    bool approve,
+  ) async {
+    try {
+      await context.read<CalendarProvider>().respondToException(
+            exceptionId: exception.id,
+            approve: approve,
+          );
+      if (!context.mounted) return;
+      await _refreshSwapMessaging(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            approve
+                ? 'Wyjątek zaakceptowany — kalendarz zaktualizowany.'
+                : 'Wniosek o wyjątek został odrzucony.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_calendarActionError(error, 'odpowiedzi na wyjątek')),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
   }
 
   void _addEvent(BuildContext context) {
@@ -425,22 +644,41 @@ class _CalendarScreenState extends State<CalendarScreen>
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
+  final IconData? icon;
+  final bool dot;
 
-  const _LegendItem({required this.color, required this.label});
+  const _LegendItem({
+    required this.color,
+    required this.label,
+    this.icon,
+    this.dot = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.3),
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 2),
+        if (dot)
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          )
+        else if (icon != null)
+          Icon(icon, size: 14, color: color)
+        else
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 2),
+            ),
           ),
-        ),
         const SizedBox(width: 6),
         Text(
           label,
@@ -455,11 +693,15 @@ class _SelectedDayCard extends StatelessWidget {
   final DateTime day;
   final CustodySlot? slot;
   final List<CalendarEvent> events;
+  final bool isException;
+  final bool isPending;
 
   const _SelectedDayCard({
     required this.day,
     required this.slot,
     required this.events,
+    this.isException = false,
+    this.isPending = false,
   });
 
   @override
@@ -489,6 +731,24 @@ class _SelectedDayCard extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
+              if (isException || isPending) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (isException)
+                      const StatusChip(
+                        label: 'Wyjątek',
+                        color: AppTheme.warningColor,
+                      ),
+                    if (isPending)
+                      const StatusChip(
+                        label: 'Oczekuje akceptacji',
+                        color: AppTheme.warningColor,
+                      ),
+                  ],
+                ),
+              ],
               if (slot != null && label != null) ...[
                 const SizedBox(height: 10),
                 Row(
@@ -1466,9 +1726,549 @@ String _calendarActionError(Object error, String actionLabel) {
     if (error.message == 'swap_not_allowed') {
       return 'Nie możesz odpowiedzieć na własny wniosek o zamianę.';
     }
+    if (error.message == 'schedule_not_allowed' ||
+        error.message == 'exception_not_allowed') {
+      return 'Nie możesz odpowiedzieć na własną prośbę.';
+    }
     if (error.statusCode >= 500) {
       return 'Błąd serwera. Spróbuj ponownie za chwilę.';
     }
   }
   return 'Nie udało się wysłać $actionLabel.';
+}
+
+class _ScheduleSetupBanner extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _ScheduleSetupBanner({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: MaterialBanner(
+        backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.08),
+        content: const Text(
+          'Ustawcie wspólny grafik opieki — drugi rodzic musi go zaakceptować.',
+        ),
+        leading: const Icon(Icons.view_week, color: AppTheme.primaryTeal),
+        actions: [
+          TextButton(onPressed: onPressed, child: const Text('Utwórz grafik')),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingScheduleBanner extends StatelessWidget {
+  final CustodySchedule schedule;
+  final bool canRespond;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _PendingScheduleBanner({
+    required this.schedule,
+    required this.canRespond,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                canRespond
+                    ? 'Propozycja grafiku do akceptacji'
+                    : 'Grafik oczekuje na akceptację',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${schedule.patternLabel} · start ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              if (canRespond) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onReject,
+                        child: const Text('Odrzuć'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: onAccept,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.successColor,
+                        ),
+                        child: const Text('Akceptuj'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleRequestCard extends StatelessWidget {
+  final CustodySchedule schedule;
+  final bool canRespond;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _ScheduleRequestCard({
+    required this.schedule,
+    required this.canRespond,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Propozycja grafiku opieki',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Szablon: ${schedule.patternLabel}'),
+                  Text(
+                    'Start: ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
+                  ),
+                  if (schedule.handoverTime != null)
+                    Text('Przekazanie: ${schedule.handoverTime}'),
+                  if (!canRespond)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Oczekuje na decyzję drugiego rodzica.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (canRespond)
+              SizedBox(
+                width: 108,
+                child: Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: onAccept,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.successColor,
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                      child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: onReject,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.errorColor,
+                        side: const BorderSide(color: AppTheme.errorColor),
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                      child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExceptionRequestCard extends StatelessWidget {
+  final CustodyException exception;
+  final bool canRespond;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _ExceptionRequestCard({
+    required this.exception,
+    required this.canRespond,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  String get _rangeLabel {
+    final from = exception.fromDate;
+    final to = exception.toDate;
+    if (from.year == to.year &&
+        from.month == to.month &&
+        from.day == to.day) {
+      return '${from.day}.${from.month}.${from.year}';
+    }
+    return '${from.day}.${from.month}.${from.year} – ${to.day}.${to.month}.${to.year}';
+  }
+
+  String get _custodianLabel =>
+      exception.custodian == UserRole.parentA ? 'Mama' : 'Tata';
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Wniosek o zmianę opiekuna',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Okres: $_rangeLabel'),
+                  Text('Opiekun: $_custodianLabel'),
+                  if (exception.reason != null)
+                    Text('Powód: ${exception.reason}'),
+                ],
+              ),
+            ),
+            if (canRespond)
+              SizedBox(
+                width: 108,
+                child: Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: onAccept,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.successColor,
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                      child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: onReject,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.errorColor,
+                        side: const BorderSide(color: AppTheme.errorColor),
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                      child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DayActionButtons extends StatelessWidget {
+  final DateTime day;
+  final CustodySlot? slot;
+  final VoidCallback onChangeCustodian;
+  final VoidCallback? onEditHandover;
+  final VoidCallback onRequestSwap;
+
+  const _DayActionButtons({
+    required this.day,
+    required this.slot,
+    required this.onChangeCustodian,
+    required this.onEditHandover,
+    required this.onRequestSwap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: onChangeCustodian,
+          icon: const Icon(Icons.person_outline, size: 18),
+          label: const Text('Zmień opiekuna'),
+        ),
+        if (onEditHandover != null) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onEditHandover,
+            icon: const Icon(Icons.schedule, size: 18),
+            label: const Text('Edytuj przekazanie'),
+          ),
+        ],
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: onRequestSwap,
+          icon: const Icon(Icons.swap_horiz, size: 18),
+          label: const Text('Prośba o zamianę'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExceptionRequestSheet extends StatefulWidget {
+  final DateTime day;
+  final UserRole? currentCustodian;
+
+  const _ExceptionRequestSheet({
+    required this.day,
+    this.currentCustodian,
+  });
+
+  @override
+  State<_ExceptionRequestSheet> createState() => _ExceptionRequestSheetState();
+}
+
+class _ExceptionRequestSheetState extends State<_ExceptionRequestSheet> {
+  late UserRole _custodian;
+  final _reasonController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _custodian = widget.currentCustodian == UserRole.parentA
+        ? UserRole.parentB
+        : UserRole.parentA;
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      await context.read<CalendarProvider>().requestException(
+            fromDate: widget.day,
+            custodian: _custodian,
+            reason: _reasonController.text.trim().isEmpty
+                ? null
+                : _reasonController.text.trim(),
+          );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Wniosek o wyjątek wysłany do akceptacji.'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_calendarActionError(error, 'wniosku o wyjątek')),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Zmiana opiekuna',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Dzień: ${widget.day.day}.${widget.day.month}.${widget.day.year}',
+            style: const TextStyle(color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          SegmentedButton<UserRole>(
+            segments: const [
+              ButtonSegment(value: UserRole.parentA, label: Text('Mama')),
+              ButtonSegment(value: UserRole.parentB, label: Text('Tata')),
+            ],
+            selected: {_custodian},
+            onSelectionChanged: (value) =>
+                setState(() => _custodian = value.first),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _reasonController,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Powód (opcjonalnie)',
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _submit,
+              child: Text(_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HandoverEditSheet extends StatefulWidget {
+  final CustodySlot slot;
+
+  const _HandoverEditSheet({required this.slot});
+
+  @override
+  State<_HandoverEditSheet> createState() => _HandoverEditSheetState();
+}
+
+class _HandoverEditSheetState extends State<_HandoverEditSheet> {
+  late final TextEditingController _timeController;
+  late final TextEditingController _locationController;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timeController =
+        TextEditingController(text: widget.slot.handoverTime ?? '');
+    _locationController =
+        TextEditingController(text: widget.slot.handoverLocation ?? '');
+  }
+
+  @override
+  void dispose() {
+    _timeController.dispose();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      await context.read<CalendarProvider>().updateSlotHandover(
+            slotId: widget.slot.id,
+            handoverTime: _timeController.text.trim().isEmpty
+                ? null
+                : _timeController.text.trim(),
+            handoverLocation: _locationController.text.trim().isEmpty
+                ? null
+                : _locationController.text.trim(),
+          );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Przekazanie zaktualizowane.'),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_calendarActionError(error, 'aktualizacji przekazania')),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Edytuj przekazanie',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _timeController,
+            decoration: const InputDecoration(labelText: 'Godzina'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _locationController,
+            decoration: const InputDecoration(labelText: 'Miejsce'),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _submit,
+              child: Text(_isSubmitting ? 'Zapisuję...' : 'Zapisz'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

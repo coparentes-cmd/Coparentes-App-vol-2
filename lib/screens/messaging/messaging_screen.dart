@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/messaging_categories.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/calendar_provider.dart';
 import '../../providers/exports_provider.dart';
 import '../../providers/offline_sync_provider.dart';
 import '../../services/ai_guidance_service.dart';
@@ -1423,6 +1424,8 @@ class _MessageBubbleState extends State<_MessageBubble> {
   bool _showOriginal = false;
   bool _downloadingAttachment = false;
   bool _respondingToSwap = false;
+  bool _respondingToSchedule = false;
+  bool _respondingToException = false;
 
   bool get _isShielded =>
       widget.aiShieldEnabled &&
@@ -1436,6 +1439,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
     final workspace = context.watch<AppProvider>().currentWorkspace;
     final senderRole = senderRoleForMessage(widget.message, workspace);
     final bubbleStyle = messageBubbleStyleForRole(senderRole);
+    final viewerUserId = context.read<AppProvider>().currentUser?.id;
     final swap = isSwapScheduleThread(widget.threadCategory)
         ? findPendingSwapForMessage(
             messageContent: widget.message.content,
@@ -1443,10 +1447,34 @@ class _MessageBubbleState extends State<_MessageBubble> {
             swaps: calendar.swapRequests,
           )
         : null;
+    final schedule = isSwapScheduleThread(widget.threadCategory)
+        ? findPendingScheduleForMessage(
+            messageContent: widget.message.content,
+            messageSenderId: widget.message.senderId,
+            schedule: calendar.custodySchedule,
+          )
+        : null;
+    final exception = isSwapScheduleThread(widget.threadCategory)
+        ? findPendingExceptionForMessage(
+            messageContent: widget.message.content,
+            messageSenderId: widget.message.senderId,
+            exceptions: calendar.custodyExceptions,
+          )
+        : null;
     final showSwapActions = swap != null &&
         canRespondToSwapMessage(
           swap: swap,
-          viewerUserId: context.read<AppProvider>().currentUser?.id,
+          viewerUserId: viewerUserId,
+        );
+    final showScheduleActions = schedule != null &&
+        canRespondToScheduleMessage(
+          schedule: schedule,
+          viewerUserId: viewerUserId,
+        );
+    final showExceptionActions = exception != null &&
+        canRespondToExceptionMessage(
+          exception: exception,
+          viewerUserId: viewerUserId,
         );
 
     return Padding(
@@ -1636,9 +1664,125 @@ class _MessageBubbleState extends State<_MessageBubble> {
               onReject: () => _respondToSwap(swap, SwapStatus.rejected),
             ),
           ],
+          if (showScheduleActions) ...[
+            const SizedBox(height: 6),
+            _ScheduleMessageActions(
+              alignEnd: widget.isMe,
+              isLoading: _respondingToSchedule,
+              onAccept: () => _respondToSchedule(schedule, approve: true),
+              onReject: () => _respondToSchedule(schedule, approve: false),
+            ),
+          ],
+          if (showExceptionActions) ...[
+            const SizedBox(height: 6),
+            _ScheduleMessageActions(
+              alignEnd: widget.isMe,
+              isLoading: _respondingToException,
+              onAccept: () => _respondToException(exception, approve: true),
+              onReject: () => _respondToException(exception, approve: false),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _respondToSchedule(
+    CustodySchedule schedule, {
+    required bool approve,
+  }) async {
+    if (_respondingToSchedule) {
+      return;
+    }
+
+    setState(() => _respondingToSchedule = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final app = context.read<AppProvider>();
+    final calendar = context.read<CalendarProvider>();
+    final messaging = context.read<MessagingProvider>();
+
+    try {
+      await calendar.respondToSchedule(
+        scheduleId: schedule.id,
+        approve: approve,
+      );
+      await messaging.loadThreads(
+        viewerUserId: app.currentUser?.id,
+        silent: true,
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            approve
+                ? 'Grafik zaakceptowany — kalendarz zaktualizowany.'
+                : 'Propozycja grafiku odrzucona.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się zapisać odpowiedzi na grafik.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _respondingToSchedule = false);
+      }
+    }
+  }
+
+  Future<void> _respondToException(
+    CustodyException exception, {
+    required bool approve,
+  }) async {
+    if (_respondingToException) {
+      return;
+    }
+
+    setState(() => _respondingToException = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final app = context.read<AppProvider>();
+    final calendar = context.read<CalendarProvider>();
+    final messaging = context.read<MessagingProvider>();
+
+    try {
+      await calendar.respondToException(
+        exceptionId: exception.id,
+        approve: approve,
+      );
+      await messaging.loadThreads(
+        viewerUserId: app.currentUser?.id,
+        silent: true,
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            approve
+                ? 'Wyjątek zaakceptowany — kalendarz zaktualizowany.'
+                : 'Wniosek o wyjątek odrzucony.',
+          ),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się zapisać odpowiedzi na wyjątek.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _respondingToException = false);
+      }
+    }
   }
 
   Future<void> _respondToSwap(SwapRequest swap, SwapStatus status) async {
@@ -1911,6 +2055,67 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
       }
       Navigator.pop(context, thread);
     });
+  }
+}
+
+class _ScheduleMessageActions extends StatelessWidget {
+  final bool alignEnd;
+  final bool isLoading;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _ScheduleMessageActions({
+    required this.alignEnd,
+    required this.isLoading,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          OutlinedButton(
+            onPressed: isLoading ? null : onReject,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+              side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.45)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            child: const Text('Odrzuć'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: isLoading ? null : onAccept,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              elevation: 0,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Akceptuj'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
