@@ -4,6 +4,7 @@ import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../models/calendar_snapshot.dart';
 import '../serializers/calendar_serializers.dart';
+import '../serializers/api_serializers.dart' show userRoleToApi;
 
 class CalendarRepository {
   final AppApiClient _apiClient;
