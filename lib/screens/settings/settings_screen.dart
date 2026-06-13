@@ -6,6 +6,7 @@ import '../../config/legal_config.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../auth/child_onboarding_sheet.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -167,33 +168,73 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ],
                     if (canShowInviteCode) ...[
-  _Divider(),
-  _ActionTile(
-    icon: Icons.child_care_outlined,
-    label: 'Kod zaproszenia dziecka',
-    subtitle: workspace!.inviteCode!,
-    color: roleColor,
-    isDark: isDark,
-    onTap: () => _copyInviteCode(
-      context,
-      workspace.inviteCode!,
-      roleColor,
-    ),
-  ),
-  _Divider(),
-  _ActionTile(
-    icon: Icons.family_restroom_outlined,
-    label: 'Kod zaproszenia dla drugiego rodzica',
-    subtitle: workspace.inviteCode!,
-    color: roleColor,
-    isDark: isDark,
-    onTap: () => _copyInviteCode(
-      context,
-      workspace.inviteCode!,
-      roleColor,
-    ),
-  ),
-],
+                      _Divider(),
+                      if (user?.role == UserRole.parentA &&
+                          workspace.childInviteCode != null &&
+                          workspace.childInviteCode!.isNotEmpty) ...[
+                        _ActionTile(
+                          icon: Icons.child_care_outlined,
+                          label: 'Kod zaproszenia dziecka',
+                          subtitle: workspace.childInviteCode!,
+                          color: roleColor,
+                          isDark: isDark,
+                          onTap: () => _copyInviteCode(
+                            context,
+                            workspace.childInviteCode!,
+                            roleColor,
+                          ),
+                        ),
+                        _Divider(),
+                      ],
+                      _ActionTile(
+                        icon: Icons.family_restroom_outlined,
+                        label: 'Kod zaproszenia dla drugiego rodzica',
+                        subtitle: workspace.inviteCode!,
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _copyInviteCode(
+                          context,
+                          workspace.inviteCode!,
+                          roleColor,
+                        ),
+                      ),
+                    ],
+
+                    if (user?.role == UserRole.parentA) ...[
+                      _Divider(),
+                      if (workspace != null && workspace.children.isNotEmpty) ...[
+                        _InfoTile(
+                          icon: Icons.people_outline,
+                          label: 'Dzieci w rodzinie',
+                          value: workspace.children
+                              .map((c) => c.name.split(' ').first)
+                              .join(', '),
+                          isDark: isDark,
+                        ),
+                        ...workspace.children.map(
+                          (child) => _InfoTile(
+                            icon: Icons.child_care,
+                            label: child.name,
+                            value: [
+                              '${child.age} lat',
+                              if (child.school != null && child.school!.isNotEmpty)
+                                child.school!,
+                            ].join(' · '),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
+                      _ActionTile(
+                        icon: Icons.person_add_outlined,
+                        label: 'Dodaj dziecko',
+                        subtitle: workspace?.children.isEmpty ?? true
+                            ? 'Dodaj pierwszy profil dziecka'
+                            : 'Dodaj kolejny profil dziecka',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => showChildOnboardingSheet(context),
+                      ),
+                    ],
 
                     _Divider(),
                     _ActionTile(

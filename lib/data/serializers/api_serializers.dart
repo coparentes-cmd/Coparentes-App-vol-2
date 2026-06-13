@@ -132,6 +132,7 @@ Workspace workspaceFromJson(Map<String, dynamic> json) {
     id: json['id'] as String,
     name: json['name'] as String,
     inviteCode: json['inviteCode'] as String?,
+    childInviteCode: json['childInviteCode'] as String?,
     members: (json['members'] as List<dynamic>)
         .map((item) => appUserFromJson(Map<String, dynamic>.from(item as Map)))
         .toList(),
@@ -151,6 +152,7 @@ Map<String, dynamic> workspaceToJson(Workspace workspace) {
     'id': workspace.id,
     'name': workspace.name,
     'inviteCode': workspace.inviteCode,
+    'childInviteCode': workspace.childInviteCode,
     'members': workspace.members.map(appUserToJson).toList(),
     'children': workspace.children.map(childProfileToJson).toList(),
     'createdAt': workspace.createdAt.toIso8601String(),
@@ -163,6 +165,7 @@ MessageThread messageThreadFromJson(Map<String, dynamic> json) {
     subject: json['subject'] as String,
     category: json['category'] as String,
     childId: json['childId'] as String?,
+    audience: json['audience'] as String? ?? 'parents',
     lastActivity: DateTime.parse(json['lastActivity'] as String),
     hasUnread: json['hasUnread'] as bool? ?? false,
     messages: (json['messages'] as List<dynamic>)
@@ -179,6 +182,7 @@ Map<String, dynamic> messageThreadToJson(MessageThread thread) {
     'subject': thread.subject,
     'category': thread.category,
     'childId': thread.childId,
+    'audience': thread.audience,
     'lastActivity': thread.lastActivity.toIso8601String(),
     'hasUnread': thread.hasUnread,
     'messages': thread.messages.map(messageToJson).toList(),

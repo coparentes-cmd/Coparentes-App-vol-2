@@ -81,6 +81,7 @@ class Workspace {
   final String id;
   final String name;
   final String? inviteCode;
+  final String? childInviteCode;
   final List<AppUser> members;
   final List<ChildProfile> children;
   final DateTime createdAt;
@@ -89,6 +90,7 @@ class Workspace {
     required this.id,
     required this.name,
     this.inviteCode,
+    this.childInviteCode,
     required this.members,
     required this.children,
     required this.createdAt,
@@ -129,6 +131,7 @@ class MessageThread {
   final DateTime lastActivity;
   final bool hasUnread;
   final String? childId;
+  final String audience;
 
   MessageThread({
     required this.id,
@@ -138,10 +141,15 @@ class MessageThread {
     required this.lastActivity,
     this.hasUnread = false,
     this.childId,
+    this.audience = 'parents',
   });
+
+  bool get isFamilyAudience => audience == 'family';
 
   IconData get categoryIcon {
     switch (category) {
+      case 'Rodzina':
+        return Icons.family_restroom;
       case 'Szkoła':
         return Icons.school;
       case 'Zdrowie':
@@ -157,6 +165,8 @@ class MessageThread {
 
   Color get categoryColor {
     switch (category) {
+      case 'Rodzina':
+        return const Color(0xFF00897B);
       case 'Szkoła':
         return const Color(0xFF1565C0);
       case 'Zdrowie':

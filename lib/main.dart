@@ -273,19 +273,34 @@ class _AppGateState extends State<_AppGate> {
           calendarProvider.initializeSampleData();
         }
         financeProvider.initializeSampleData();
-        messagingProvider.initializeSampleData();
+        if (context.read<AppProvider>().currentUser?.role == UserRole.child) {
+          messagingProvider.initializeChildSampleData();
+        } else {
+          messagingProvider.initializeSampleData();
+        }
         exportsProvider.initializeSampleData();
       } else {
         final appProvider = context.read<AppProvider>();
-        await messagingProvider.loadThreads(
-          viewerUserId: appProvider.currentUser?.id,
-          notifyEnabled: appProvider.notifyMessages,
-        );
-        await exportsProvider.loadExports();
-        await offlineProvider.refreshStatus();
-        await calendarProvider.load();
-        await financeProvider.load();
-        await documentsProvider.load(viewerUserId: appProvider.currentUser?.id);
+        final role = appProvider.currentUser?.role;
+        final isChild = role == UserRole.child;
+
+        if (isChild) {
+          await messagingProvider.loadThreads(
+            viewerUserId: appProvider.currentUser?.id,
+            notifyEnabled: appProvider.notifyMessages,
+          );
+          await calendarProvider.load();
+        } else {
+          await messagingProvider.loadThreads(
+            viewerUserId: appProvider.currentUser?.id,
+            notifyEnabled: appProvider.notifyMessages,
+          );
+          await exportsProvider.loadExports();
+          await offlineProvider.refreshStatus();
+          await calendarProvider.load();
+          await financeProvider.load();
+          await documentsProvider.load(viewerUserId: appProvider.currentUser?.id);
+        }
       }
     });
   }

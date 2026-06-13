@@ -4,12 +4,13 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_environment.dart';
 import '../../data/api/app_api_client.dart';
+import '../../data/repositories/auth_repository.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_widgets.dart';
 
-enum _AuthMode { login, register, join }
+enum _AuthMode { login, register, join, joinChild }
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -23,10 +24,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   final _nameController = TextEditingController();
   final _workspaceController = TextEditingController();
   final _inviteCodeController = TextEditingController();
+  final _childInviteCodeController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
   bool? _backendReachable;
+  ChildJoinPreview? _childJoinPreview;
+  String? _selectedChildProfileId;
+  bool _loadingChildPreview = false;
 
   @override
   void initState() {
@@ -58,6 +63,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     _nameController.dispose();
     _workspaceController.dispose();
     _inviteCodeController.dispose();
+    _childInviteCodeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -148,9 +154,76 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                 if (_mode == _AuthMode.join)
                                   _Field(
                                     controller: _inviteCodeController,
-                                    label: 'Kod zaproszenia',
+                                    label: 'Kod zaproszenia rodzica',
                                     hint: 'np. RODZINA-AB12',
                                   ),
+                                if (_mode == _AuthMode.joinChild) ...[
+                                  _Field(
+                                    controller: _childInviteCodeController,
+                                    label: 'Kod zaproszenia dziecka',
+                                    hint: 'np. DZIECIKOWAL2026',
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _loadingChildPreview ? null : _loadChildPreview,
+                                      child: _loadingChildPreview
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
+                                          : const Text('Sprawdź kod'),
+                                    ),
+                                  ),
+                                  if (_childJoinPreview != null) ...[
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.childColor.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: AppTheme.childColor.withValues(alpha: 0.2),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Rodzina: ${_childJoinPreview!.workspaceName}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (_availableChildProfiles.isEmpty)
+                                      const Text(
+                                        'Brak wolnych profili. Poproś rodzica o dodanie Twojego profilu.',
+                                        style: TextStyle(
+                                          color: AppTheme.warningColor,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                    else
+                                      DropdownButtonFormField<String>(
+                                        value: _selectedChildProfileId,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Twój profil w rodzinie',
+                                        ),
+                                        items: _availableChildProfiles
+                                            .map(
+                                              (child) => DropdownMenuItem(
+                                                value: child.id,
+                                                child: Text(child.name),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (value) =>
+                                            setState(() => _selectedChildProfileId = value),
+                                      ),
+                                  ],
+                                ],
                                 _Field(
                                   controller: _emailController,
                                   label: 'E-mail',
@@ -344,6 +417,49 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     );
   }
 
+  List<ChildJoinProfileOption> get _availableChildProfiles {
+    return _childJoinPreview?.children
+            .where((child) => !child.hasAccount)
+            .toList() ??
+        const [];
+  }
+
+  Future<void> _loadChildPreview() async {
+    final code = _childInviteCodeController.text.trim();
+    if (code.length < 6) {
+      _showMessage('Kod zaproszenia dziecka musi mieć co najmniej 6 znaków.');
+      return;
+    }
+
+    setState(() {
+      _loadingChildPreview = true;
+      _childJoinPreview = null;
+      _selectedChildProfileId = null;
+    });
+
+    final preview = await context.read<AppProvider>().getChildJoinPreview(code);
+
+    if (!mounted) {
+      return;
+    }
+
+    final available = preview?.children.where((child) => !child.hasAccount).toList() ??
+        const <ChildJoinProfileOption>[];
+
+    setState(() {
+      _loadingChildPreview = false;
+      _childJoinPreview = preview;
+      _selectedChildProfileId =
+          available.length == 1 ? available.first.id : null;
+    });
+
+    if (preview == null) {
+      _showMessage('Nie znaleziono rodziny dla tego kodu.');
+    } else if (available.isEmpty) {
+      _showMessage('Wszystkie profile mają już konto. Poproś rodzica o pomoc.');
+    }
+  }
+
   Future<void> _submit() async {
     final appProvider = context.read<AppProvider>();
     final email = _emailController.text.trim();
@@ -359,7 +475,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
-    if (_mode == _AuthMode.register || _mode == _AuthMode.join) {
+    if (_mode == _AuthMode.register || _mode == _AuthMode.join || _mode == _AuthMode.joinChild) {
       final name = _nameController.text.trim();
       if (name.length < 2) {
         _showMessage('Imię i nazwisko musi mieć co najmniej 2 znaki.');
@@ -379,6 +495,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       final inviteCode = _inviteCodeController.text.trim();
       if (inviteCode.length < 6) {
         _showMessage('Kod zaproszenia musi mieć co najmniej 6 znaków.');
+        return;
+      }
+    }
+
+    if (_mode == _AuthMode.joinChild) {
+      final childInviteCode = _childInviteCodeController.text.trim();
+      if (childInviteCode.length < 6) {
+        _showMessage('Kod zaproszenia dziecka musi mieć co najmniej 6 znaków.');
+        return;
+      }
+      if (_childJoinPreview == null) {
+        _showMessage('Najpierw sprawdź kod zaproszenia dziecka.');
+        return;
+      }
+      if (_selectedChildProfileId == null) {
+        _showMessage('Wybierz swój profil z listy.');
         return;
       }
     }
@@ -404,6 +536,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           email: email,
           password: password,
           inviteCode: _inviteCodeController.text.trim(),
+        );
+        break;
+      case _AuthMode.joinChild:
+        success = await appProvider.joinAsChild(
+          name: _nameController.text.trim(),
+          email: email,
+          password: password,
+          childInviteCode: _childInviteCodeController.text.trim(),
+          childProfileId: _selectedChildProfileId!,
         );
         break;
     }
@@ -440,6 +581,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         return 'Utwórz konto i przestrzeń';
       case _AuthMode.join:
         return 'Dołącz do istniejącej przestrzeni';
+      case _AuthMode.joinChild:
+        return 'Dołącz jako dziecko';
     }
   }
 
@@ -450,18 +593,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       case _AuthMode.register:
         return 'Załóż pierwsze konto rodzica, skonfiguruj rodzinę i zaproś drugiego opiekuna.';
       case _AuthMode.join:
-        return 'Wpisz kod zaproszenia i wybierz rolę, aby dołączyć do już istniejącej przestrzeni.';
+        return 'Wpisz kod zaproszenia rodzica, aby dołączyć jako drugi opiekun.';
+      case _AuthMode.joinChild:
+        return 'Wpisz kod od rodzica, wybierz swój profil i zobacz kalendarz oraz czat rodzinny.';
     }
   }
 
   String _buttonLabel(_AuthMode mode) {
-    switch (_mode) {
+    switch (mode) {
       case _AuthMode.login:
         return 'Zaloguj';
       case _AuthMode.register:
         return 'Utwórz konto';
       case _AuthMode.join:
         return 'Dołącz';
+      case _AuthMode.joinChild:
+        return 'Dołącz jako dziecko';
     }
   }
 }
@@ -500,11 +647,6 @@ class _BrandIntroCard extends StatelessWidget {
             'Spokojne rodzicielstwo po rozstaniu — teraz także w aplikacji.',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Ten interfejs zachowuje ten sam język marki co strona internetowa: jasne tło, miękkie karty, duże zaokrąglenia i gradient Coparentes.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondary),
-          ),
           const SizedBox(height: 24),
           const _FeatureBullet(
             icon: Icons.chat_bubble_outline,
@@ -536,6 +678,8 @@ class _BrandIntroCard extends StatelessWidget {
         return 'Nowa przestrzeń rodzinna';
       case _AuthMode.join:
         return 'Dołączanie do rodziny';
+      case _AuthMode.joinChild:
+        return 'Panel dziecka';
     }
   }
 }
@@ -614,7 +758,8 @@ class _ModeSelector extends StatelessWidget {
       segments: const [
         ButtonSegment(value: _AuthMode.login, label: Text('Logowanie')),
         ButtonSegment(value: _AuthMode.register, label: Text('Nowa rodzina')),
-        ButtonSegment(value: _AuthMode.join, label: Text('Dołącz')),
+        ButtonSegment(value: _AuthMode.join, label: Text('Rodzic')),
+        ButtonSegment(value: _AuthMode.joinChild, label: Text('Dziecko')),
       ],
       selected: {mode},
       onSelectionChanged: (selection) => onChanged(selection.first),

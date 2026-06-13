@@ -399,6 +399,40 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<ChildJoinPreview?> getChildJoinPreview(String childInviteCode) {
+    return _authRepository.getChildJoinPreview(childInviteCode);
+  }
+
+  Future<bool> joinAsChild({
+    required String name,
+    required String email,
+    required String password,
+    required String childInviteCode,
+    required String childProfileId,
+  }) async {
+    try {
+      _authError = null;
+      final session = await _authRepository.joinAsChild(
+        name: name,
+        email: email,
+        password: password,
+        childInviteCode: childInviteCode,
+        childProfileId: childProfileId,
+      );
+      _isDemoMode = false;
+      _applySession(session);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się dołączyć jako dziecko.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> enterDemoRole(UserRole role) async {
     _authError = null;
     _isDemoMode = true;
@@ -523,6 +557,7 @@ class AppProvider extends ChangeNotifier {
       id: 'workspace_demo_001',
       name: 'Rodzina Kowalskich — demo',
       inviteCode: 'DEMO-2026',
+      childInviteCode: 'DZIECIKOWAL2026',
       members: [
         AppUser(
           id: 'user_demo_parent_a',
@@ -725,6 +760,7 @@ class MessagingProvider extends ChangeNotifier {
       subject: thread.subject,
       category: thread.category,
       childId: thread.childId,
+      audience: thread.audience,
       lastActivity: thread.lastActivity,
       hasUnread: false,
       messages: readMessages,
@@ -740,6 +776,30 @@ class MessagingProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     _threads.addAll([
+      MessageThread(
+        id: 'thread_demo_family',
+        subject: 'Rodzina',
+        category: 'Rodzina',
+        audience: 'family',
+        childId: null,
+        lastActivity: now.subtract(const Duration(hours: 1)),
+        hasUnread: false,
+        messages: [
+          Message(
+            id: 'msg_demo_family_001',
+            threadId: 'thread_demo_family',
+            senderId: 'user_demo_parent_a',
+            senderName: 'Anna Kowalska',
+            content: 'Pamietajcie o kolacji o 18:30!',
+            tone: MessageTone.neutral,
+            attachments: const [],
+            sentAt: now.subtract(const Duration(hours: 1)),
+            isDelivered: true,
+            isRead: true,
+            hash: 'sha256_msg_demo_family_001',
+          ),
+        ],
+      ),
       MessageThread(
         id: 'thread_demo_001',
         subject: 'Angielski – zmiana terminu',
@@ -790,6 +850,41 @@ class MessagingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void initializeChildSampleData() {
+    _threads.clear();
+    _error = null;
+    _isLoading = false;
+
+    final now = DateTime.now();
+    _threads.add(
+      MessageThread(
+        id: 'thread_demo_family',
+        subject: 'Rodzina',
+        category: 'Rodzina',
+        audience: 'family',
+        childId: null,
+        lastActivity: now.subtract(const Duration(hours: 1)),
+        hasUnread: false,
+        messages: [
+          Message(
+            id: 'msg_demo_family_001',
+            threadId: 'thread_demo_family',
+            senderId: 'user_demo_parent_a',
+            senderName: 'Anna Kowalska',
+            content: 'Pamietajcie o kolacji o 18:30!',
+            tone: MessageTone.neutral,
+            attachments: const [],
+            sentAt: now.subtract(const Duration(hours: 1)),
+            isDelivered: true,
+            isRead: true,
+            hash: 'sha256_msg_demo_family_001',
+          ),
+        ],
+      ),
+    );
+    notifyListeners();
+  }
+
   MessageThread? getThreadById(String threadId) {
     try {
       return _threads.firstWhere((thread) => thread.id == threadId);
@@ -799,6 +894,9 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   MessageThread? getCategoryChannel(String category) {
+    if (category == familyCategoryChannel) {
+      return findFamilyChannel(_threads);
+    }
     return findCategoryThreadFallback(_threads, category);
   }
 

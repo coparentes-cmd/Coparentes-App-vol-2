@@ -9,6 +9,28 @@ import '../models/auth_session.dart';
 import '../serializers/api_serializers.dart';
 import '../serializers/document_serializers.dart';
 
+class ChildJoinProfileOption {
+  final String id;
+  final String name;
+  final bool hasAccount;
+
+  const ChildJoinProfileOption({
+    required this.id,
+    required this.name,
+    required this.hasAccount,
+  });
+}
+
+class ChildJoinPreview {
+  final String workspaceName;
+  final List<ChildJoinProfileOption> children;
+
+  const ChildJoinPreview({
+    required this.workspaceName,
+    required this.children,
+  });
+}
+
 class AuthRepository {
   static const _tokenKey = 'coparentes_auth_token';
 
@@ -109,6 +131,52 @@ class AuthRepository {
       'email': email,
       'password': password,
       'inviteCode': inviteCode,
+    });
+    return _saveSession(payload);
+  }
+
+  Future<ChildJoinPreview?> getChildJoinPreview(String childInviteCode) async {
+    try {
+      final payload = await _apiClient.getJson(
+        '/auth/join-preview?childInviteCode=${Uri.encodeQueryComponent(childInviteCode)}',
+      );
+      return ChildJoinPreview(
+        workspaceName: payload['workspaceName'] as String,
+        children: (payload['children'] as List<dynamic>)
+            .map(
+              (item) {
+                final child = Map<String, dynamic>.from(item as Map);
+                return ChildJoinProfileOption(
+                  id: child['id'] as String,
+                  name: child['name'] as String,
+                  hasAccount: child['hasAccount'] as bool? ?? false,
+                );
+              },
+            )
+            .toList(),
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<AuthSession> joinAsChild({
+    required String name,
+    required String email,
+    required String password,
+    required String childInviteCode,
+    required String childProfileId,
+  }) async {
+    final payload = await _apiClient.postJson('/auth/join', {
+      'name': name,
+      'email': email,
+      'password': password,
+      'childInviteCode': childInviteCode,
+      'childProfileId': childProfileId,
+      'role': 'child',
     });
     return _saveSession(payload);
   }

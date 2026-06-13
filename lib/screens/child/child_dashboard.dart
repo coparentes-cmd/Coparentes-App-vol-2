@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/models.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../calendar/calendar_screen.dart';
+import '../messaging/messaging_screen.dart';
 
 class ChildDashboard extends StatefulWidget {
   const ChildDashboard({super.key});
@@ -34,9 +38,10 @@ class _ChildDashboardState extends State<ChildDashboard> {
         child: IndexedStack(
           index: _selectedIndex,
           children: [
-            _buildTodayTab(firstName),
+            _buildTodayTab(context, firstName),
+            const CalendarScreen(),
+            const MessagingScreen(familyOnly: true),
             _buildPackTab(),
-            _buildRequestTab(),
           ],
         ),
       ),
@@ -53,12 +58,18 @@ class _ChildDashboardState extends State<ChildDashboard> {
             label: 'Dzisiaj',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.backpack),
-            label: 'Plecak',
+            icon: Icon(Icons.calendar_month_outlined),
+            activeIcon: Icon(Icons.calendar_month),
+            label: 'Kalendarz',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.star),
-            label: 'Prośby',
+            icon: Icon(Icons.family_restroom_outlined),
+            activeIcon: Icon(Icons.family_restroom),
+            label: 'Rodzina',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.backpack),
+            label: 'Plecak',
           ),
         ],
       ),
@@ -91,7 +102,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
     );
   }
 
-  Widget _buildTodayTab(String firstName) {
+  Widget _buildTodayTab(BuildContext context, String firstName) {
     final now = DateTime.now();
     final weekdays = [
       'Poniedziałek',
@@ -103,6 +114,13 @@ class _ChildDashboardState extends State<ChildDashboard> {
       'Niedziela',
     ];
     final dayName = weekdays[now.weekday - 1];
+    final calendar = context.watch<CalendarProvider>();
+    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final slots = calendar.getSlotsForDay(now);
+    final events = calendar.getEventsForDay(now);
+    final slot = slots.isNotEmpty ? slots.first : null;
+    final custodianLabel = _custodianLabel(slot?.custodian, workspace);
+    final handoverHint = _handoverHint(slots, now, workspace);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
@@ -213,44 +231,65 @@ class _ChildDashboardState extends State<ChildDashboard> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                  if (slot == null)
+                    const Text(
+                      'Brak zaplanowanej opieki na dziś',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (slot.custodian == UserRole.parentA
+                                ? AppTheme.parentAColor
+                                : AppTheme.parentBColor)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            slot.custodian == UserRole.parentA ? '👩' : '👨',
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            custodianLabel,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: slot.custodian == UserRole.parentA
+                                  ? AppTheme.parentAColor
+                                  : AppTheme.parentBColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.parentAColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Row(
+                  if (handoverHint != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
                       children: [
-                        Text('👩', style: TextStyle(fontSize: 24)),
-                        SizedBox(width: 10),
-                        Text(
-                          'U Mamy',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.parentAColor,
+                        const Text('🕓', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            handoverHint,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Row(
-                    children: [
-                      Text('🕓', style: TextStyle(fontSize: 16)),
-                      SizedBox(width: 8),
-                      Text(
-                        'Jutro przekazanie o 16:00 przy szkole',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -282,26 +321,22 @@ class _ChildDashboardState extends State<ChildDashboard> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const _EventItem(
-                    time: '07:30',
-                    emoji: '🏫',
-                    title: 'Szkoła – SP nr 15',
-                  ),
-                  const _EventItem(
-                    time: '13:30',
-                    emoji: '🍕',
-                    title: 'Obiad w szkole',
-                  ),
-                  const _EventItem(
-                    time: '17:00',
-                    emoji: '📚',
-                    title: 'Angielski – ul. Mokotowska',
-                  ),
-                  const _EventItem(
-                    time: '18:30',
-                    emoji: '🏠',
-                    title: 'Powrót do domu',
-                  ),
+                  if (events.isEmpty)
+                    const Text(
+                      'Brak zaplanowanych wydarzeń',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                    )
+                  else
+                    ...events.map(
+                      (event) => _EventItem(
+                        time: _formatEventTime(event.startDate),
+                        emoji: _eventEmoji(event.type),
+                        title: event.title,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -476,144 +511,77 @@ class _ChildDashboardState extends State<ChildDashboard> {
     );
   }
 
-  Widget _buildRequestTab() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F0),
-      appBar: AppBar(
-        backgroundColor: AppTheme.childColor,
-        title: const Row(
-          children: [
-            Text('⭐', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text('Prośby', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.switch_account, color: Colors.white),
-            tooltip: 'Zmień profil',
-            onPressed: () => _showExitDialog(context),
-          ),
-        ],
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '⭐ Moje prośby',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Możesz wysłać prośbę do rodziców. Zobaczą ją oboje.',
-              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 20),
+  String _formatEventTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
 
-            // Quick requests
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                '🎮 Chcę zabrać konsolę',
-                '📱 Chcę zabrać tablet',
-                '🎸 Chcę zabrać gitarę',
-                '🐱 Tęsknię za kotem',
-                '🤝 Chcę zostać dłużej',
-                '📞 Zadzwoń do mnie',
-              ]
-                  .map(
-                    (req) => ActionChip(
-                      label: Text(req, style: const TextStyle(fontSize: 13)),
-                      backgroundColor: Colors.white,
-                      side: BorderSide(
-                        color: AppTheme.childColor.withValues(alpha: 0.3),
-                      ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Prośba wysłana: $req'),
-                            backgroundColor: AppTheme.childColor,
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
+  String _eventEmoji(EventType type) {
+    switch (type) {
+      case EventType.school:
+        return '🏫';
+      case EventType.medical:
+        return '🏥';
+      case EventType.activity:
+        return '📚';
+      case EventType.handover:
+        return '🤝';
+      case EventType.holiday:
+        return '🎉';
+      case EventType.other:
+        return '📌';
+    }
+  }
 
-            const SizedBox(height: 24),
+  String _custodianLabel(UserRole? role, Workspace? workspace) {
+    if (role == null) {
+      return 'Brak informacji';
+    }
 
-            const Text(
-              'Napisz swoją prośbę',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const TextField(
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Napisz co chcesz powiedzieć rodzicom...',
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Text('⭐', style: TextStyle(fontSize: 16)),
-                label: const Text('Wyślij prośbę'),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Prośba wysłana do rodziców!'),
-                      backgroundColor: AppTheme.childColor,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.childColor,
-                ),
-              ),
-            ),
+    AppUser? member;
+    for (final user in workspace?.members ?? const <AppUser>[]) {
+      if (user.role == role) {
+        member = user;
+        break;
+      }
+    }
 
-            const SizedBox(height: 24),
-            // Safety note
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                children: [
-                  Text('💙', style: TextStyle(fontSize: 20)),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Jeśli czujesz się niekomfortowo lub potrzebujesz pomocy, powiedz o tym dorosłemu, któremu ufasz.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.aiCoachColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    if (member != null) {
+      final firstName = member.name.split(' ').first;
+      return 'U $firstName';
+    }
+
+    return role == UserRole.parentA ? 'U rodzica A' : 'U rodzica B';
+  }
+
+  String? _handoverHint(
+    List<CustodySlot> slots,
+    DateTime day,
+    Workspace? workspace,
+  ) {
+    final slot = slots.isNotEmpty ? slots.first : null;
+    if (slot?.handoverTime != null && slot!.handoverTime!.isNotEmpty) {
+      final location = slot.handoverLocation;
+      if (location != null && location.isNotEmpty) {
+        return 'Przekazanie o ${slot.handoverTime} — $location';
+      }
+      return 'Przekazanie o ${slot.handoverTime}';
+    }
+
+    final tomorrow = day.add(const Duration(days: 1));
+    final tomorrowSlots = context.read<CalendarProvider>().getSlotsForDay(tomorrow);
+    if (tomorrowSlots.isEmpty || slot == null) {
+      return null;
+    }
+
+    final tomorrowSlot = tomorrowSlots.first;
+    if (tomorrowSlot.custodian == slot.custodian) {
+      return null;
+    }
+
+    final nextParent = _custodianLabel(tomorrowSlot.custodian, workspace);
+    return 'Jutro: $nextParent';
   }
 }
 

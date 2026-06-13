@@ -98,13 +98,31 @@ class _CalendarScreenState extends State<CalendarScreen>
   Widget build(BuildContext context) {
     final calendar = context.watch<CalendarProvider>();
     final user = context.watch<AppProvider>().currentUser;
-    final isReadOnly = user?.role == UserRole.observer;
-    final roleColor = user?.role == UserRole.parentA
-        ? AppTheme.parentAColor
-        : AppTheme.parentBColor;
+    final isChild = user?.role == UserRole.child;
+    final isReadOnly =
+        user?.role == UserRole.observer || user?.role == UserRole.child;
+    final roleColor = switch (user?.role) {
+      UserRole.parentA => AppTheme.parentAColor,
+      UserRole.parentB => AppTheme.parentBColor,
+      UserRole.child => AppTheme.childColor,
+      _ => AppTheme.primaryTeal,
+    };
 
     final pendingRequests = calendar.pendingRequestCount;
     final hasActiveSchedule = calendar.hasActiveSchedule;
+
+    if (isChild) {
+      return ParentTabScaffold(
+        title: 'Kalendarz opieki',
+        body: _buildCalendarTab(
+          context,
+          calendar,
+          roleColor,
+          isReadOnly,
+          user?.id,
+        ),
+      );
+    }
 
     return ParentTabScaffold(
       title: 'Kalendarz opieki',

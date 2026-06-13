@@ -23,12 +23,14 @@ class MessagingScreen extends StatefulWidget {
   final String? openThreadId;
   final int openThreadRequestId;
   final VoidCallback? onReturnTab;
+  final bool familyOnly;
 
   const MessagingScreen({
     super.key,
     this.openThreadId,
     this.openThreadRequestId = 0,
     this.onReturnTab,
+    this.familyOnly = false,
   });
 
   @override
@@ -141,9 +143,29 @@ class _MessagingScreenState extends State<MessagingScreen> {
 
     final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
+    final childFamilyOnly = widget.familyOnly || user?.role == UserRole.child;
+
+    if (childFamilyOnly) {
+      return ParentTabScaffold(
+        title: 'Rodzina',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Odśwież wiadomości',
+            onPressed: () => _loadThreads(context),
+          ),
+        ],
+        body: _InlineCategoryChatPanel(
+          key: const ValueKey(familyCategoryChannel),
+          category: familyCategoryChannel,
+          showChildQuickReplies: user?.role == UserRole.child,
+        ),
+      );
+    }
+
     final isReadOnly = user?.role == UserRole.observer;
     final customThreads = messaging.threads.where((thread) {
-      if (isCategoryChannel(thread)) {
+      if (isCategoryChannel(thread) || isFamilyChannel(thread)) {
         return false;
       }
       final query = _searchQuery.trim().toLowerCase();
@@ -416,8 +438,13 @@ class _CategoryChip extends StatelessWidget {
 
 class _InlineCategoryChatPanel extends StatefulWidget {
   final String category;
+  final bool showChildQuickReplies;
 
-  const _InlineCategoryChatPanel({super.key, required this.category});
+  const _InlineCategoryChatPanel({
+    super.key,
+    required this.category,
+    this.showChildQuickReplies = false,
+  });
 
   @override
   State<_InlineCategoryChatPanel> createState() =>
@@ -579,6 +606,27 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     _scrollToBottom();
   }
 
+  Future<void> _sendQuickReply(String content) async {
+    if (_threadId == null || _sending) {
+      return;
+    }
+
+    setState(() => _sending = true);
+    final sent = await context.read<MessagingProvider>().sendMessage(
+          threadId: _threadId!,
+          content: content,
+          tone: MessageTone.neutral,
+        );
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _sending = false);
+    if (sent != null) {
+      _scrollToBottom();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
@@ -663,6 +711,28 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                   ),
           ),
         ),
+        if (widget.showChildQuickReplies && !isReadOnly) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                '🤝 Chcę zostać dłużej',
+                '📞 Zadzwoń do mnie',
+                '🏠 Zostań na noc',
+                '🎮 Chcę zabrać konsolę',
+              ]
+                  .map(
+                    (label) => ActionChip(
+                      label: Text(label, style: const TextStyle(fontSize: 12)),
+                      onPressed: _sending ? null : () => _sendQuickReply(label),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
         if (!isReadOnly)
           MessageComposeBar(
             controller: _controller,
@@ -2063,6 +2133,7 @@ class _NewThreadSheet extends StatefulWidget {
 class _NewThreadSheetState extends State<_NewThreadSheet> {
   final _subjectController = TextEditingController();
   String _selectedCategory = 'Szkoła';
+  String? _selectedChildId;
 
   @override
   void dispose() {
@@ -2072,6 +2143,9 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final children = workspace?.children ?? const [];
+
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -2120,7 +2194,7 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: ['Szkoła', 'Zdrowie', 'Finansowe', 'Zmiana grafiku', 'Inne']
+            children: messagingParentCategoryChannels
                 .map(
                   (cat) => ChoiceChip(
                     label: Text(cat),
@@ -2132,6 +2206,22 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
                 )
                 .toList(),
           ),
+          if (children.length > 1) ...[
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedChildId ?? children.first.id,
+              decoration: const InputDecoration(labelText: 'Dotyczy dziecka'),
+              items: children
+                  .map(
+                    (child) => DropdownMenuItem(
+                      value: child.id,
+                      child: Text(child.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _selectedChildId = value),
+            ),
+          ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -2148,7 +2238,8 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
   void _createThread() {
     final subject = _subjectController.text.trim();
     if (subject.isEmpty) return;
-    if (messagingCategoryChannels.contains(subject)) {
+    if (messagingParentCategoryChannels.contains(subject) ||
+        subject == familyCategoryChannel) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -2160,13 +2251,16 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
     }
 
     final workspace = context.read<AppProvider>().currentWorkspace;
+    final children = workspace?.children ?? const [];
+    final childId = children.isEmpty
+        ? null
+        : (_selectedChildId ?? children.first.id);
+
     context.read<MessagingProvider>()
         .createThread(
           subject: subject,
           category: _selectedCategory,
-          childId: workspace?.children.isNotEmpty == true
-              ? workspace!.children.first.id
-              : null,
+          childId: childId,
         )
         .then((thread) {
       if (!mounted || thread == null) {
