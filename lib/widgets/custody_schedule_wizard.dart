@@ -24,6 +24,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   late final TextEditingController _handoverLocationController;
   bool _isSubmitting = false;
   bool _calendarSaved = false;
+  bool _calendarInteracted = false;
+  int _rangeClickCount = 0;
 
   late Map<String, UserRole> _weekA;
   late Map<String, UserRole> _weekB;
@@ -82,6 +84,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     setState(() {
       _pattern = pattern;
       _calendarSaved = false;
+      _calendarInteracted = false;
+      _rangeClickCount = 0;
       _selectedCustomDates.clear();
       _applyPatternPreset(pattern, creatorRole);
       if (_usesTemplateDateRange) {
@@ -95,6 +99,10 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   void _updateRange(DateTime? start, DateTime? end) {
     setState(() {
       _calendarSaved = false;
+      _rangeClickCount++;
+      _calendarInteracted = _usesTemplateDateRange
+          ? _rangeClickCount >= 2
+          : true;
       if (start != null) {
         _startDate = start;
         _endDate = end ?? start;
@@ -107,6 +115,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   void _updateSelectedDates(Set<String> dates) {
     setState(() {
       _calendarSaved = false;
+      _calendarInteracted = true;
       _selectedCustomDates
         ..clear()
         ..addAll(dates);
@@ -114,40 +123,15 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   }
 
   void _saveCalendarSelection() {
-    if (!_showsCalendar) {
+    if (!_applyCalendarIfReady()) {
       return;
     }
-
-    if (_usesTemplateDateRange) {
-      if (_normalizedEndDate.isBefore(_normalizedStartDate)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Wybierz datę końcową — musi być po dacie początkowej.'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-        return;
-      }
-    } else if (_pattern == CustodySchedulePattern.customWeek) {
-      if (_selectedCustomDates.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Zaznacz co najmniej jeden dzień w kalendarzu.'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-        return;
-      }
-      _applyCustomDatesToWeekPattern();
-    }
-
-    setState(() => _calendarSaved = true);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           _usesTemplateDateRange
-              ? 'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)} zapisany.'
-              : 'Zaznaczono ${_selectedCustomDates.length} dni — zapisano w grafiku.',
+              ? 'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)} zapisany. Kliknij „Dalej”.'
+              : 'Zaznaczono ${_selectedCustomDates.length} dni. Kliknij „Dalej”.',
         ),
         backgroundColor: AppTheme.successColor,
       ),
@@ -193,39 +177,55 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     }
   }
 
-  bool _validateTemplateDateRange() {
-    if (!_usesTemplateDateRange) {
-      if (_pattern == CustodySchedulePattern.customWeek && !_calendarSaved) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Zapisz zaznaczenie kalendarza (Enter), potem kliknij Dalej.'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-        return false;
-      }
+  bool _isCalendarReady() {
+    if (!_showsCalendar) {
       return true;
     }
-    if (!_calendarSaved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Zapisz okres w kalendarzu (Enter), potem kliknij Dalej.'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
+    if (!_calendarInteracted) {
       return false;
     }
-    if (_normalizedEndDate.isBefore(_normalizedStartDate)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Data końca musi być taka sama lub późniejsza niż start.'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-      return false;
+    if (_usesTemplateDateRange) {
+      return !_normalizedEndDate.isBefore(_normalizedStartDate);
+    }
+    if (_pattern == CustodySchedulePattern.customWeek) {
+      return _selectedCustomDates.isNotEmpty;
     }
     return true;
   }
+
+  bool _applyCalendarIfReady({bool showErrors = true}) {
+    if (!_isCalendarReady()) {
+      if (!showErrors) {
+        return false;
+      }
+      if (_usesTemplateDateRange) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Wybierz datę początkową i końcową w kalendarzu (dwa kliknięcia).',
+            ),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Zaznacz co najmniej jeden dzień w kalendarzu.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+      return false;
+    }
+
+    if (_pattern == CustodySchedulePattern.customWeek) {
+      _applyCustomDatesToWeekPattern();
+    }
+    _calendarSaved = true;
+    return true;
+  }
+
+  bool _validateStep0() => _applyCalendarIfReady();
 
   void _applyPatternPreset(
     CustodySchedulePattern pattern,
@@ -266,11 +266,9 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   String get _stepTitle {
     switch (_step) {
       case 0:
-        return 'Krok 1: Wybierz szablon';
-      case 1:
-        return 'Krok 2: Start i przekazanie';
+        return 'Krok 1: Szablon, kalendarz i przekazanie';
       default:
-        return 'Krok 3: Podsumowanie';
+        return 'Krok 2: Wyślij do akceptacji';
     }
   }
 
@@ -310,7 +308,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                         creatorColor: creatorColor,
                         creatorLabel: creatorLabel,
                       ),
-                    1 => _buildDetailsStep(creatorLabel: creatorLabel),
                     _ => _buildSummaryStep(creatorLabel: creatorLabel),
                   },
                 ),
@@ -327,9 +324,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _onPrimaryAction,
                     child: Text(
-                      _step < 2
-                          ? 'Dalej'
-                          : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+                      _step == 0
+                          ? 'Dalej — podsumowanie'
+                          : (_isSubmitting
+                              ? 'Wysyłam...'
+                              : 'Wyślij do akceptacji'),
                     ),
                   ),
                 ],
@@ -342,8 +341,10 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   }
 
   void _handleEnterKey() {
-    if (_step == 0 && _showsCalendar) {
-      _saveCalendarSelection();
+    if (_step == 0) {
+      if (_applyCalendarIfReady()) {
+        setState(() => _step = 1);
+      }
       return;
     }
     _onPrimaryAction();
@@ -433,19 +434,12 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             ),
           ],
         ],
-      ],
-    );
-  }
-
-  Widget _buildDetailsStep({required String creatorLabel}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_pattern == CustodySchedulePattern.customWeek)
-          _SummaryRow(
-            label: 'Twoje dni',
-            value: '${_selectedCustomDates.length} zaznaczonych',
-          ),
+        const SizedBox(height: 20),
+        const Text(
+          'Przekazanie dziecka',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
         TextField(
           decoration: const InputDecoration(
             labelText: 'Godzina przekazania',
@@ -517,11 +511,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   }
 
   Future<void> _onPrimaryAction() async {
-    if (_step < 2) {
-      if (_step == 0 && !_validateTemplateDateRange()) {
+    if (_step == 0) {
+      if (!_validateStep0()) {
         return;
       }
-      setState(() => _step++);
+      setState(() => _step = 1);
       return;
     }
 
@@ -529,6 +523,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     try {
       final app = context.read<AppProvider>();
       final calendar = context.read<CalendarProvider>();
+      final messaging = context.read<MessagingProvider>();
       final weekA = CustodyWeekPattern(_weekA);
       final weekB = CustodyWeekPattern(_weekB);
       final handoverTime = _handoverTimeController.text.trim().isEmpty
@@ -540,7 +535,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       final endDate = _usesTemplateDateRange ? _normalizedEndDate : null;
 
       if (app.isDemoMode) {
-        calendar.proposeScheduleDemo(
+        final schedule = calendar.proposeScheduleDemo(
           proposedById: app.currentUser?.id ?? 'demo_user',
           patternType: _pattern,
           startDate: _normalizedStartDate,
@@ -550,6 +545,13 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           handoverTime: handoverTime,
           handoverLocation: handoverLocation,
         );
+        final user = app.currentUser;
+        if (user != null) {
+          messaging.appendDemoScheduleProposal(
+            schedule: schedule,
+            sender: user,
+          );
+        }
       } else {
         await calendar.proposeSchedule(
           patternType: _pattern,
@@ -559,6 +561,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           weekB: weekB,
           handoverTime: handoverTime,
           handoverLocation: handoverLocation,
+        );
+        await messaging.loadThreads(
+          viewerUserId: app.currentUser?.id,
+          notifyEnabled: app.notifyMessages,
+          silent: true,
         );
       }
 

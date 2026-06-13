@@ -10,6 +10,7 @@ import '../data/repositories/auth_repository.dart';
 import '../config/messaging_categories.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../models/models.dart';
+import '../utils/swap_message_utils.dart';
 import '../utils/messaging_helpers.dart';
 
 export 'calendar_provider.dart';
@@ -908,6 +909,74 @@ class MessagingProvider extends ChangeNotifier {
     _snapshotSeeded = false;
     _knownMessageIds.clear();
     _pendingNewMessageAlert = null;
+    notifyListeners();
+  }
+
+  void appendDemoScheduleProposal({
+    required CustodySchedule schedule,
+    required AppUser sender,
+  }) {
+    const category = 'Zmiana grafiku';
+    final start =
+        '${schedule.startDate.day.toString().padLeft(2, '0')}.${schedule.startDate.month.toString().padLeft(2, '0')}.${schedule.startDate.year}';
+    final end = schedule.endDate;
+    final rangeLabel = end == null
+        ? 'od $start'
+        : '$start – ${end.day.toString().padLeft(2, '0')}.${end.month.toString().padLeft(2, '0')}.${end.year}';
+
+    final content = [
+      scheduleProposalMessageHeader,
+      '',
+      'Szablon: ${schedule.patternLabel}',
+      'Obowiązuje: $rangeLabel',
+      if (schedule.handoverTime != null)
+        'Przekazanie: ${schedule.handoverTime}',
+      if (schedule.handoverLocation != null)
+        'Miejsce: ${schedule.handoverLocation}',
+      '',
+      'Zaakceptuj lub odrzuć w Kalendarz → Prośby.',
+    ].join('\n');
+
+    final now = DateTime.now();
+    final message = Message(
+      id: 'msg_demo_schedule_${now.microsecondsSinceEpoch}',
+      threadId: 'thread_demo_schedule',
+      senderId: sender.id,
+      senderName: sender.name,
+      content: content,
+      tone: MessageTone.neutral,
+      attachments: const [],
+      sentAt: now,
+      isDelivered: true,
+      isRead: false,
+      hash: 'sha256_demo_schedule_${now.microsecondsSinceEpoch}',
+    );
+
+    final index = _threads.indexWhere((thread) => thread.category == category);
+    if (index >= 0) {
+      final thread = _threads[index];
+      _threads[index] = MessageThread(
+        id: thread.id,
+        subject: thread.subject,
+        category: thread.category,
+        childId: thread.childId,
+        lastActivity: now,
+        hasUnread: true,
+        messages: [...thread.messages, message],
+      );
+    } else {
+      _threads.insert(
+        0,
+        MessageThread(
+          id: 'thread_demo_schedule',
+          subject: 'Grafik opieki',
+          category: category,
+          lastActivity: now,
+          hasUnread: true,
+          messages: [message],
+        ),
+      );
+    }
     notifyListeners();
   }
 }
