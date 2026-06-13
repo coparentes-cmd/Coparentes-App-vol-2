@@ -248,6 +248,9 @@ class _CalendarScreenState extends State<CalendarScreen>
             },
             onDayDoubleTap: (day) =>
                 _showDayDetailSheet(context, calendar, day, isReadOnly),
+            onEventDoubleTap: isReadOnly
+                ? null
+                : (event) => _showEditEventSheet(context, event),
             onMonthChanged: (month) {
               setState(() => _focusedDay = month);
             },
@@ -434,6 +437,12 @@ class _CalendarScreenState extends State<CalendarScreen>
                             events: events,
                             isException: isException,
                             isPending: isPending,
+                            onEventDoubleTap: isReadOnly
+                                ? null
+                                : (event) {
+                                    Navigator.pop(ctx);
+                                    _showEditEventSheet(context, event);
+                                  },
                           ),
                           if (!isReadOnly) ...[
                             const SizedBox(height: 12),
@@ -644,6 +653,24 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
+  void _showEditEventSheet(BuildContext context, CalendarEvent event) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _AddEventSheet(
+        selectedDay: DateTime(
+          event.startDate.year,
+          event.startDate.month,
+          event.startDate.day,
+        ),
+        event: event,
+      ),
+    );
+  }
+
   void _requestSwap(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -740,6 +767,7 @@ class _SelectedDayCard extends StatelessWidget {
   final List<CalendarEvent> events;
   final bool isException;
   final bool isPending;
+  final ValueChanged<CalendarEvent>? onEventDoubleTap;
 
   const _SelectedDayCard({
     required this.day,
@@ -747,6 +775,7 @@ class _SelectedDayCard extends StatelessWidget {
     required this.events,
     this.isException = false,
     this.isPending = false,
+    this.onEventDoubleTap,
   });
 
   @override
@@ -847,7 +876,12 @@ class _SelectedDayCard extends StatelessWidget {
                 ...sortedEvents.map(
                   (e) {
                     final timeLabel = formatEventTimeLabel(e.startDate);
-                    return Padding(
+                    return GestureDetector(
+                      onDoubleTap: onEventDoubleTap == null
+                          ? null
+                          : () => onEventDoubleTap!(e),
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
@@ -892,7 +926,8 @@ class _SelectedDayCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  );
+                  ),
+                    );
                   },
                 ),
               ] else if (slot == null)
@@ -1120,8 +1155,12 @@ class _SwapDateRow extends StatelessWidget {
 
 class _AddEventSheet extends StatefulWidget {
   final DateTime selectedDay;
+  final CalendarEvent? event;
 
-  const _AddEventSheet({required this.selectedDay});
+  const _AddEventSheet({
+    required this.selectedDay,
+    this.event,
+  });
 
   @override
   State<_AddEventSheet> createState() => _AddEventSheetState();
@@ -1129,9 +1168,28 @@ class _AddEventSheet extends StatefulWidget {
 
 class _AddEventSheetState extends State<_AddEventSheet> {
   final _titleController = TextEditingController();
-  EventType _selectedType = EventType.school;
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
+  late EventType _selectedType;
+  late TimeOfDay _selectedTime;
   bool _isSubmitting = false;
+
+  bool get _isEditing => widget.event != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final event = widget.event;
+    if (event != null) {
+      _titleController.text = event.title;
+      _selectedType = event.type;
+      _selectedTime = TimeOfDay(
+        hour: event.startDate.hour,
+        minute: event.startDate.minute,
+      );
+    } else {
+      _selectedType = EventType.school;
+      _selectedTime = const TimeOfDay(hour: 9, minute: 0);
+    }
+  }
 
   @override
   void dispose() {
@@ -1179,15 +1237,41 @@ class _AddEventSheetState extends State<_AddEventSheet> {
         minute: _selectedTime.minute,
       );
       final app = context.read<AppProvider>();
-      if (app.isDemoMode) {
-        context.read<CalendarProvider>().addLocalEvent(
+      final calendar = context.read<CalendarProvider>();
+      if (_isEditing) {
+        final existing = widget.event!;
+        if (app.isDemoMode || existing.id.startsWith('local_evt_')) {
+          calendar.updateLocalEvent(
+            id: existing.id,
+            title: title,
+            startDate: startDate,
+            type: _selectedType,
+            description: existing.description,
+            endDate: existing.endDate,
+            childId: existing.childId,
+            location: existing.location,
+          );
+        } else {
+          await calendar.updateEvent(
+            id: existing.id,
+            title: title,
+            startDate: startDate,
+            type: _selectedType,
+            description: existing.description,
+            endDate: existing.endDate,
+            childId: existing.childId,
+            location: existing.location,
+          );
+        }
+      } else if (app.isDemoMode) {
+        calendar.addLocalEvent(
               title: title,
               startDate: startDate,
               type: _selectedType,
               createdBy: app.currentUser?.id ?? 'demo',
             );
       } else {
-        await context.read<CalendarProvider>().addEvent(
+        await calendar.addEvent(
               title: title,
               startDate: startDate,
               type: _selectedType,
@@ -1196,8 +1280,12 @@ class _AddEventSheetState extends State<_AddEventSheet> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Zdarzenie zostało dodane'),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'Zdarzenie zostało zaktualizowane'
+                : 'Zdarzenie zostało dodane',
+          ),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -1229,9 +1317,9 @@ class _AddEventSheetState extends State<_AddEventSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nowe zdarzenie',
-            style: TextStyle(
+          Text(
+            _isEditing ? 'Edytuj zdarzenie' : 'Nowe zdarzenie',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
@@ -1300,7 +1388,7 @@ class _AddEventSheetState extends State<_AddEventSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Dodaj zdarzenie'),
+                  : Text(_isEditing ? 'Zapisz zmiany' : 'Dodaj zdarzenie'),
             ),
           ),
         ],

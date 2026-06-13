@@ -548,6 +548,71 @@ class CalendarProvider extends ChangeNotifier {
     }
   }
 
+  void updateLocalEvent({
+    required String id,
+    required String title,
+    required DateTime startDate,
+    required EventType type,
+    String? description,
+    DateTime? endDate,
+    String? childId,
+    String? location,
+  }) {
+    final index = _events.indexWhere((item) => item.id == id);
+    if (index < 0) {
+      return;
+    }
+
+    final existing = _events[index];
+    _upsertEvent(
+      CalendarEvent(
+        id: id,
+        title: title,
+        description: description ?? existing.description,
+        startDate: _normalizeEventStart(startDate),
+        endDate: endDate == null
+            ? existing.endDate
+            : _normalizeEventStart(endDate),
+        type: type,
+        childId: childId ?? existing.childId,
+        createdBy: existing.createdBy,
+        location: location ?? existing.location,
+      ),
+    );
+  }
+
+  Future<void> updateEvent({
+    required String id,
+    required String title,
+    required DateTime startDate,
+    required EventType type,
+    String? description,
+    DateTime? endDate,
+    String? childId,
+    String? location,
+  }) async {
+    try {
+      final normalizedStart = _normalizeEventStart(startDate);
+      final updated = await _repository.updateEvent(
+        id: id,
+        title: title,
+        startDate: normalizedStart,
+        type: type,
+        description: description,
+        endDate: endDate == null ? null : _normalizeEventStart(endDate),
+        childId: childId,
+        location: location,
+      );
+      _upsertEvent(updated);
+      await _reloadBestEffort();
+      _upsertEvent(updated);
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> createSwapRequest({
     required DateTime originalDate,
     required DateTime proposedDate,

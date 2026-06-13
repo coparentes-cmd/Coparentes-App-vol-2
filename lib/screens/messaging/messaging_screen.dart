@@ -21,7 +21,15 @@ import '../../widgets/message_status_indicator.dart';
 
 class MessagingScreen extends StatefulWidget {
   final String? openThreadId;
-  const MessagingScreen({super.key, this.openThreadId});
+  final int openThreadRequestId;
+  final VoidCallback? onReturnTab;
+
+  const MessagingScreen({
+    super.key,
+    this.openThreadId,
+    this.openThreadRequestId = 0,
+    this.onReturnTab,
+  });
 
   @override
   State<MessagingScreen> createState() => _MessagingScreenState();
@@ -30,6 +38,8 @@ class MessagingScreen extends StatefulWidget {
 class _MessagingScreenState extends State<MessagingScreen> {
   String _selectedCategory = 'Szkoła';
   String _searchQuery = '';
+  String? _activeThreadId;
+  bool _returnToPreviousTab = false;
 
   @override
   void initState() {
@@ -38,26 +48,78 @@ class _MessagingScreenState extends State<MessagingScreen> {
       if (!mounted) {
         return;
       }
-      final messaging = context.read<MessagingProvider>();
       _loadThreads(context);
     });
 
     if (widget.openThreadId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final messaging = context.read<MessagingProvider>();
-        final thread = messaging.getThreadById(widget.openThreadId!);
-        if (thread == null) {
-          return;
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ThreadScreen(threadId: thread.id),
-          ),
-        );
-      });
+      _scheduleOpenThread(widget.openThreadId!, returnToPreviousTab: true);
     }
+  }
+
+  @override
+  void didUpdateWidget(MessagingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.openThreadRequestId != oldWidget.openThreadRequestId &&
+        widget.openThreadId != null) {
+      _scheduleOpenThread(widget.openThreadId!, returnToPreviousTab: true);
+    }
+  }
+
+  void _scheduleOpenThread(
+    String threadId, {
+    bool returnToPreviousTab = false,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_openThreadById(threadId, returnToPreviousTab: returnToPreviousTab));
+    });
+  }
+
+  void _showThread(String threadId, {bool returnToPreviousTab = false}) {
+    setState(() {
+      _activeThreadId = threadId;
+      _returnToPreviousTab = returnToPreviousTab;
+    });
+  }
+
+  void _closeThread() {
+    final shouldReturn = _returnToPreviousTab;
+    setState(() {
+      _activeThreadId = null;
+      _returnToPreviousTab = false;
+    });
+    if (shouldReturn) {
+      widget.onReturnTab?.call();
+    }
+  }
+
+  Future<void> _openThreadById(
+    String threadId, {
+    bool returnToPreviousTab = false,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+
+    final messaging = context.read<MessagingProvider>();
+    var thread = messaging.getThreadById(threadId);
+
+    if (thread == null) {
+      final appProvider = context.read<AppProvider>();
+      await messaging.loadThreads(
+        viewerUserId: appProvider.currentUser?.id,
+        notifyEnabled: false,
+      );
+      if (!mounted) {
+        return;
+      }
+      thread = messaging.getThreadById(threadId);
+    }
+
+    if (thread == null || !mounted) {
+      return;
+    }
+
+    _showThread(thread.id, returnToPreviousTab: returnToPreviousTab);
   }
 
   void _loadThreads(BuildContext context) {
@@ -70,6 +132,13 @@ class _MessagingScreenState extends State<MessagingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_activeThreadId != null) {
+      return ThreadScreen(
+        threadId: _activeThreadId!,
+        onBack: _closeThread,
+      );
+    }
+
     final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
     final isReadOnly = user?.role == UserRole.observer;
@@ -235,6 +304,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
                               (thread) => _ThreadTile(
                                 thread: thread,
                                 viewerUserId: user?.id,
+                                onTap: () => _showThread(thread.id),
                               ),
                             ),
                           ] else if (_searchQuery.trim().isNotEmpty) ...[
@@ -302,12 +372,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
       ),
     );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ThreadScreen(threadId: thread.id),
-      ),
-    );
+    _showThread(thread.id);
   }
 }
 
@@ -759,10 +824,12 @@ class _CategoryChannelTile extends StatelessWidget {
 class _ThreadTile extends StatelessWidget {
   final MessageThread thread;
   final String? viewerUserId;
+  final VoidCallback onTap;
 
   const _ThreadTile({
     required this.thread,
     this.viewerUserId,
+    required this.onTap,
   });
 
   bool get _hasUnread {
@@ -782,14 +849,7 @@ class _ThreadTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ThreadScreen(threadId: thread.id),
-              ),
-            );
-          },
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -920,7 +980,13 @@ class _ThreadTile extends StatelessWidget {
 
 class ThreadScreen extends StatefulWidget {
   final String threadId;
-  const ThreadScreen({super.key, required this.threadId});
+  final VoidCallback? onBack;
+
+  const ThreadScreen({
+    super.key,
+    required this.threadId,
+    this.onBack,
+  });
 
   @override
   State<ThreadScreen> createState() => _ThreadScreenState();
@@ -928,11 +994,13 @@ class ThreadScreen extends StatefulWidget {
 
 class _ThreadScreenState extends State<ThreadScreen> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   MessageTone _analyzedTone = MessageTone.neutral;
   bool _showAiSuggestion = false;
   String _aiSuggestion = '';
   Timer? _livePollTimer;
   bool _sending = false;
+  bool _initialScrollDone = false;
   final List<PendingMessageAttachment> _pendingAttachments = [];
 
   Future<void> _pickAttachment() async {
@@ -976,6 +1044,24 @@ class _ThreadScreenState extends State<ThreadScreen> {
         );
   }
 
+  void _scrollToLatestMessage() {
+    if (_initialScrollDone || !_scrollController.hasClients) {
+      return;
+    }
+    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    _initialScrollDone = true;
+  }
+
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1015,6 +1101,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
   void dispose() {
     _livePollTimer?.cancel();
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -1034,90 +1121,114 @@ class _ThreadScreenState extends State<ThreadScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(thread.subject, style: const TextStyle(fontSize: 16)),
-            Text(
-              thread.category,
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
+    if (!_initialScrollDone && thread.messages.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToLatestMessage();
+        }
+      });
+    }
+
+    final canPopRoute =
+        widget.onBack == null && Navigator.of(context).canPop();
+
+    return PopScope(
+      canPop: canPopRoute,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBack();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.surfaceColor,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _handleBack,
+          ),
+          automaticallyImplyLeading: false,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(thread.subject, style: const TextStyle(fontSize: 16)),
+              Text(
+                thread.category,
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              onPressed: () => _exportThread(context),
+              tooltip: 'Eksportuj wątek',
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () => _exportThread(context),
-            tooltip: 'Eksportuj wątek',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Immutable + shield notice
-          Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.dividerColor),
-            ),
-            child: Row(
-              children: [
-                const ImmutableBadge(),
-                const SizedBox(width: 8),
-                if (aiShield) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.aiCoachColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.shield,
-                          size: 10,
-                          color: AppTheme.aiCoachColor,
-                        ),
-                        SizedBox(width: 3),
-                        Text(
-                          'AI Shield',
-                          style: TextStyle(
-                            fontSize: 9,
+        body: Column(
+          children: [
+            // Immutable + shield notice
+            Container(
+              margin: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.dividerColor),
+              ),
+              child: Row(
+                children: [
+                  const ImmutableBadge(),
+                  const SizedBox(width: 8),
+                  if (aiShield) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.aiCoachColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.shield,
+                            size: 10,
                             color: AppTheme.aiCoachColor,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 3),
+                          Text(
+                            'AI Shield',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: AppTheme.aiCoachColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-
-          // Messages list
-          Expanded(
-            child: ColoredBox(
-              color: imessageChatBackground,
-              child: _ThreadMessagesList(
-                messages: thread.messages,
-                threadId: widget.threadId,
-                threadCategory: thread.category,
-                viewerUserId: user?.id,
-                aiShieldEnabled: aiShield,
               ),
             ),
-          ),
+
+            // Messages list
+            Expanded(
+              child: ColoredBox(
+                color: imessageChatBackground,
+                child: _ThreadMessagesList(
+                  messages: thread.messages,
+                  threadId: widget.threadId,
+                  threadCategory: thread.category,
+                  viewerUserId: user?.id,
+                  aiShieldEnabled: aiShield,
+                  scrollController: _scrollController,
+                ),
+              ),
+            ),
 
           // AI Coach area
           if (_showAiSuggestion && aiCoach)
@@ -1228,6 +1339,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
               },
             ),
         ],
+      ),
       ),
     );
   }

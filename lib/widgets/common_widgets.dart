@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../utils/layout_utils.dart';
 
 class ImmutableBadge extends StatelessWidget {
   const ImmutableBadge({super.key});
@@ -237,46 +238,57 @@ class _AiContextualTipState extends State<AiContextualTip>
   Widget build(BuildContext context) {
     if (_dismissed || widget.tips.isEmpty) return const SizedBox.shrink();
     final tip = widget.tips[_index];
+    final compact = isCompactPhoneLayout(context);
     return FadeTransition(
       opacity: _fadeAnim,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        margin: EdgeInsets.symmetric(horizontal: 0, vertical: compact ? 2 : 4),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 10 : 12,
+          compact ? 7 : 10,
+          compact ? 6 : 8,
+          compact ? 7 : 10,
+        ),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [AppTheme.primaryTeal, AppTheme.accentColor, AppTheme.coralColor],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(compact ? 12 : 14),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.accentColor.withValues(alpha: 0.22),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: AppTheme.accentColor.withValues(alpha: compact ? 0.16 : 0.22),
+              blurRadius: compact ? 6 : 8,
+              offset: Offset(0, compact ? 2 : 3),
             ),
           ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(tip['icon'] ?? '🤖',
-                style: const TextStyle(fontSize: 22)),
-            const SizedBox(width: 10),
+            Text(
+              tip['icon'] ?? '🤖',
+              style: TextStyle(fontSize: compact ? 18 : 22),
+            ),
+            SizedBox(width: compact ? 8 : 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome,
-                          color: Colors.white70, size: 11),
-                      const SizedBox(width: 4),
-                      const Text(
+                      Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white70,
+                        size: compact ? 10 : 11,
+                      ),
+                      SizedBox(width: compact ? 3 : 4),
+                      Text(
                         'AI Coach',
                         style: TextStyle(
                           color: Colors.white70,
-                          fontSize: 10,
+                          fontSize: compact ? 9 : 10,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
                         ),
@@ -289,7 +301,7 @@ class _AiContextualTipState extends State<AiContextualTip>
                               duration: const Duration(milliseconds: 300),
                               margin:
                                   const EdgeInsets.symmetric(horizontal: 2),
-                              width: i == _index ? 14 : 5,
+                              width: i == _index ? (compact ? 12 : 14) : 5,
                               height: 5,
                               decoration: BoxDecoration(
                                 color: i == _index
@@ -302,24 +314,24 @@ class _AiContextualTipState extends State<AiContextualTip>
                         ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: compact ? 2 : 3),
                   Text(
                     tip['title'] ?? '',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: compact ? 11 : 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: compact ? 1 : 2),
                   Text(
                     tip['body'] ?? '',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.85),
-                      fontSize: 11,
-                      height: 1.35,
+                      fontSize: compact ? 10 : 11,
+                      height: 1.3,
                     ),
-                    maxLines: 3,
+                    maxLines: compact ? 2 : 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -328,10 +340,13 @@ class _AiContextualTipState extends State<AiContextualTip>
             if (widget.dismissible)
               GestureDetector(
                 onTap: () => setState(() => _dismissed = true),
-                child: const Padding(
-                  padding: EdgeInsets.only(left: 6, top: 2),
-                  child: Icon(Icons.close,
-                      color: Colors.white54, size: 16),
+                child: Padding(
+                  padding: EdgeInsets.only(left: compact ? 4 : 6, top: 2),
+                  child: Icon(
+                    Icons.close,
+                    color: Colors.white54,
+                    size: compact ? 14 : 16,
+                  ),
                 ),
               ),
           ],

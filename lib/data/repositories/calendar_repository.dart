@@ -91,6 +91,57 @@ class CalendarRepository {
     }
   }
 
+  Future<CalendarEvent> updateEvent({
+    required String id,
+    required String title,
+    required DateTime startDate,
+    required EventType type,
+    String? description,
+    DateTime? endDate,
+    String? childId,
+    String? location,
+  }) async {
+    try {
+      final payload = await _apiClient.patchJson('/calendar/events/$id', {
+        'title': title,
+        'startDate': calendarStartDateToApiIso(startDate),
+        'type': eventTypeToApi(type),
+        if (description != null) 'description': description,
+        if (endDate != null) 'endDate': calendarStartDateToApiIso(endDate),
+        if (childId != null) 'childId': childId,
+        if (location != null) 'location': location,
+      });
+      final event = calendarEventFromJson(payload);
+      await _upsertEventInCache(event);
+      return event;
+    } catch (error) {
+      if (!_apiClient.isNetworkError(error)) {
+        rethrow;
+      }
+
+      final snapshot = _getCachedSnapshot();
+      final index = snapshot.events.indexWhere((event) => event.id == id);
+      if (index < 0) {
+        rethrow;
+      }
+
+      final existing = snapshot.events[index];
+      final local = CalendarEvent(
+        id: id,
+        title: title,
+        description: description ?? existing.description,
+        startDate: startDate,
+        endDate: endDate ?? existing.endDate,
+        type: type,
+        childId: childId ?? existing.childId,
+        createdBy: existing.createdBy,
+        location: location ?? existing.location,
+      );
+      await _upsertEventInCache(local);
+      return local;
+    }
+  }
+
   Future<SwapRequest> createSwapRequest({
     required DateTime originalDate,
     required DateTime proposedDate,

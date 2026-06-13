@@ -28,6 +28,7 @@ class GoogleStyleMonthCalendar extends StatefulWidget {
   final bool Function(DateTime day)? hasPendingException;
   final ValueChanged<DateTime> onDaySelected;
   final ValueChanged<DateTime>? onDayDoubleTap;
+  final ValueChanged<CalendarEvent>? onEventDoubleTap;
   final ValueChanged<DateTime> onMonthChanged;
   final VoidCallback onTodayPressed;
 
@@ -42,6 +43,7 @@ class GoogleStyleMonthCalendar extends StatefulWidget {
     this.hasPendingException,
     required this.onDaySelected,
     this.onDayDoubleTap,
+    this.onEventDoubleTap,
     required this.onMonthChanged,
     required this.onTodayPressed,
   });
@@ -142,6 +144,7 @@ class _GoogleStyleMonthCalendarState extends State<GoogleStyleMonthCalendar> {
                   hasPendingException: widget.hasPendingException,
                   onDaySelected: widget.onDaySelected,
                   onDayDoubleTap: widget.onDayDoubleTap,
+                  onEventDoubleTap: widget.onEventDoubleTap,
                 );
               },
             ),
@@ -162,6 +165,7 @@ class _MonthGrid extends StatelessWidget {
   final bool Function(DateTime day)? hasPendingException;
   final ValueChanged<DateTime> onDaySelected;
   final ValueChanged<DateTime>? onDayDoubleTap;
+  final ValueChanged<CalendarEvent>? onEventDoubleTap;
 
   const _MonthGrid({
     required this.month,
@@ -173,6 +177,7 @@ class _MonthGrid extends StatelessWidget {
     this.hasPendingException,
     required this.onDaySelected,
     this.onDayDoubleTap,
+    this.onEventDoubleTap,
   });
 
   @override
@@ -201,6 +206,7 @@ class _MonthGrid extends StatelessWidget {
           events: getEventsForDay(day),
           accentColor: accentColor,
           onDoubleTap: onDayDoubleTap,
+          onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
         ),
@@ -213,6 +219,7 @@ class _MonthGrid extends StatelessWidget {
           events: getEventsForDay(day),
           accentColor: accentColor,
           onDoubleTap: onDayDoubleTap,
+          onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
         ),
@@ -225,6 +232,7 @@ class _MonthGrid extends StatelessWidget {
           events: getEventsForDay(day),
           accentColor: accentColor,
           onDoubleTap: onDayDoubleTap,
+          onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
         ),
@@ -237,6 +245,7 @@ class _MonthGrid extends StatelessWidget {
           events: getEventsForDay(day),
           accentColor: accentColor,
           onDoubleTap: onDayDoubleTap,
+          onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
         ),
@@ -354,6 +363,7 @@ class _DayCell extends StatelessWidget {
   final List<CalendarEvent> events;
   final Color accentColor;
   final ValueChanged<DateTime>? onDoubleTap;
+  final ValueChanged<CalendarEvent>? onEventDoubleTap;
   final bool isException;
   final bool hasPending;
 
@@ -366,6 +376,7 @@ class _DayCell extends StatelessWidget {
     required this.events,
     required this.accentColor,
     this.onDoubleTap,
+    this.onEventDoubleTap,
     this.isException = false,
     this.hasPending = false,
   });
@@ -436,7 +447,12 @@ class _DayCell extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ...visibleEvents.map(
-                    (event) => _EventChip(event: event),
+                    (event) => _EventChip(
+                      event: event,
+                      onDoubleTap: onEventDoubleTap == null
+                          ? null
+                          : () => onEventDoubleTap!(event),
+                    ),
                   ),
                   if (hiddenCount > 0)
                     Padding(
@@ -539,27 +555,35 @@ class _DayNumber extends StatelessWidget {
 
 class _EventChip extends StatelessWidget {
   final CalendarEvent event;
+  final VoidCallback? onDoubleTap;
 
-  const _EventChip({required this.event});
+  const _EventChip({
+    required this.event,
+    this.onDoubleTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: event.typeColor,
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        _label(event),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 10,
-          height: 1.2,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
+    return GestureDetector(
+      onDoubleTap: onDoubleTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: event.typeColor,
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Text(
+          _label(event),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 10,
+            height: 1.2,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       ),
     );

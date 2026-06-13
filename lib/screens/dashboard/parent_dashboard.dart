@@ -7,6 +7,7 @@ import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
 import '../../utils/messaging_helpers.dart';
+import '../../utils/layout_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
@@ -29,6 +30,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
   DateTime _calendarFocusDay = DateTime.now();
   int _calendarFocusRequestId = 0;
+  String? _pendingOpenThreadId;
+  int _openThreadRequestId = 0;
 
   void _navigateToTab(int index) {
     setState(() => _selectedIndex = index);
@@ -45,6 +48,22 @@ class _ParentDashboardState extends State<ParentDashboard> {
       _calendarFocusDay = DateTime(day.year, day.month, day.day);
       _calendarFocusRequestId += 1;
       _selectedIndex = 2;
+    });
+  }
+
+  void _openChatThread(String threadId) {
+    setState(() {
+      _pendingOpenThreadId = threadId;
+      _openThreadRequestId += 1;
+      _selectedIndex = 1;
+    });
+    context.read<OfflineSyncProvider>().pollMessagingNow();
+  }
+
+  void _returnFromChatThread() {
+    setState(() {
+      _selectedIndex = 0;
+      _pendingOpenThreadId = null;
     });
   }
 
@@ -69,8 +88,13 @@ class _ParentDashboardState extends State<ParentDashboard> {
           _DashboardHome(
             onNavigateToTab: _navigateToTab,
             onOpenCalendarDay: _openCalendarOnDay,
+            onOpenChatThread: _openChatThread,
           ),
-          const MessagingScreen(),
+          MessagingScreen(
+            openThreadId: _pendingOpenThreadId,
+            openThreadRequestId: _openThreadRequestId,
+            onReturnTab: _returnFromChatThread,
+          ),
           CalendarScreen(
             focusDay: _calendarFocusDay,
             focusRequestId: _calendarFocusRequestId,
@@ -178,10 +202,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
 class _DashboardHome extends StatelessWidget {
   final ValueChanged<int> onNavigateToTab;
   final ValueChanged<DateTime> onOpenCalendarDay;
+  final ValueChanged<String> onOpenChatThread;
 
   const _DashboardHome({
     required this.onNavigateToTab,
     required this.onOpenCalendarDay,
+    required this.onOpenChatThread,
   });
 
   @override
@@ -314,7 +340,7 @@ class _DashboardHome extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 22,
-                      backgroundColor: Colors.white.withValues(alpha: 0.22),
+                      backgroundColor: AppTheme.coralColor,
                       child: Text(
                         firstName.isNotEmpty ? firstName[0] : '?',
                         style: const TextStyle(
@@ -450,6 +476,7 @@ class _DashboardHome extends StatelessWidget {
                       (t) => _MessageThreadPreview(
                         thread: t,
                         viewerUserId: user?.id,
+                        onTap: () => onOpenChatThread(t.id),
                       ),
                     ),
 
@@ -736,36 +763,46 @@ class _AiStatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = isCompactPhoneLayout(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 12 : 16,
+        vertical: compact ? 7 : 10,
+      ),
       decoration: BoxDecoration(
         color: AppTheme.aiCoachColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(compact ? 10 : 12),
         border: Border.all(
           color: AppTheme.aiCoachColor.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: AppTheme.aiCoachColor, size: 18),
-          const SizedBox(width: 10),
+          Icon(
+            Icons.auto_awesome,
+            color: AppTheme.aiCoachColor,
+            size: compact ? 15 : 18,
+          ),
+          SizedBox(width: compact ? 8 : 10),
           Expanded(
             child: Text(
               [
                 if (aiCoach) 'AI Coach aktywny',
                 if (aiShield) 'AI Shield aktywny',
               ].join(' · '),
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: compact ? 11 : 13,
                 color: AppTheme.aiCoachColor,
                 fontWeight: FontWeight.w500,
               ),
+              maxLines: compact ? 1 : 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Text(
+          Text(
             'AKTYWNE',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: compact ? 9 : 10,
               color: AppTheme.aiCoachColor,
               fontWeight: FontWeight.bold,
             ),
@@ -842,10 +879,12 @@ class _StatCard extends StatelessWidget {
 class _MessageThreadPreview extends StatelessWidget {
   final MessageThread thread;
   final String? viewerUserId;
+  final VoidCallback onTap;
 
   const _MessageThreadPreview({
     required this.thread,
     this.viewerUserId,
+    required this.onTap,
   });
 
   bool get _hasUnread {
@@ -865,14 +904,7 @@ class _MessageThreadPreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => MessagingScreen(openThreadId: thread.id),
-              ),
-            );
-          },
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -1270,21 +1302,26 @@ class _ChildChip extends StatelessWidget {
 class _AiCoachCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final compact = isCompactPhoneLayout(context);
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 12 : 18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(compact ? 12 : 16),
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
-          const SizedBox(width: 14),
-          const Expanded(
+          Icon(
+            Icons.auto_awesome,
+            color: Colors.white,
+            size: compact ? 22 : 28,
+          ),
+          SizedBox(width: compact ? 10 : 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1292,19 +1329,25 @@ class _AiCoachCta extends StatelessWidget {
                   'AI Coach',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 15,
+                    fontSize: compact ? 13 : 15,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: compact ? 2 : 4),
                 Text(
                   'Napisz neutralną wiadomość z pomocą AI. Pamiętaj: AI może się mylić — zawsze sprawdź przed wysłaniem.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: compact ? 11 : 12,
+                    height: 1.3,
+                  ),
+                  maxLines: compact ? 2 : 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: compact ? 6 : 8),
           ElevatedButton(
             onPressed: () {
               Navigator.push(
@@ -1315,16 +1358,22 @@ class _AiCoachCta extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF1565C0),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 10 : 12,
+                vertical: compact ? 6 : 8,
+              ),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(compact ? 6 : 8),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Otwórz',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: compact ? 11 : 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

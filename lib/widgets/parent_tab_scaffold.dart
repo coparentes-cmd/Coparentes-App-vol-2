@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/layout_utils.dart';
 
 /// Shared inset header for parent bottom-nav tabs — matches content width (16px).
 class ParentTabScaffold extends StatelessWidget {
@@ -117,38 +118,69 @@ class ParentHeaderActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = backgroundColor ?? buttonColor;
-    final horizontalPadding = prominent ? 16.0 : 12.0;
-    final verticalPadding = prominent ? 11.0 : 8.0;
-    final iconSize = prominent ? 20.0 : 16.0;
-    final fontSize = prominent ? 14.0 : 12.0;
+    final compact = isCompactPhoneLayout(context);
+    final iconOnly = useIconOnlyHeaderActions(context, label: label);
+
+    final horizontalPadding = iconOnly
+        ? 8.0
+        : compact
+            ? (prominent ? 10.0 : 8.0)
+            : (prominent ? 16.0 : 12.0);
+    final verticalPadding = iconOnly
+        ? 7.0
+        : compact
+            ? (prominent ? 6.0 : 5.0)
+            : (prominent ? 11.0 : 8.0);
+    final iconSize = iconOnly
+        ? 16.0
+        : compact
+            ? (prominent ? 16.0 : 14.0)
+            : (prominent ? 20.0 : 16.0);
+    final fontSize = compact
+        ? (prominent ? 11.0 : 11.0)
+        : (prominent ? 14.0 : 12.0);
+
+    final buttonStyle = TextButton.styleFrom(
+      backgroundColor: bg,
+      foregroundColor: Colors.white,
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
+      minimumSize: Size.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          iconOnly ? 18 : (prominent ? (compact ? 18 : 24) : (compact ? 16 : 20)),
+        ),
+      ),
+    );
+
+    final button = iconOnly
+        ? TextButton(
+            onPressed: onPressed,
+            style: buttonStyle,
+            child: Icon(icon, size: iconSize),
+          )
+        : TextButton.icon(
+            onPressed: onPressed,
+            style: buttonStyle,
+            icon: Icon(icon, size: iconSize),
+            label: Text(
+              label,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: prominent ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          );
 
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: EdgeInsets.only(right: compact ? 4 : 8),
       child: Center(
-        child: TextButton.icon(
-          onPressed: onPressed,
-          style: TextButton.styleFrom(
-            backgroundColor: bg,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-              vertical: verticalPadding,
-            ),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(prominent ? 24 : 20),
-            ),
-          ),
-          icon: Icon(icon, size: iconSize),
-          label: Text(
-            label,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: prominent ? FontWeight.w700 : FontWeight.w600,
-            ),
-          ),
-        ),
+        child: iconOnly
+            ? Tooltip(message: label, child: button)
+            : button,
       ),
     );
   }
