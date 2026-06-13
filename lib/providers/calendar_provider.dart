@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/models/calendar_snapshot.dart';
 import '../data/repositories/calendar_repository.dart';
 import '../models/models.dart';
 import '../utils/calendar_date_utils.dart';
+import '../utils/custody_schedule_utils.dart';
 
 class CalendarProvider extends ChangeNotifier {
   final CalendarRepository _repository;
@@ -16,6 +19,8 @@ class CalendarProvider extends ChangeNotifier {
   final List<SwapRequest> _swapRequests = [];
   CustodySchedule? _custodySchedule;
   final List<CustodyException> _custodyExceptions = [];
+  List<CustodySlot> _displaySlots = [];
+  bool _showsPendingSchedulePreview = false;
   bool _isLoading = false;
   String? _error;
   bool _loadedFromApi = false;
@@ -62,6 +67,9 @@ class CalendarProvider extends ChangeNotifier {
   /// Grafik zapisany (oczekujący lub aktywny) — bezpośrednie edycje są zablokowane.
   bool get hasLockedSchedule =>
       hasActiveSchedule || hasPendingScheduleApproval;
+
+  /// Oba rodzice widzą ten sam podgląd proponowanego grafiku.
+  bool get showsPendingSchedulePreview => _showsPendingSchedulePreview;
 
   bool canRespondToPendingSchedule(String? userId) {
     final schedule = _custodySchedule;
@@ -152,20 +160,9 @@ class CalendarProvider extends ChangeNotifier {
     _loadedFromApi = false;
     _error = null;
 
-    final now = DateTime.now();
+    _seedDemoCustodySlots();
 
-    for (int i = -14; i <= 30; i++) {
-      final date = now.add(Duration(days: i));
-      final weekOfYear =
-          date.difference(DateTime(date.year, 1, 1)).inDays ~/ 7;
-      _custodySlots.add(CustodySlot(
-        id: 'slot_$i',
-        date: date,
-        custodian: weekOfYear.isEven ? UserRole.parentA : UserRole.parentB,
-        handoverLocation: 'Szkoła SP nr 15',
-        handoverTime: '16:00',
-      ));
-    }
+    final now = DateTime.now();
 
     _events.addAll([
       CalendarEvent(
@@ -292,7 +289,24 @@ class CalendarProvider extends ChangeNotifier {
       ),
     ]);
 
+    _rebuildDisplaySlots();
     notifyListeners();
+  }
+
+  void _seedDemoCustodySlots() {
+    final now = DateTime.now();
+    for (int i = -14; i <= 30; i++) {
+      final date = now.add(Duration(days: i));
+      final weekOfYear =
+          date.difference(DateTime(date.year, 1, 1)).inDays ~/ 7;
+      _custodySlots.add(CustodySlot(
+        id: 'slot_$i',
+        date: date,
+        custodian: weekOfYear.isEven ? UserRole.parentA : UserRole.parentB,
+        handoverLocation: 'Szkoła SP nr 15',
+        handoverTime: '16:00',
+      ));
+    }
   }
 
   void clear() {
@@ -304,13 +318,68 @@ class CalendarProvider extends ChangeNotifier {
     _error = null;
     _isLoading = false;
     _loadedFromApi = false;
+    _displaySlots = [];
+    _showsPendingSchedulePreview = false;
     notifyListeners();
   }
 
   List<CustodySlot> getSlotsForDay(DateTime date) {
-    return _custodySlots
+    return _displaySlots
         .where((slot) => isSameCalendarDay(slot.date, date))
         .toList();
+  }
+
+  void _rebuildDisplaySlots() {
+    final schedule = _custodySchedule;
+    if (schedule == null) {
+      _displaySlots = List<CustodySlot>.from(_custodySlots);
+      _showsPendingSchedulePreview = false;
+      return;
+    }
+
+    if (schedule.status == CustodyScheduleStatus.pendingApproval) {
+      final generated = generateSlotsFromSchedule(schedule);
+      _displaySlots = mergeScheduleSlotsWithOverrides(
+        generated: generated,
+        overrides: _custodySlots,
+      );
+      _showsPendingSchedulePreview = true;
+      return;
+    }
+
+    if (_custodySlots.isEmpty &&
+        schedule.status == CustodyScheduleStatus.active) {
+      _displaySlots = generateSlotsFromSchedule(schedule);
+      _showsPendingSchedulePreview = false;
+      return;
+    }
+
+    _displaySlots = List<CustodySlot>.from(_custodySlots);
+    _showsPendingSchedulePreview = false;
+  }
+
+  Future<bool> loadPersistedDemoIfAvailable() async {
+    final snapshot = _repository.getCachedSnapshot();
+    if (snapshot.custodySchedule == null) {
+      return false;
+    }
+    _applySnapshot(snapshot);
+    _rebuildDisplaySlots();
+    _loadedFromApi = true;
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> _persistCurrentSnapshot() async {
+    await _repository.persistSnapshot(
+      CalendarSnapshot(
+        custodySlots: _custodySlots,
+        events: _events,
+        swapRequests: _swapRequests,
+        custodySchedule: _custodySchedule,
+        custodyExceptions: _custodyExceptions,
+      ),
+    );
   }
 
   List<CalendarEvent> getEventsForDay(DateTime date) {
@@ -555,8 +624,57 @@ class CalendarProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
     _custodySchedule = schedule;
+    _custodySlots
+      ..clear()
+      ..addAll(generateSlotsFromSchedule(schedule));
+    _rebuildDisplaySlots();
     notifyListeners();
+    unawaited(_persistCurrentSnapshot());
     return schedule;
+  }
+
+  Future<void> respondToScheduleDemo({
+    required bool approve,
+    String? approvedById,
+  }) async {
+    final schedule = _custodySchedule;
+    if (schedule == null ||
+        schedule.status != CustodyScheduleStatus.pendingApproval) {
+      return;
+    }
+
+    if (!approve) {
+      _custodySchedule = null;
+      _custodySlots.clear();
+      _seedDemoCustodySlots();
+      _rebuildDisplaySlots();
+      notifyListeners();
+      await _persistCurrentSnapshot();
+      return;
+    }
+
+    final active = CustodySchedule(
+      id: schedule.id,
+      patternType: schedule.patternType,
+      startDate: schedule.startDate,
+      endDate: schedule.endDate,
+      weekA: schedule.weekA,
+      weekB: schedule.weekB,
+      handoverTime: schedule.handoverTime,
+      handoverLocation: schedule.handoverLocation,
+      status: CustodyScheduleStatus.active,
+      proposedById: schedule.proposedById,
+      approvedById: approvedById,
+      approvedAt: DateTime.now(),
+      createdAt: schedule.createdAt,
+    );
+    _custodySchedule = active;
+    _custodySlots
+      ..clear()
+      ..addAll(generateSlotsFromSchedule(active));
+    _rebuildDisplaySlots();
+    notifyListeners();
+    await _persistCurrentSnapshot();
   }
 
   Future<void> respondToSchedule({
@@ -669,6 +787,7 @@ class CalendarProvider extends ChangeNotifier {
     _custodyExceptions
       ..clear()
       ..addAll(snapshot.custodyExceptions);
+    _rebuildDisplaySlots();
   }
 
   DateTime _normalizeEventStart(DateTime startDate) {

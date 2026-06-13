@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:table_calendar/table_calendar.dart';
 
 import '../data/api/app_api_client.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'booking_style_calendar_picker.dart';
 
 class CustodyScheduleWizard extends StatefulWidget {
   const CustodyScheduleWizard({super.key});
@@ -22,10 +23,12 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   late final TextEditingController _handoverTimeController;
   late final TextEditingController _handoverLocationController;
   bool _isSubmitting = false;
+  bool _calendarSaved = false;
 
   late Map<String, UserRole> _weekA;
   late Map<String, UserRole> _weekB;
-  DateTime _calendarFocusedDay = DateTime.now();
+  DateTime _calendarLeftMonth = DateTime.now();
+  final Set<String> _selectedCustomDates = {};
 
   static const _dayKeys = [
     'monday',
@@ -42,9 +45,10 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     super.initState();
     _startDate = DateTime.now();
     _endDate = DateTime(_startDate.year + 1, _startDate.month, _startDate.day);
+    _calendarLeftMonth = DateTime(_startDate.year, _startDate.month, 1);
     _handoverTimeController = TextEditingController(text: '17:00');
     _handoverLocationController = TextEditingController(text: 'Szkoła');
-    _applyPatternPreset(_pattern);
+    _applyPatternPreset(_pattern, UserRole.parentA);
   }
 
   @override
@@ -58,6 +62,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       _pattern == CustodySchedulePattern.weekAlternating ||
       _pattern == CustodySchedulePattern.everyOtherWeekend;
 
+  bool get _showsCalendar =>
+      _step == 0 &&
+      (_usesTemplateDateRange ||
+          _pattern == CustodySchedulePattern.customWeek);
+
   DateTime get _normalizedStartDate =>
       DateTime(_startDate.year, _startDate.month, _startDate.day);
 
@@ -67,46 +76,144 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   String _formatDate(DateTime date) =>
       '${date.day}.${date.month}.${date.year}';
 
-  Future<void> _pickDate({
-    required DateTime initial,
-    required DateTime firstDate,
-    required DateTime lastDate,
-    required ValueChanged<DateTime> onSelected,
-  }) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: firstDate,
-      lastDate: lastDate,
-    );
-    if (picked != null) {
-      onSelected(DateTime(picked.year, picked.month, picked.day));
-    }
-  }
-
   void _selectPattern(CustodySchedulePattern pattern) {
+    final creatorRole =
+        context.read<AppProvider>().currentUser?.role ?? UserRole.parentA;
     setState(() {
       _pattern = pattern;
-      _applyPatternPreset(pattern);
+      _calendarSaved = false;
+      _selectedCustomDates.clear();
+      _applyPatternPreset(pattern, creatorRole);
+      if (_usesTemplateDateRange) {
+        _startDate = DateTime.now();
+        _endDate = DateTime(_startDate.year + 1, _startDate.month, _startDate.day);
+      }
+      _calendarLeftMonth = DateTime(_startDate.year, _startDate.month, 1);
     });
   }
 
-  void _updateStartDate(DateTime value) {
+  void _updateRange(DateTime? start, DateTime? end) {
     setState(() {
-      _startDate = value;
-      if (_normalizedEndDate.isBefore(_normalizedStartDate)) {
-        _endDate = DateTime(value.year + 1, value.month, value.day);
+      _calendarSaved = false;
+      if (start != null) {
+        _startDate = start;
+        _endDate = end ?? start;
+      } else if (end != null) {
+        _endDate = end;
       }
     });
   }
 
-  void _updateEndDate(DateTime value) {
-    setState(() => _endDate = value);
+  void _updateSelectedDates(Set<String> dates) {
+    setState(() {
+      _calendarSaved = false;
+      _selectedCustomDates
+        ..clear()
+        ..addAll(dates);
+    });
+  }
+
+  void _saveCalendarSelection() {
+    if (!_showsCalendar) {
+      return;
+    }
+
+    if (_usesTemplateDateRange) {
+      if (_normalizedEndDate.isBefore(_normalizedStartDate)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wybierz datę końcową — musi być po dacie początkowej.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    } else if (_pattern == CustodySchedulePattern.customWeek) {
+      if (_selectedCustomDates.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Zaznacz co najmniej jeden dzień w kalendarzu.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+      _applyCustomDatesToWeekPattern();
+    }
+
+    setState(() => _calendarSaved = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _usesTemplateDateRange
+              ? 'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)} zapisany.'
+              : 'Zaznaczono ${_selectedCustomDates.length} dni — zapisano w grafiku.',
+        ),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+  }
+
+  void _applyCustomDatesToWeekPattern() {
+    final creatorRole =
+        context.read<AppProvider>().currentUser?.role ?? UserRole.parentA;
+    final other = creatorRole == UserRole.parentA
+        ? UserRole.parentB
+        : UserRole.parentA;
+
+    final sortedKeys = _selectedCustomDates.toList()..sort();
+    final firstParts = sortedKeys.first.split('-');
+    final start = DateTime(
+      int.parse(firstParts[0]),
+      int.parse(firstParts[1]),
+      int.parse(firstParts[2]),
+    );
+    _startDate = start;
+
+    _weekA = {for (final key in _dayKeys) key: other};
+    _weekB = {for (final key in _dayKeys) key: other};
+
+    for (final key in _selectedCustomDates) {
+      final parts = key.split('-');
+      if (parts.length != 3) {
+        continue;
+      }
+      final date = DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
+      final weekIndex = bookingNormalizeDate(date).difference(start).inDays ~/ 7;
+      final dayKey = _dayKeys[date.weekday - 1];
+      if (weekIndex.isEven) {
+        _weekA[dayKey] = creatorRole;
+      } else {
+        _weekB[dayKey] = creatorRole;
+      }
+    }
   }
 
   bool _validateTemplateDateRange() {
     if (!_usesTemplateDateRange) {
+      if (_pattern == CustodySchedulePattern.customWeek && !_calendarSaved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Zapisz zaznaczenie kalendarza (Enter), potem kliknij Dalej.'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return false;
+      }
       return true;
+    }
+    if (!_calendarSaved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Zapisz okres w kalendarzu (Enter), potem kliknij Dalej.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return false;
     }
     if (_normalizedEndDate.isBefore(_normalizedStartDate)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +227,13 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     return true;
   }
 
-  void _applyPatternPreset(CustodySchedulePattern pattern) {
+  void _applyPatternPreset(
+    CustodySchedulePattern pattern,
+    UserRole creatorRole,
+  ) {
+    final other = creatorRole == UserRole.parentA
+        ? UserRole.parentB
+        : UserRole.parentA;
     switch (pattern) {
       case CustodySchedulePattern.weekAlternating:
         _weekA = {for (final key in _dayKeys) key: UserRole.parentA};
@@ -145,8 +258,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           'sunday': UserRole.parentA,
         };
       case CustodySchedulePattern.customWeek:
-        _weekA = {for (final key in _dayKeys) key: UserRole.parentA};
-        _weekB = {for (final key in _dayKeys) key: UserRole.parentB};
+        _weekA = {for (final key in _dayKeys) key: other};
+        _weekB = {for (final key in _dayKeys) key: other};
     }
   }
 
@@ -163,54 +276,83 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            _stepTitle,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: SingleChildScrollView(
-              child: switch (_step) {
-                0 => _buildPatternStep(),
-                1 => _buildDetailsStep(),
-                _ => _buildSummaryStep(),
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
+    final creatorRole =
+        context.watch<AppProvider>().currentUser?.role ?? UserRole.parentA;
+    final creatorColor = creatorRole == UserRole.parentA
+        ? AppTheme.parentAColor
+        : AppTheme.parentBColor;
+    final creatorLabel = creatorRole == UserRole.parentA ? 'Mama' : 'Tata';
+
+    return CallbackShortcuts(
+      bindings: {
+        SingleActivator(LogicalKeyboardKey.enter): _handleEnterKey,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_step > 0)
-                TextButton(
-                  onPressed: _isSubmitting ? null : () => setState(() => _step--),
-                  child: const Text('Wstecz'),
+              Text(
+                _stepTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
                 ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _onPrimaryAction,
-                child: Text(
-                  _step < 2
-                      ? 'Dalej'
-                      : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: switch (_step) {
+                    0 => _buildPatternStep(
+                        creatorColor: creatorColor,
+                        creatorLabel: creatorLabel,
+                      ),
+                    1 => _buildDetailsStep(creatorLabel: creatorLabel),
+                    _ => _buildSummaryStep(creatorLabel: creatorLabel),
+                  },
                 ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (_step > 0)
+                    TextButton(
+                      onPressed: _isSubmitting ? null : () => setState(() => _step--),
+                      child: const Text('Wstecz'),
+                    ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: _isSubmitting ? null : _onPrimaryAction,
+                    child: Text(
+                      _step < 2
+                          ? 'Dalej'
+                          : (_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildPatternStep() {
+  void _handleEnterKey() {
+    if (_step == 0 && _showsCalendar) {
+      _saveCalendarSelection();
+      return;
+    }
+    _onPrimaryAction();
+  }
+
+  Widget _buildPatternStep({
+    required Color creatorColor,
+    required String creatorLabel,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -219,6 +361,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           subtitle: 'Cały tydzień u jednego rodzica, potem u drugiego',
           value: CustodySchedulePattern.weekAlternating,
           groupValue: _pattern,
+          accentColor: creatorColor,
           onChanged: _selectPattern,
         ),
         _PatternOption(
@@ -226,86 +369,83 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           subtitle: 'Tygodnie robocze i weekendy na zmianę',
           value: CustodySchedulePattern.everyOtherWeekend,
           groupValue: _pattern,
+          accentColor: creatorColor,
           onChanged: _selectPattern,
         ),
         _PatternOption(
           title: 'Własny tydzień',
-          subtitle: 'Zaznacz dni w kalendarzu — tapnięcie zmienia opiekuna',
+          subtitle: 'Zaznacz dni w kalendarzu — każdy dzień osobno',
           value: CustodySchedulePattern.customWeek,
           groupValue: _pattern,
+          accentColor: creatorColor,
           onChanged: _selectPattern,
         ),
-        if (_pattern == CustodySchedulePattern.customWeek) ...[
-          const SizedBox(height: 8),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Data startu grafiku'),
-            subtitle: Text(_formatDate(_normalizedStartDate)),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: () => _pickDate(
-              initial: _normalizedStartDate,
-              firstDate: DateTime.now().subtract(const Duration(days: 30)),
-              lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-              onSelected: _updateStartDate,
+        if (_showsCalendar) ...[
+          const SizedBox(height: 16),
+          BookingStyleCalendarPicker(
+            mode: _usesTemplateDateRange
+                ? BookingCalendarMode.range
+                : BookingCalendarMode.multiSelect,
+            accentColor: AppTheme.accentColor,
+            creatorLabel: creatorLabel,
+            leftMonth: _calendarLeftMonth,
+            rangeStart: _usesTemplateDateRange ? _normalizedStartDate : null,
+            rangeEnd: _usesTemplateDateRange ? _normalizedEndDate : null,
+            selectedDates: _selectedCustomDates,
+            onLeftMonthChanged: (month) =>
+                setState(() => _calendarLeftMonth = month),
+            onRangeChanged: _updateRange,
+            onSelectedDatesChanged: _updateSelectedDates,
+            onConfirm: _saveCalendarSelection,
+            colorForDay: _pattern == CustodySchedulePattern.customWeek
+                ? (day) {
+                    if (!_selectedCustomDates.contains(bookingDateKey(day))) {
+                      return null;
+                    }
+                    final creatorRole = context
+                            .read<AppProvider>()
+                            .currentUser
+                            ?.role ??
+                        UserRole.parentA;
+                    return creatorRole == UserRole.parentA
+                        ? AppTheme.parentAColor
+                        : AppTheme.parentBColor;
+                  }
+                : null,
+          ),
+          if (_calendarSaved) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.check_circle, color: creatorColor, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  _usesTemplateDateRange
+                      ? 'Okres zapisany'
+                      : 'Zaznaczono ${_selectedCustomDates.length} dni',
+                  style: TextStyle(
+                    color: creatorColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          _CustomWeekCalendarPicker(
-            startDate: _normalizedStartDate,
-            focusedDay: _calendarFocusedDay,
-            weekA: _weekA,
-            weekB: _weekB,
-            onFocusedDayChanged: (day) =>
-                setState(() => _calendarFocusedDay = day),
-            onChanged: (weekA, weekB) => setState(() {
-              _weekA = weekA;
-              _weekB = weekB;
-            }),
-          ),
-        ],
-        if (_usesTemplateDateRange) ...[
-          const SizedBox(height: 8),
-          const Text(
-            'Okres obowiązywania szablonu',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Data początkowa'),
-            subtitle: Text(_formatDate(_normalizedStartDate)),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: () => _pickDate(
-              initial: _normalizedStartDate,
-              firstDate: DateTime.now().subtract(const Duration(days: 30)),
-              lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-              onSelected: _updateStartDate,
-            ),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Data końcowa'),
-            subtitle: Text(_formatDate(_normalizedEndDate)),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: () => _pickDate(
-              initial: _normalizedEndDate,
-              firstDate: _normalizedStartDate,
-              lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-              onSelected: _updateEndDate,
-            ),
-          ),
+          ],
         ],
       ],
     );
   }
 
-  Widget _buildDetailsStep() {
+  Widget _buildDetailsStep({required String creatorLabel}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_pattern == CustodySchedulePattern.customWeek)
+          _SummaryRow(
+            label: 'Twoje dni',
+            value: '${_selectedCustomDates.length} zaznaczonych',
+          ),
         TextField(
           decoration: const InputDecoration(
             labelText: 'Godzina przekazania',
@@ -325,7 +465,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     );
   }
 
-  Widget _buildSummaryStep() {
+  Widget _buildSummaryStep({required String creatorLabel}) {
     final label = switch (_pattern) {
       CustodySchedulePattern.weekAlternating => 'Co tydzień na zmianę',
       CustodySchedulePattern.everyOtherWeekend => 'Co drugi weekend',
@@ -345,6 +485,15 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             label: 'Koniec',
             value: _formatDate(_normalizedEndDate),
           ),
+        if (_pattern == CustodySchedulePattern.customWeek)
+          _SummaryRow(
+            label: 'Twoje dni',
+            value: '${_selectedCustomDates.length}',
+          ),
+        _SummaryRow(
+          label: 'Twórca',
+          value: creatorLabel,
+        ),
         _SummaryRow(
           label: 'Przekazanie',
           value: _handoverTimeController.text.trim().isEmpty
@@ -433,6 +582,7 @@ class _PatternOption extends StatelessWidget {
   final String subtitle;
   final CustodySchedulePattern value;
   final CustodySchedulePattern groupValue;
+  final Color accentColor;
   final ValueChanged<CustodySchedulePattern> onChanged;
 
   const _PatternOption({
@@ -440,6 +590,7 @@ class _PatternOption extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.groupValue,
+    required this.accentColor,
     required this.onChanged,
   });
 
@@ -451,7 +602,7 @@ class _PatternOption extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: selected
-            ? AppTheme.accentColor.withValues(alpha: 0.06)
+            ? accentColor.withValues(alpha: 0.08)
             : Colors.white,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
@@ -461,7 +612,7 @@ class _PatternOption extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: selected ? AppTheme.accentColor : AppTheme.dividerColor,
+                color: selected ? accentColor : AppTheme.dividerColor,
                 width: selected ? 2 : 1,
               ),
             ),
@@ -473,7 +624,7 @@ class _PatternOption extends StatelessWidget {
                   onChanged(next);
                 }
               },
-              activeColor: AppTheme.accentColor,
+              activeColor: accentColor,
               title: Text(
                 title,
                 style: const TextStyle(
@@ -516,202 +667,6 @@ class _SummaryRow extends StatelessWidget {
             ),
           ),
           Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-}
-
-class _CustomWeekCalendarPicker extends StatelessWidget {
-  final DateTime startDate;
-  final DateTime focusedDay;
-  final Map<String, UserRole> weekA;
-  final Map<String, UserRole> weekB;
-  final ValueChanged<DateTime> onFocusedDayChanged;
-  final void Function(Map<String, UserRole> weekA, Map<String, UserRole> weekB)
-      onChanged;
-
-  const _CustomWeekCalendarPicker({
-    required this.startDate,
-    required this.focusedDay,
-    required this.weekA,
-    required this.weekB,
-    required this.onFocusedDayChanged,
-    required this.onChanged,
-  });
-
-  static const _keys = _CustodyScheduleWizardState._dayKeys;
-
-  static DateTime _normalize(DateTime date) =>
-      DateTime(date.year, date.month, date.day);
-
-  static int _weekIndex(DateTime start, DateTime day) {
-    return _normalize(day).difference(_normalize(start)).inDays ~/ 7;
-  }
-
-  static String _dayKey(DateTime day) => _keys[day.weekday - 1];
-
-  UserRole _custodianForDay(DateTime day) {
-    final map = _weekIndex(startDate, day).isEven ? weekA : weekB;
-    return map[_dayKey(day)] ?? UserRole.parentA;
-  }
-
-  void _toggleDay(DateTime day) {
-    final key = _dayKey(day);
-    final isWeekA = _weekIndex(startDate, day).isEven;
-    if (isWeekA) {
-      final nextA = Map<String, UserRole>.from(weekA);
-      final current = nextA[key] ?? UserRole.parentA;
-      nextA[key] = current == UserRole.parentA
-          ? UserRole.parentB
-          : UserRole.parentA;
-      onChanged(nextA, weekB);
-    } else {
-      final nextB = Map<String, UserRole>.from(weekB);
-      final current = nextB[key] ?? UserRole.parentB;
-      nextB[key] = current == UserRole.parentA
-          ? UserRole.parentB
-          : UserRole.parentA;
-      onChanged(weekA, nextB);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Kliknij dzień, aby przełączyć opiekuna (Mama / Tata). '
-          'Kolory pokazują tygodnie A i B na przemian od daty startu.',
-          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _LegendChip(
-              color: AppTheme.parentAColor,
-              label: 'Mama',
-            ),
-            const SizedBox(width: 12),
-            _LegendChip(
-              color: AppTheme.parentBColor,
-              label: 'Tata',
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TableCalendar<void>(
-          firstDay: DateTime.now().subtract(const Duration(days: 30)),
-          lastDay: DateTime.now().add(const Duration(days: 365 * 5)),
-          focusedDay: focusedDay,
-          locale: 'pl_PL',
-          startingDayOfWeek: StartingDayOfWeek.monday,
-          headerStyle: const HeaderStyle(
-            formatButtonVisible: false,
-            titleCentered: true,
-          ),
-          calendarStyle: const CalendarStyle(
-            outsideDaysVisible: true,
-          ),
-          onPageChanged: onFocusedDayChanged,
-          onDaySelected: (selected, focused) {
-            onFocusedDayChanged(focused);
-            _toggleDay(selected);
-          },
-          calendarBuilders: CalendarBuilders<void>(
-            defaultBuilder: (context, day, _) =>
-                _CalendarDayCell(day: day, role: _custodianForDay(day)),
-            todayBuilder: (context, day, _) => _CalendarDayCell(
-              day: day,
-              role: _custodianForDay(day),
-              isToday: true,
-            ),
-            outsideBuilder: (context, day, _) => _CalendarDayCell(
-              day: day,
-              role: _custodianForDay(day),
-              isOutside: true,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LegendChip extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _LegendChip({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: color),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 13)),
-      ],
-    );
-  }
-}
-
-class _CalendarDayCell extends StatelessWidget {
-  final DateTime day;
-  final UserRole role;
-  final bool isToday;
-  final bool isOutside;
-
-  const _CalendarDayCell({
-    required this.day,
-    required this.role,
-    this.isToday = false,
-    this.isOutside = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isA = role == UserRole.parentA;
-    final color = isA ? AppTheme.parentAColor : AppTheme.parentBColor;
-    return Container(
-      margin: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: isOutside ? 0.08 : 0.18),
-        borderRadius: BorderRadius.circular(8),
-        border: isToday
-            ? Border.all(color: AppTheme.accentColor, width: 2)
-            : Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${day.day}',
-            style: TextStyle(
-              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-              color: isOutside ? AppTheme.textSecondary : AppTheme.textPrimary,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            isA ? 'Mama' : 'Tata',
-            style: TextStyle(
-              fontSize: 9,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
         ],
       ),
     );

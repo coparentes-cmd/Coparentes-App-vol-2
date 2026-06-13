@@ -209,6 +209,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         if (!isReadOnly && calendar.hasPendingScheduleApproval)
           _PendingScheduleBanner(
             schedule: calendar.custodySchedule!,
+            showsPreview: calendar.showsPendingSchedulePreview,
             canRespond: calendar.canRespondToPendingSchedule(userId),
             onAccept: () => _respondToSchedule(context, approve: true),
             onReject: () => _respondToSchedule(context, approve: false),
@@ -227,11 +228,14 @@ class _CalendarScreenState extends State<CalendarScreen>
             key: ValueKey(
               'cal-${calendar.custodySlots.length}-'
               '${calendar.events.length}-'
+              '${calendar.custodySchedule?.id}-'
+              '${calendar.custodySchedule?.status.name}-'
+              '${calendar.showsPendingSchedulePreview}-'
               '${calendar.loadedFromApi}',
             ),
             focusedDay: _focusedDay,
             selectedDay: _selectedDay,
-            accentColor: roleColor,
+            accentColor: AppTheme.accentColor,
             getSlotsForDay: calendar.getSlotsForDay,
             getEventsForDay: calendar.getEventsForDay,
             isExceptionDay: calendar.isExceptionDay,
@@ -342,10 +346,18 @@ class _CalendarScreenState extends State<CalendarScreen>
     }
 
     try {
-      await context.read<CalendarProvider>().respondToSchedule(
-            scheduleId: schedule.id,
-            approve: approve,
-          );
+      final app = context.read<AppProvider>();
+      if (app.isDemoMode) {
+        await context.read<CalendarProvider>().respondToScheduleDemo(
+              approve: approve,
+              approvedById: app.currentUser?.id,
+            );
+      } else {
+        await context.read<CalendarProvider>().respondToSchedule(
+              scheduleId: schedule.id,
+              approve: approve,
+            );
+      }
       if (!context.mounted) return;
       await _refreshSwapMessaging(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1834,12 +1846,14 @@ class _ActiveScheduleBanner extends StatelessWidget {
 
 class _PendingScheduleBanner extends StatelessWidget {
   final CustodySchedule schedule;
+  final bool showsPreview;
   final bool canRespond;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
   const _PendingScheduleBanner({
     required this.schedule,
+    required this.showsPreview,
     required this.canRespond,
     required this.onAccept,
     required this.onReject,
@@ -1874,6 +1888,17 @@ class _PendingScheduleBanner extends StatelessWidget {
                   color: AppTheme.textSecondary,
                 ),
               ),
+              if (showsPreview) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  'Kalendarz pokazuje podgląd proponowanego grafiku — '
+                  'taki sam u obojga rodziców.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
               if (canRespond) ...[
                 const SizedBox(height: 12),
                 Row(

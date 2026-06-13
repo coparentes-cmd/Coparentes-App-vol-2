@@ -268,7 +268,10 @@ class _AppGateState extends State<_AppGate> {
         calendarProvider.clear();
         financeProvider.clear();
         documentsProvider.clear();
-        calendarProvider.initializeSampleData();
+        final loadedDemo = await calendarProvider.loadPersistedDemoIfAvailable();
+        if (!loadedDemo) {
+          calendarProvider.initializeSampleData();
+        }
         financeProvider.initializeSampleData();
         messagingProvider.initializeSampleData();
         exportsProvider.initializeSampleData();

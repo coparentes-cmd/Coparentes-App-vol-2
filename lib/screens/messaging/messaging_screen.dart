@@ -1702,10 +1702,17 @@ class _MessageBubbleState extends State<_MessageBubble> {
     final messaging = context.read<MessagingProvider>();
 
     try {
-      await calendar.respondToSchedule(
-        scheduleId: schedule.id,
-        approve: approve,
-      );
+      if (app.isDemoMode) {
+        await calendar.respondToScheduleDemo(
+          approve: approve,
+          approvedById: app.currentUser?.id,
+        );
+      } else {
+        await calendar.respondToSchedule(
+          scheduleId: schedule.id,
+          approve: approve,
+        );
+      }
       await messaging.loadThreads(
         viewerUserId: app.currentUser?.id,
         silent: true,

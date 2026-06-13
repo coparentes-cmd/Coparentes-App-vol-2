@@ -326,6 +326,11 @@ class CalendarRepository {
     });
   }
 
+  CalendarSnapshot getCachedSnapshot() => _getCachedSnapshot();
+
+  Future<void> persistSnapshot(CalendarSnapshot snapshot) =>
+      _saveSnapshot(snapshot);
+
   Future<CustodySchedule> proposeSchedule({
     required CustodySchedulePattern patternType,
     required DateTime startDate,
