@@ -29,3 +29,6 @@ config/api.env
 
 # Misc
 *.log
+
+# Screenshot tooling (scripts/)
+scripts/node_modules/

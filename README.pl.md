@@ -70,3 +70,10 @@ Wynik: katalog `build/web` (deploy na Netlify).
 
 Pełna instrukcja (backend + frontend + troubleshooting):  
 [../coparentes-backend-main/README.pl.md](../coparentes-backend-main/README.pl.md)
+
+---
+
+## Dla użytkowników
+
+**Jak założyć rodzinę, zaprosić drugiego rodzica i dodać dzieci:**  
+[instrukcja krok po kroku](docs/instrukcja-nowa-rodzina.md) · **[pobierz PowerPoint](https://getcoparentes.app/downloads/instrukcja-nowa-rodzina.pptx)** · [strona pobierania](https://getcoparentes.app/downloads/)

@@ -46,6 +46,15 @@ fi
 
 flutter pub get
 
+# Instrukcja onboarding — pliki do pobrania w build/web/downloads/
+mkdir -p web/downloads
+if [ -f docs/instrukcja-nowa-rodzina.md ]; then
+  cp docs/instrukcja-nowa-rodzina.md web/downloads/
+fi
+if [ -f docs/instrukcja-nowa-rodzina.pptx ]; then
+  cp docs/instrukcja-nowa-rodzina.pptx web/downloads/
+fi
+
 PUBLIC_URL="${COPARENTES_PUBLIC_URL:-https://getcoparentes.app}"
 
 flutter build web \

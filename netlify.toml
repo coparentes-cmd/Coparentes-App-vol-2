@@ -18,6 +18,12 @@
   status = 301
   force = true
 
+# Pliki statyczne w /downloads/ — bez przekierowania na SPA
+[[redirects]]
+  from = "/downloads/*"
+  to = "/downloads/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -67,3 +73,15 @@
   for = "/canvaskit/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/downloads/*.pptx"
+  [headers.values]
+    Content-Type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    Content-Disposition = "attachment; filename=\"instrukcja-nowa-rodzina.pptx\""
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/downloads/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
