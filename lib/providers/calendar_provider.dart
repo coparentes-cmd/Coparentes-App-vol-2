@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:meta/meta.dart';
 
 import '../data/models/calendar_snapshot.dart';
 import '../data/repositories/calendar_repository.dart';
@@ -290,6 +291,27 @@ class CalendarProvider extends ChangeNotifier {
     ]);
 
     _rebuildDisplaySlots();
+    notifyListeners();
+  }
+
+  /// Dodaje wydarzenie na dziś — wyłącznie w testach widget.
+  @visibleForTesting
+  void seedTodayTestEvent({
+    required String title,
+    String? childId,
+  }) {
+    final now = DateTime.now();
+    _events.add(
+      CalendarEvent(
+        id: 'test_evt_today_${title.hashCode}',
+        title: title,
+        startDate: DateTime(now.year, now.month, now.day, 17),
+        type: EventType.school,
+        childId: childId,
+        createdBy: 'test',
+        location: 'Szkoła SP nr 15',
+      ),
+    );
     notifyListeners();
   }
 

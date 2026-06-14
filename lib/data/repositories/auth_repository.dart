@@ -163,20 +163,17 @@ class AuthRepository {
     }
   }
 
-  Future<AuthSession> joinAsChild({
-    required String name,
-    required String email,
+  Future<AuthSession> accessChildAccount({
     required String password,
     required String childInviteCode,
-    required String childProfileId,
+    required DateTime dateOfBirth,
+    String? name,
   }) async {
-    final payload = await _apiClient.postJson('/auth/join', {
-      'name': name,
-      'email': email,
+    final payload = await _apiClient.postJson('/auth/child/access', {
       'password': password,
       'childInviteCode': childInviteCode,
-      'childProfileId': childProfileId,
-      'role': 'child',
+      'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+      if (name != null && name.isNotEmpty) 'name': name,
     });
     return _saveSession(payload);
   }

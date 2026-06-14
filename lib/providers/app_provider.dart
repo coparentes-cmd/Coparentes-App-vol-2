@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/country_profiles.dart';
@@ -177,6 +178,16 @@ class AppProvider extends ChangeNotifier {
           return 'Błąd serwera podczas zapisu konta. Spróbuj ponownie za chwilę.';
         case 'invalid_invite':
           return 'Nieprawidłowy kod zaproszenia.';
+        case 'child_not_found':
+          return 'Nie znaleziono profilu dziecka dla tej daty urodzenia.';
+        case 'ambiguous_child_profile':
+          return 'Kilka profili ma tę samą datę urodzenia. Poproś rodzica o pomoc.';
+        case 'child_name_required':
+          return 'Podaj imię — jest wymagane przy pierwszym logowaniu.';
+        case 'child_profile_taken':
+          return 'Ten profil ma już konto. Zaloguj się hasłem.';
+        case 'invalid_date_of_birth':
+          return 'Podaj poprawną datę urodzenia.';
         case 'cors_not_allowed':
           return 'Serwer odrzucił połączenie (CORS). Skontaktuj się z administratorem.';
         case 'Too many requests, try again later':
@@ -403,21 +414,19 @@ class AppProvider extends ChangeNotifier {
     return _authRepository.getChildJoinPreview(childInviteCode);
   }
 
-  Future<bool> joinAsChild({
-    required String name,
-    required String email,
+  Future<bool> accessChildAccount({
     required String password,
     required String childInviteCode,
-    required String childProfileId,
+    required DateTime dateOfBirth,
+    String? name,
   }) async {
     try {
       _authError = null;
-      final session = await _authRepository.joinAsChild(
-        name: name,
-        email: email,
+      final session = await _authRepository.accessChildAccount(
         password: password,
         childInviteCode: childInviteCode,
-        childProfileId: childProfileId,
+        dateOfBirth: dateOfBirth,
+        name: name,
       );
       _isDemoMode = false;
       _applySession(session);
@@ -426,7 +435,7 @@ class AppProvider extends ChangeNotifier {
     } catch (error) {
       _authError = _mapAuthError(
         error,
-        fallback: 'Nie udało się dołączyć jako dziecko.',
+        fallback: 'Nie udało się zalogować jako dziecko.',
       );
       notifyListeners();
       return false;
@@ -442,6 +451,20 @@ class AppProvider extends ChangeNotifier {
     _currentUser = _buildDemoUser(role);
     _highConflictMode = role == UserRole.parentB;
 
+    notifyListeners();
+  }
+
+  /// Ustawia sesję dziecka w testach widget — wspólny workspace, inny profil użytkownika.
+  @visibleForTesting
+  void configureChildTestSession({
+    required AppUser childUser,
+    Workspace? workspace,
+  }) {
+    _authError = null;
+    _isDemoMode = true;
+    _isInitializing = false;
+    _currentUser = childUser;
+    _currentWorkspace = workspace ?? _buildDemoWorkspace();
     notifyListeners();
   }
 

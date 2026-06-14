@@ -30,8 +30,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _submitting = false;
   bool? _backendReachable;
   ChildJoinPreview? _childJoinPreview;
-  String? _selectedChildProfileId;
   bool _loadingChildPreview = false;
+  DateTime _childDateOfBirth = DateTime(DateTime.now().year - 8, 6, 1);
 
   @override
   void initState() {
@@ -142,8 +142,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                 if (_mode != _AuthMode.login)
                                   _Field(
                                     controller: _nameController,
-                                    label: 'Imię i nazwisko',
-                                    hint: 'np. Anna Kowalska',
+                                    label: _mode == _AuthMode.joinChild
+                                        ? 'Imię (przy pierwszym logowaniu)'
+                                        : 'Imię i nazwisko',
+                                    hint: _mode == _AuthMode.joinChild
+                                        ? 'np. Zosia'
+                                        : 'np. Anna Kowalska',
                                   ),
                                 if (_mode == _AuthMode.register)
                                   _Field(
@@ -196,40 +200,34 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    if (_availableChildProfiles.isEmpty)
-                                      const Text(
-                                        'Brak wolnych profili. Poproś rodzica o dodanie Twojego profilu.',
-                                        style: TextStyle(
-                                          color: AppTheme.warningColor,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      )
-                                    else
-                                      DropdownButtonFormField<String>(
-                                        value: _selectedChildProfileId,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Twój profil w rodzinie',
-                                        ),
-                                        items: _availableChildProfiles
-                                            .map(
-                                              (child) => DropdownMenuItem(
-                                                value: child.id,
-                                                child: Text(child.name),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged: (value) =>
-                                            setState(() => _selectedChildProfileId = value),
+                                    const Text(
+                                      'Podaj datę urodzenia z profilu dodanego przez rodzica.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textSecondary,
                                       ),
+                                    ),
                                   ],
+                                  const SizedBox(height: 12),
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Data urodzenia'),
+                                    subtitle: Text(
+                                      '${_childDateOfBirth.day.toString().padLeft(2, '0')}.'
+                                      '${_childDateOfBirth.month.toString().padLeft(2, '0')}.'
+                                      '${_childDateOfBirth.year}',
+                                    ),
+                                    trailing: const Icon(Icons.calendar_today_outlined),
+                                    onTap: _pickChildDateOfBirth,
+                                  ),
                                 ],
-                                _Field(
-                                  controller: _emailController,
-                                  label: 'E-mail',
-                                  hint: 'twoj@email.pl',
-                                  keyboardType: TextInputType.emailAddress,
-                                ),
+                                if (_mode != _AuthMode.joinChild)
+                                  _Field(
+                                    controller: _emailController,
+                                    label: 'E-mail',
+                                    hint: 'twoj@email.pl',
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
                                 _Field(
                                   controller: _passwordController,
                                   label: 'Hasło',
@@ -417,11 +415,18 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     );
   }
 
-  List<ChildJoinProfileOption> get _availableChildProfiles {
-    return _childJoinPreview?.children
-            .where((child) => !child.hasAccount)
-            .toList() ??
-        const [];
+  Future<void> _pickChildDateOfBirth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _childDateOfBirth,
+      firstDate: DateTime(DateTime.now().year - 25),
+      lastDate: DateTime.now(),
+      helpText: 'Twoja data urodzenia',
+    );
+
+    if (picked != null) {
+      setState(() => _childDateOfBirth = picked);
+    }
   }
 
   Future<void> _loadChildPreview() async {
@@ -434,7 +439,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     setState(() {
       _loadingChildPreview = true;
       _childJoinPreview = null;
-      _selectedChildProfileId = null;
     });
 
     final preview = await context.read<AppProvider>().getChildJoinPreview(code);
@@ -443,20 +447,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
-    final available = preview?.children.where((child) => !child.hasAccount).toList() ??
-        const <ChildJoinProfileOption>[];
-
     setState(() {
       _loadingChildPreview = false;
       _childJoinPreview = preview;
-      _selectedChildProfileId =
-          available.length == 1 ? available.first.id : null;
     });
 
     if (preview == null) {
       _showMessage('Nie znaleziono rodziny dla tego kodu.');
-    } else if (available.isEmpty) {
-      _showMessage('Wszystkie profile mają już konto. Poproś rodzica o pomoc.');
+    } else if (preview.children.isEmpty) {
+      _showMessage('Brak profili dzieci. Poproś rodzica o dodanie Twojego profilu.');
     }
   }
 
@@ -465,8 +464,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      _showMessage('Uzupełnij e-mail i hasło.');
+    if (_mode != _AuthMode.joinChild) {
+      if (email.isEmpty || password.isEmpty) {
+        _showMessage('Uzupełnij e-mail i hasło.');
+        return;
+      }
+    } else if (password.isEmpty) {
+      _showMessage('Uzupełnij hasło.');
       return;
     }
 
@@ -475,7 +479,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
-    if (_mode == _AuthMode.register || _mode == _AuthMode.join || _mode == _AuthMode.joinChild) {
+    if (_mode == _AuthMode.register || _mode == _AuthMode.join) {
       final name = _nameController.text.trim();
       if (name.length < 2) {
         _showMessage('Imię i nazwisko musi mieć co najmniej 2 znaki.');
@@ -509,8 +513,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         _showMessage('Najpierw sprawdź kod zaproszenia dziecka.');
         return;
       }
-      if (_selectedChildProfileId == null) {
-        _showMessage('Wybierz swój profil z listy.');
+      if (_childDateOfBirth.isAfter(DateTime.now())) {
+        _showMessage('Data urodzenia nie może być w przyszłości.');
         return;
       }
     }
@@ -539,12 +543,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         );
         break;
       case _AuthMode.joinChild:
-        success = await appProvider.joinAsChild(
-          name: _nameController.text.trim(),
-          email: email,
+        success = await appProvider.accessChildAccount(
           password: password,
           childInviteCode: _childInviteCodeController.text.trim(),
-          childProfileId: _selectedChildProfileId!,
+          dateOfBirth: _childDateOfBirth,
+          name: _nameController.text.trim().isEmpty
+              ? null
+              : _nameController.text.trim(),
         );
         break;
     }
@@ -582,7 +587,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       case _AuthMode.join:
         return 'Dołącz do istniejącej przestrzeni';
       case _AuthMode.joinChild:
-        return 'Dołącz jako dziecko';
+        return 'Panel dziecka';
     }
   }
 
@@ -595,7 +600,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       case _AuthMode.join:
         return 'Wpisz kod zaproszenia rodzica, aby dołączyć jako drugi opiekun.';
       case _AuthMode.joinChild:
-        return 'Wpisz kod od rodzica, wybierz swój profil i zobacz kalendarz oraz czat rodzinny.';
+        return 'Wpisz kod od rodzica i datę urodzenia, aby wejść do panelu dziecka.';
     }
   }
 
@@ -608,7 +613,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       case _AuthMode.join:
         return 'Dołącz';
       case _AuthMode.joinChild:
-        return 'Dołącz jako dziecko';
+        return 'Wejdź';
     }
   }
 }
