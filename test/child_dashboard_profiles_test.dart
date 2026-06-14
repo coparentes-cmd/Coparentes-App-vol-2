@@ -182,8 +182,9 @@ Future<_CapturedChildUi> _captureChildDashboard(
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));
 
-  const listEmptyMessage = 'Twoja lista jest pusta';
+  const listEmptyMessage = 'Moja lista jest pusta';
   expect(find.text(listEmptyMessage), findsOneWidget);
+  expect(find.text('Nowa lista'), findsOneWidget);
 
   return _CapturedChildUi(
     greeting: greeting,

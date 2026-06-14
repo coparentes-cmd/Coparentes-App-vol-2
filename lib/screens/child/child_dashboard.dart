@@ -45,13 +45,61 @@ class _ChildListItem {
   }
 }
 
+class _ChildTodoList {
+  final String id;
+  String title;
+  final List<_ChildListItem> items;
+
+  _ChildTodoList({
+    required this.id,
+    required this.title,
+    List<_ChildListItem>? items,
+  }) : items = items ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'items': items.map((item) => item.toJson()).toList(),
+      };
+
+  factory _ChildTodoList.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'] as List<dynamic>? ?? const [];
+    return _ChildTodoList(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Lista',
+      items: rawItems
+          .map(
+            (entry) => _ChildListItem.fromJson(
+              Map<String, dynamic>.from(entry as Map),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
 class _ChildDashboardState extends State<ChildDashboard> {
   int _selectedIndex = 0;
   int _mood = 3;
-  final List<_ChildListItem> _listItems = [];
+  final List<_ChildTodoList> _lists = [];
+  String? _activeListId;
   final TextEditingController _listItemController = TextEditingController();
   final FocusNode _listItemFocus = FocusNode();
   String? _loadedListUserId;
+
+  _ChildTodoList? get _activeList {
+    if (_activeListId == null) {
+      return null;
+    }
+    for (final list in _lists) {
+      if (list.id == _activeListId) {
+        return list;
+      }
+    }
+    return null;
+  }
+
+  List<_ChildListItem> get _listItems => _activeList?.items ?? const [];
 
   @override
   void dispose() {
@@ -101,8 +149,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
             label: 'Rodzina',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.checklist_outlined),
-            activeIcon: Icon(Icons.checklist),
+            icon: Icon(Icons.list_alt_outlined),
+            activeIcon: Icon(Icons.list_alt),
             label: 'Lista',
           ),
         ],
@@ -511,20 +559,28 @@ class _ChildDashboardState extends State<ChildDashboard> {
   Widget _buildListTab() {
     final userId = context.watch<AppProvider>().currentUser?.id;
     if (userId != null && userId != _loadedListUserId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadList(userId));
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadLists(userId));
     }
 
+    final activeList = _activeList;
     final checkedCount = _listItems.where((item) => item.checked).length;
+    final listTitle = activeList?.title ?? 'Lista';
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         backgroundColor: AppTheme.childColor,
-        title: const Row(
+        title: Row(
           children: [
-            Text('📝', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text('Lista', style: TextStyle(color: Colors.white)),
+            const Text('📝', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                listTitle,
+                style: const TextStyle(color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         actions: [
@@ -537,9 +593,55 @@ class _ChildDashboardState extends State<ChildDashboard> {
         automaticallyImplyLeading: false,
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_lists.length > 1)
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                itemCount: _lists.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final list = _lists[index];
+                  final selected = list.id == _activeListId;
+                  return ChoiceChip(
+                    label: Text(list.title),
+                    selected: selected,
+                    selectedColor: AppTheme.childColor.withValues(alpha: 0.22),
+                    labelStyle: TextStyle(
+                      color: selected ? AppTheme.childColor : AppTheme.textPrimary,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                    side: BorderSide(
+                      color: selected
+                          ? AppTheme.childColor
+                          : AppTheme.dividerColor.withValues(alpha: 0.9),
+                    ),
+                    onSelected: (_) => _switchList(list.id),
+                  );
+                },
+              ),
+            ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: OutlinedButton.icon(
+              onPressed: _showNewListDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Nowa lista'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.childColor,
+                side: BorderSide(color: AppTheme.childColor.withValues(alpha: 0.55)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Material(
               elevation: 1,
               shadowColor: Colors.black26,
@@ -605,9 +707,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
                             color: AppTheme.childColor.withValues(alpha: 0.35),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
-                            'Twoja lista jest pusta',
-                            style: TextStyle(
+                          Text(
+                            '$listTitle jest pusta',
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.textPrimary,
@@ -632,7 +734,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                     itemBuilder: (context, index) {
                       final item = _listItems[index];
                       return Dismissible(
-                        key: ValueKey(item.id),
+                        key: ValueKey('${activeList?.id}_${item.id}'),
                         direction: DismissDirection.endToStart,
                         background: Container(
                           alignment: Alignment.centerRight,
@@ -680,30 +782,130 @@ class _ChildDashboardState extends State<ChildDashboard> {
     );
   }
 
-  Future<void> _loadList(String userId) async {
+  Future<void> _showNewListDialog() async {
+    final titleController = TextEditingController();
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nowa lista'),
+        content: TextField(
+          controller: titleController,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Tytuł listy',
+            hintText: 'np. Szkoła, Zakupy, Na wakacje',
+          ),
+          onSubmitted: (_) => Navigator.pop(dialogContext, true),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Anuluj'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.childColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Utwórz'),
+          ),
+        ],
+      ),
+    );
+
+    final title = titleController.text.trim();
+    titleController.dispose();
+
+    if (created != true || !mounted) {
+      return;
+    }
+
+    _createNewList(title.isEmpty ? 'Lista ${_lists.length + 1}' : title);
+  }
+
+  void _createNewList(String title) {
+    final list = _ChildTodoList(
+      id: 'list_${DateTime.now().microsecondsSinceEpoch}',
+      title: title,
+    );
+
+    setState(() {
+      _lists.add(list);
+      _activeListId = list.id;
+      _listItemController.clear();
+    });
+    _persistLists();
+    _listItemFocus.requestFocus();
+  }
+
+  void _switchList(String listId) {
+    if (_activeListId == listId) {
+      return;
+    }
+
+    setState(() {
+      _activeListId = listId;
+      _listItemController.clear();
+    });
+  }
+
+  Future<void> _loadLists(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('child_list_$userId');
+    final listsRaw = prefs.getString('child_lists_$userId');
     if (!mounted) {
       return;
     }
 
     setState(() {
-      _listItems.clear();
-      if (raw != null && raw.isNotEmpty) {
-        final decoded = jsonDecode(raw) as List<dynamic>;
-        _listItems.addAll(
+      _lists.clear();
+      if (listsRaw != null && listsRaw.isNotEmpty) {
+        final decoded = jsonDecode(listsRaw) as List<dynamic>;
+        _lists.addAll(
           decoded.map(
-            (entry) => _ChildListItem.fromJson(
+            (entry) => _ChildTodoList.fromJson(
               Map<String, dynamic>.from(entry as Map),
             ),
           ),
         );
+      } else {
+        final legacyRaw = prefs.getString('child_list_$userId');
+        if (legacyRaw != null && legacyRaw.isNotEmpty) {
+          final decoded = jsonDecode(legacyRaw) as List<dynamic>;
+          _lists.add(
+            _ChildTodoList(
+              id: 'list_default',
+              title: 'Moja lista',
+              items: decoded
+                  .map(
+                    (entry) => _ChildListItem.fromJson(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList(),
+            ),
+          );
+        } else {
+          _lists.add(
+            _ChildTodoList(
+              id: 'list_default',
+              title: 'Moja lista',
+            ),
+          );
+        }
       }
+
+      _activeListId = _lists.isNotEmpty ? _lists.first.id : null;
       _loadedListUserId = userId;
     });
+
+    if (listsRaw == null && prefs.getString('child_list_$userId') != null) {
+      await _persistLists();
+    }
   }
 
-  Future<void> _persistList() async {
+  Future<void> _persistLists() async {
     final userId = context.read<AppProvider>().currentUser?.id;
     if (userId == null) {
       return;
@@ -711,19 +913,24 @@ class _ChildDashboardState extends State<ChildDashboard> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      'child_list_$userId',
-      jsonEncode(_listItems.map((item) => item.toJson()).toList()),
+      'child_lists_$userId',
+      jsonEncode(_lists.map((list) => list.toJson()).toList()),
     );
   }
 
   void _addListItem(String value) {
+    final activeList = _activeList;
+    if (activeList == null) {
+      return;
+    }
+
     final text = value.trim();
     if (text.isEmpty) {
       return;
     }
 
     setState(() {
-      _listItems.insert(
+      activeList.items.insert(
         0,
         _ChildListItem(
           id: 'item_${DateTime.now().microsecondsSinceEpoch}',
@@ -732,18 +939,23 @@ class _ChildDashboardState extends State<ChildDashboard> {
       );
       _listItemController.clear();
     });
-    _persistList();
+    _persistLists();
     _listItemFocus.requestFocus();
   }
 
   void _toggleListItem(int index, bool checked) {
     setState(() => _listItems[index].checked = checked);
-    _persistList();
+    _persistLists();
   }
 
   void _removeListItem(int index) {
-    setState(() => _listItems.removeAt(index));
-    _persistList();
+    final activeList = _activeList;
+    if (activeList == null) {
+      return;
+    }
+
+    setState(() => activeList.items.removeAt(index));
+    _persistLists();
   }
 
   String _custodianLabel(UserRole? role, Workspace? workspace) {
