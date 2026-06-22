@@ -154,6 +154,7 @@ class MessageThread {
         return Icons.school;
       case 'Zdrowie':
         return Icons.medical_services;
+      case 'Finanse':
       case 'Finansowe':
         return Icons.account_balance_wallet;
       case 'Zmiana grafiku':
@@ -171,6 +172,7 @@ class MessageThread {
         return const Color(0xFF1565C0);
       case 'Zdrowie':
         return const Color(0xFFD32F2F);
+      case 'Finanse':
       case 'Finansowe':
         return const Color(0xFF388E3C);
       case 'Zmiana grafiku':

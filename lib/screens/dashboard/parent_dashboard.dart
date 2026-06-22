@@ -33,6 +33,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
   int _openThreadRequestId = 0;
   String? _pendingOpenExpenseId;
   int _openExpenseRequestId = 0;
+  final GlobalKey<FinanceScreenState> _financeScreenKey = GlobalKey();
 
   void _navigateToTab(int index) {
     setState(() => _selectedIndex = index);
@@ -68,6 +69,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
       _selectedIndex = 3;
     });
     _refreshFinanceNow();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _financeScreenKey.currentState?.openExpense(expenseId);
+      });
+    });
   }
 
   void _returnFromChatThread() {
@@ -111,6 +118,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
             focusRequestId: _calendarFocusRequestId,
           ),
           FinanceScreen(
+            key: _financeScreenKey,
             openExpenseId: _pendingOpenExpenseId,
             openExpenseRequestId: _openExpenseRequestId,
           ),
@@ -289,12 +297,18 @@ class _DashboardHome extends StatelessWidget {
         : 'Brak danych';
 
     final firstName = user?.name.split(' ').first ?? '';
+    final compact = isCompactPhoneLayout(context);
 
     return ParentTabScaffold(
       headerColor: AppTheme.brandHeaderBlue,
-      headerHeight: 130,
+      headerHeight: compact ? 108 : 130,
       header: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 16 : 20,
+          compact ? 8 : 14,
+          compact ? 16 : 20,
+          compact ? 8 : 14,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -303,22 +317,25 @@ class _DashboardHome extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const BrandLogo(width: 112, height: 34),
-                  const SizedBox(height: 10),
+                  BrandLogo(
+                    width: compact ? 96 : 112,
+                    height: compact ? 28 : 34,
+                  ),
+                  SizedBox(height: compact ? 6 : 10),
                   Text(
                     'Dzień dobry, $firstName',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: compact ? 18 : 22,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: compact ? 2 : 3),
                   Text(
                     workspace?.name ?? '',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.75),
-                      fontSize: 13,
+                      fontSize: compact ? 12 : 13,
                     ),
                   ),
                   if (highConflict) ...[
@@ -348,20 +365,20 @@ class _DashboardHome extends StatelessWidget {
             GestureDetector(
               onTap: () => _openSettings(context),
               child: SizedBox(
-                width: 52,
-                height: 52,
+                width: compact ? 44 : 52,
+                height: compact ? 44 : 52,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     CircleAvatar(
-                      radius: 22,
+                      radius: compact ? 18 : 22,
                       backgroundColor: AppTheme.coralColor,
                       child: Text(
                         firstName.isNotEmpty ? firstName[0] : '?',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: compact ? 16 : 18,
                         ),
                       ),
                     ),

@@ -5,9 +5,8 @@ const String familyCategoryChannel = 'Rodzina';
 const List<String> messagingParentCategoryChannels = [
   'Szkoła',
   'Zdrowie',
-  'Finansowe',
+  'Finanse',
   'Zmiana grafiku',
-  'Inne',
 ];
 
 /// All category chips shown to parents (family channel first).
@@ -26,8 +25,10 @@ bool isCategoryChannel(MessageThread thread) {
   if (isFamilyChannel(thread)) {
     return false;
   }
-  return messagingParentCategoryChannels.contains(thread.category) &&
-      thread.subject == thread.category;
+  final category = thread.category == 'Finansowe' ? 'Finanse' : thread.category;
+  final subject = thread.subject == 'Finansowe' ? 'Finanse' : thread.subject;
+  return messagingParentCategoryChannels.contains(category) &&
+      subject == category;
 }
 
 MessageThread? findFamilyChannel(List<MessageThread> threads) {
@@ -52,6 +53,16 @@ MessageThread? findCategoryChannel(
       return thread;
     }
   }
+
+  // Legacy channel name before rename Finansowe → Finanse.
+  if (category == 'Finanse') {
+    for (final thread in threads) {
+      if (thread.category == 'Finansowe' && thread.subject == 'Finansowe') {
+        return thread;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -70,7 +81,9 @@ MessageThread? findCategoryThreadFallback(
 
   MessageThread? newest;
   for (final thread in threads) {
-    if (thread.category != category) {
+    final threadCategory =
+        thread.category == 'Finansowe' ? 'Finanse' : thread.category;
+    if (threadCategory != category && thread.category != category) {
       continue;
     }
     if (newest == null || thread.lastActivity.isAfter(newest.lastActivity)) {
@@ -88,11 +101,12 @@ String categoryChannelSubtitle(String category) {
       return 'Lekcje, zebrania, oceny';
     case 'Zdrowie':
       return 'Wizyty, recepty, badania';
+    case 'Finanse':
     case 'Finansowe':
       return 'Wydatki, rozliczenia';
     case 'Zmiana grafiku':
       return 'Opieka, wymiany terminów';
     default:
-      return 'Inne sprawy rodzinne';
+      return 'Sprawy rodzinne';
   }
 }

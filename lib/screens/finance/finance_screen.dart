@@ -28,10 +28,10 @@ class FinanceScreen extends StatefulWidget {
   });
 
   @override
-  State<FinanceScreen> createState() => _FinanceScreenState();
+  FinanceScreenState createState() => FinanceScreenState();
 }
 
-class _FinanceScreenState extends State<FinanceScreen>
+class FinanceScreenState extends State<FinanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   ExpenseStatus? _expenseFilter;
@@ -73,6 +73,9 @@ class _FinanceScreenState extends State<FinanceScreen>
     }
   }
 
+  /// Opens the Wydatki tab and scrolls to [expenseId] (e.g. from Start dashboard).
+  Future<void> openExpense(String expenseId) => _openExpenseById(expenseId);
+
   void _scheduleOpenExpense(String expenseId) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_openExpenseById(expenseId));
@@ -95,24 +98,41 @@ class _FinanceScreenState extends State<FinanceScreen>
     setState(() {
       _expenseFilter = null;
       _highlightExpenseId = expenseId;
-      _tabController.index = 1;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (_tabController.index != 1) {
+      _tabController.animateTo(1);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+
     if (!mounted) return;
+    await _scrollExpenseIntoView(expenseId);
+  }
+
+  Future<void> _scrollExpenseIntoView(
+    String expenseId, {
+    int attempt = 0,
+  }) async {
+    if (!mounted || attempt > 12) return;
+
+    if (attempt > 0) {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (!mounted) return;
+    }
+
+    final targetContext = _expenseItemKeys[expenseId]?.currentContext;
+    if (targetContext != null) {
+      await Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: 0.08,
+      );
+      return;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final key = _expenseItemKeys[expenseId];
-      final targetContext = key?.currentContext;
-      if (targetContext != null) {
-        Scrollable.ensureVisible(
-          targetContext,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          alignment: 0.08,
-        );
-      }
+      unawaited(_scrollExpenseIntoView(expenseId, attempt: attempt + 1));
     });
   }
 
@@ -440,6 +460,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   label: 'Zaakceptowane',
                   count: finance.acceptedCount,
                   color: AppTheme.successColor,
+                  onTap: () => _openExpensesFiltered(ExpenseStatus.accepted),
                 ),
               ),
               const SizedBox(width: 8),
@@ -448,6 +469,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   label: 'Oczekujące',
                   count: finance.pendingCount,
                   color: AppTheme.warningColor,
+                  onTap: () => _openExpensesFiltered(ExpenseStatus.pending),
                 ),
               ),
               const SizedBox(width: 8),
@@ -456,6 +478,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   label: 'Sporne',
                   count: finance.disputedCount,
                   color: AppTheme.errorColor,
+                  onTap: () => _openExpensesFiltered(ExpenseStatus.disputed),
                 ),
               ),
             ],
@@ -481,7 +504,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   color: AppTheme.warningColor,
                   icon: Icons.account_balance_wallet,
                   currencyCode: currencyCode,
-                  onTap: _openPendingExpenses,
+                  onTap: () => _openExpensesFiltered(ExpenseStatus.pending),
                 ),
               ),
             ],
@@ -1034,9 +1057,9 @@ class _FinanceScreenState extends State<FinanceScreen>
     }
   }
 
-  void _openPendingExpenses() {
+  void _openExpensesFiltered(ExpenseStatus? status) {
     setState(() {
-      _expenseFilter = ExpenseStatus.pending;
+      _expenseFilter = status;
       _tabController.index = 1;
     });
   }
@@ -1114,37 +1137,49 @@ class _StatusCountChip extends StatelessWidget {
   final String label;
   final int count;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatusCountChip({
     required this.label,
     required this.count,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
           ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+          child: Column(
+            children: [
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

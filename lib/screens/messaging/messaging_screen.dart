@@ -168,6 +168,9 @@ class _MessagingScreenState extends State<MessagingScreen> {
       if (isCategoryChannel(thread) || isFamilyChannel(thread)) {
         return false;
       }
+      if (thread.category == 'Inne') {
+        return false;
+      }
       final query = _searchQuery.trim().toLowerCase();
       if (query.isEmpty) {
         return true;
@@ -274,19 +277,6 @@ class _MessagingScreenState extends State<MessagingScreen> {
                               ),
                             ),
                           if (customThreads.isNotEmpty) ...[
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                              child: Text(
-                                'Wątki z własnym tematem',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.textSecondary.withValues(
-                                    alpha: 0.9,
-                                  ),
-                                ),
-                              ),
-                            ),
                             ...customThreads.map(
                               (thread) => _ThreadTile(
                                 thread: thread,

@@ -5,9 +5,30 @@ bool isCompactPhoneLayout(BuildContext context) {
   return MediaQuery.sizeOf(context).shortestSide < 600;
 }
 
-/// Parent tab header side inset — wider margins on phone, unchanged on web/desktop.
+/// Parent tab header side inset — edge-to-edge on phone, inset on web/desktop.
 double parentTabHeaderHorizontalInset(BuildContext context) {
-  return isCompactPhoneLayout(context) ? 28.0 : 16.0;
+  return isCompactPhoneLayout(context) ? 0.0 : 16.0;
+}
+
+/// Top gap above header bar (below status bar).
+double parentTabHeaderTopInset(BuildContext context) {
+  return isCompactPhoneLayout(context) ? 0.0 : 8.0;
+}
+
+/// Shorter header row on phone; unchanged on web/desktop.
+double parentTabResolvedHeaderHeight(BuildContext context, double height) {
+  if (!isCompactPhoneLayout(context)) {
+    return height;
+  }
+  if (height > 80) {
+    return 108;
+  }
+  return 46;
+}
+
+/// Shorter tab row under header on phone.
+double parentTabResolvedTabBarHeight(BuildContext context) {
+  return isCompactPhoneLayout(context) ? 40.0 : 48.0;
 }
 
 /// Icon-only header pills when the label is too long for narrow phones.

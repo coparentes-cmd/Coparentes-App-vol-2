@@ -40,6 +40,14 @@ class ParentTabScaffold extends StatelessWidget {
     final color = headerColor ?? AppTheme.brandHeaderBlue;
     final topPadding = MediaQuery.paddingOf(context).top;
     final sideInset = parentTabHeaderHorizontalInset(context);
+    final topGap = parentTabHeaderTopInset(context);
+    final compact = isCompactPhoneLayout(context);
+    final resolvedHeaderHeight =
+        parentTabResolvedHeaderHeight(context, headerHeight);
+    final resolvedTabBarHeight = parentTabResolvedTabBarHeight(context);
+    final headerRadius = compact
+        ? BorderRadius.zero
+        : BorderRadius.circular(borderRadius);
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
@@ -50,20 +58,20 @@ class ParentTabScaffold extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(
               sideInset,
-              topPadding + topInset,
+              topPadding + topGap,
               sideInset,
               0,
             ),
             child: Material(
               color: color,
-              borderRadius: BorderRadius.circular(borderRadius),
+              borderRadius: headerRadius,
               clipBehavior: Clip.antiAlias,
               elevation: 0,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    height: headerHeight,
+                    height: resolvedHeaderHeight,
                     child: header ??
                         AppBar(
                           primary: false,
@@ -72,14 +80,18 @@ class ParentTabScaffold extends StatelessWidget {
                           scrolledUnderElevation: 0,
                           backgroundColor: Colors.transparent,
                           foregroundColor: Colors.white,
+                          toolbarHeight: resolvedHeaderHeight,
                           title: Text(title!),
                           actions: actions,
                         ),
                   ),
                   if (tabBar != null)
-                    Material(
-                      color: Colors.transparent,
-                      child: tabBar!,
+                    SizedBox(
+                      height: resolvedTabBarHeight,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: tabBar!,
+                      ),
                     ),
                 ],
               ),
