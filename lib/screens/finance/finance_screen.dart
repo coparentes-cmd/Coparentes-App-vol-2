@@ -18,7 +18,14 @@ enum _ReportPeriod { thisMonth, quarter, year, custom }
 enum _FinanceReportType { chronological, statistical, balance }
 
 class FinanceScreen extends StatefulWidget {
-  const FinanceScreen({super.key});
+  final String? openExpenseId;
+  final int openExpenseRequestId;
+
+  const FinanceScreen({
+    super.key,
+    this.openExpenseId,
+    this.openExpenseRequestId = 0,
+  });
 
   @override
   State<FinanceScreen> createState() => _FinanceScreenState();
@@ -28,6 +35,8 @@ class _FinanceScreenState extends State<FinanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   ExpenseStatus? _expenseFilter;
+  String? _highlightExpenseId;
+  final Map<String, GlobalKey> _expenseItemKeys = {};
   _ReportPeriod _reportPeriod = _ReportPeriod.thisMonth;
   _FinanceReportType _reportType = _FinanceReportType.chronological;
   DateTime? _customReportFrom;
@@ -47,6 +56,62 @@ class _FinanceScreenState extends State<FinanceScreen>
       final exports = context.read<ExportsProvider>();
       if (exports.jobs.isEmpty && !exports.isLoading) {
         exports.loadExports();
+      }
+    });
+
+    if (widget.openExpenseId != null) {
+      _scheduleOpenExpense(widget.openExpenseId!);
+    }
+  }
+
+  @override
+  void didUpdateWidget(FinanceScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.openExpenseRequestId != oldWidget.openExpenseRequestId &&
+        widget.openExpenseId != null) {
+      _scheduleOpenExpense(widget.openExpenseId!);
+    }
+  }
+
+  void _scheduleOpenExpense(String expenseId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_openExpenseById(expenseId));
+    });
+  }
+
+  Future<void> _openExpenseById(String expenseId) async {
+    if (!mounted) return;
+
+    final finance = context.read<FinanceProvider>();
+    if (!finance.expenses.any((expense) => expense.id == expenseId)) {
+      final app = context.read<AppProvider>();
+      if (!app.isDemoMode) {
+        await finance.load(silent: true);
+      }
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _expenseFilter = null;
+      _highlightExpenseId = expenseId;
+      _tabController.index = 1;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final key = _expenseItemKeys[expenseId];
+      final targetContext = key?.currentContext;
+      if (targetContext != null) {
+        Scrollable.ensureVisible(
+          targetContext,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: 0.08,
+        );
       }
     });
   }
@@ -315,12 +380,6 @@ class _FinanceScreenState extends State<FinanceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AiContextualTip(
-            tips: AiTips.finance,
-            intervalSeconds: 8,
-          ),
-          const SizedBox(height: 12),
-
           // Main balance card — kompaktowa, zielony brand (jak dawne paski)
           Align(
             alignment: Alignment.centerLeft,
@@ -589,20 +648,26 @@ class _FinanceScreenState extends State<FinanceScreen>
                   padding: const EdgeInsets.all(16),
                   itemCount: filtered.length,
                   itemBuilder: (ctx, i) {
-                    return _ExpenseCard(
-                      expense: filtered[i],
+                    final expense = filtered[i];
+                    final itemKey =
+                        _expenseItemKeys.putIfAbsent(expense.id, GlobalKey.new);
+                    return KeyedSubtree(
+                      key: itemKey,
+                      child: _ExpenseCard(
+                      expense: expense,
                       isReadOnly: isReadOnly,
                       currentUserId: user?.id,
                       finance: finance,
                       members: members,
                       children: children,
-                      onDispute: () => _showDisputeSheet(context, filtered[i]),
+                      highlightExpanded: expense.id == _highlightExpenseId,
+                      onDispute: () => _showDisputeSheet(context, expense),
                       onAccept: () async {
                         try {
                           await context
                               .read<FinanceProvider>()
                               .updateExpenseStatus(
-                            filtered[i].id,
+                            expense.id,
                             ExpenseStatus.accepted,
                           );
                           if (context.mounted) {
@@ -629,7 +694,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                       onSettled: () async {
                         try {
                           await context.read<FinanceProvider>().updateExpenseStatus(
-                            filtered[i].id,
+                            expense.id,
                             ExpenseStatus.settled,
                           );
                           if (context.mounted) {
@@ -644,6 +709,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                           }
                         } catch (_) {}
                       },
+                    ),
                     );
                   },
                 ),
@@ -1335,6 +1401,7 @@ class _ExpenseCard extends StatefulWidget {
   final FinanceProvider finance;
   final List<AppUser> members;
   final List<ChildProfile> children;
+  final bool highlightExpanded;
   final VoidCallback onDispute;
   final Future<void> Function() onAccept;
   final VoidCallback onSettled;
@@ -1346,6 +1413,7 @@ class _ExpenseCard extends StatefulWidget {
     required this.finance,
     required this.members,
     required this.children,
+    this.highlightExpanded = false,
     required this.onDispute,
     required this.onAccept,
     required this.onSettled,
@@ -1356,7 +1424,21 @@ class _ExpenseCard extends StatefulWidget {
 }
 
 class _ExpenseCardState extends State<_ExpenseCard> {
-  bool _showDetails = false;
+  late bool _showDetails;
+
+  @override
+  void initState() {
+    super.initState();
+    _showDetails = widget.highlightExpanded;
+  }
+
+  @override
+  void didUpdateWidget(_ExpenseCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.highlightExpanded && !oldWidget.highlightExpanded) {
+      _showDetails = true;
+    }
+  }
 
   String _memberName(String userId) {
     for (final m in widget.members) {

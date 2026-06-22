@@ -39,6 +39,7 @@ class ParentTabScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = headerColor ?? AppTheme.brandHeaderBlue;
     final topPadding = MediaQuery.paddingOf(context).top;
+    final sideInset = parentTabHeaderHorizontalInset(context);
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
@@ -48,9 +49,9 @@ class ParentTabScaffold extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(
-              horizontalInset,
+              sideInset,
               topPadding + topInset,
-              horizontalInset,
+              sideInset,
               0,
             ),
             child: Material(

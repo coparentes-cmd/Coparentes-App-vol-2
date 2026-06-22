@@ -8,7 +8,6 @@ import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../utils/layout_utils.dart';
-import '../../widgets/common_widgets.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import '../messaging/messaging_screen.dart';
@@ -32,6 +31,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
   int _calendarFocusRequestId = 0;
   String? _pendingOpenThreadId;
   int _openThreadRequestId = 0;
+  String? _pendingOpenExpenseId;
+  int _openExpenseRequestId = 0;
 
   void _navigateToTab(int index) {
     setState(() => _selectedIndex = index);
@@ -58,6 +59,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
       _selectedIndex = 1;
     });
     context.read<OfflineSyncProvider>().pollMessagingNow();
+  }
+
+  void _openFinanceExpense(String expenseId) {
+    setState(() {
+      _pendingOpenExpenseId = expenseId;
+      _openExpenseRequestId += 1;
+      _selectedIndex = 3;
+    });
+    _refreshFinanceNow();
   }
 
   void _returnFromChatThread() {
@@ -89,6 +99,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
             onNavigateToTab: _navigateToTab,
             onOpenCalendarDay: _openCalendarOnDay,
             onOpenChatThread: _openChatThread,
+            onOpenFinanceExpense: _openFinanceExpense,
           ),
           MessagingScreen(
             openThreadId: _pendingOpenThreadId,
@@ -99,7 +110,10 @@ class _ParentDashboardState extends State<ParentDashboard> {
             focusDay: _calendarFocusDay,
             focusRequestId: _calendarFocusRequestId,
           ),
-          const FinanceScreen(),
+          FinanceScreen(
+            openExpenseId: _pendingOpenExpenseId,
+            openExpenseRequestId: _openExpenseRequestId,
+          ),
           const DocumentsScreen(),
           const ExportsScreen(),
         ],
@@ -203,19 +217,19 @@ class _DashboardHome extends StatelessWidget {
   final ValueChanged<int> onNavigateToTab;
   final ValueChanged<DateTime> onOpenCalendarDay;
   final ValueChanged<String> onOpenChatThread;
+  final ValueChanged<String> onOpenFinanceExpense;
 
   const _DashboardHome({
     required this.onNavigateToTab,
     required this.onOpenCalendarDay,
     required this.onOpenChatThread,
+    required this.onOpenFinanceExpense,
   });
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
     final workspace = context.watch<AppProvider>().currentWorkspace;
-    final aiCoach = context.watch<AppProvider>().aiCoachEnabled;
-    final aiShield = context.watch<AppProvider>().aiShieldEnabled;
     final highConflict = context.watch<AppProvider>().highConflictMode;
     final messaging = context.watch<MessagingProvider>();
     final finance = context.watch<FinanceProvider>();
@@ -255,6 +269,7 @@ class _DashboardHome extends StatelessWidget {
         : 'Czat · $unreadMessages nowe';
 
     final financeActivity = _latestFinanceActivity(finance);
+    final latestExpenseId = _latestFinanceExpenseId(finance);
     final financeDetail = finance.pendingCount == 0
         ? 'Finanse · $netBalanceLabel'
         : 'Finanse · ${finance.pendingCount} oczekuje';
@@ -398,25 +413,6 @@ class _DashboardHome extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // AI Status bar
-                if (aiCoach || aiShield)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _AiStatusBar(
-                      aiCoach: aiCoach,
-                      aiShield: aiShield,
-                    ),
-                  ),
-
-                // AI contextual tips
-                if (aiCoach)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: AiContextualTip(tips: AiTips.dashboard),
-                  ),
-
-                const SizedBox(height: 16),
-
                 // Ostatnie aktywności z zakładek
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -438,7 +434,13 @@ class _DashboardHome extends StatelessWidget {
                           value: financeActivity,
                           icon: Icons.account_balance_wallet,
                           color: AppTheme.warningColor,
-                          onTap: () => onNavigateToTab(3),
+                          onTap: () {
+                            if (latestExpenseId != null) {
+                              onOpenFinanceExpense(latestExpenseId);
+                            } else {
+                              onNavigateToTab(3);
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -755,64 +757,6 @@ class _TodayCard extends StatelessWidget {
   }
 }
 
-class _AiStatusBar extends StatelessWidget {
-  final bool aiCoach;
-  final bool aiShield;
-
-  const _AiStatusBar({required this.aiCoach, required this.aiShield});
-
-  @override
-  Widget build(BuildContext context) {
-    final compact = isCompactPhoneLayout(context);
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 16,
-        vertical: compact ? 7 : 10,
-      ),
-      decoration: BoxDecoration(
-        color: AppTheme.aiCoachColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(compact ? 10 : 12),
-        border: Border.all(
-          color: AppTheme.aiCoachColor.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.auto_awesome,
-            color: AppTheme.aiCoachColor,
-            size: compact ? 15 : 18,
-          ),
-          SizedBox(width: compact ? 8 : 10),
-          Expanded(
-            child: Text(
-              [
-                if (aiCoach) 'AI Coach aktywny',
-                if (aiShield) 'AI Shield aktywny',
-              ].join(' · '),
-              style: TextStyle(
-                fontSize: compact ? 11 : 13,
-                color: AppTheme.aiCoachColor,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: compact ? 1 : 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            'AKTYWNE',
-            style: TextStyle(
-              fontSize: compact ? 9 : 10,
-              color: AppTheme.aiCoachColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -1040,24 +984,34 @@ String _latestChatActivity(MessagingProvider messaging) {
 }
 
 String _latestFinanceActivity(FinanceProvider finance) {
+  final expense = _resolveLatestFinanceExpense(finance);
+  if (expense == null) {
+    return 'Brak wydatków';
+  }
+  return '${expense.title} · ${expense.amount.toStringAsFixed(0)} PLN';
+}
+
+Expense? _resolveLatestFinanceExpense(FinanceProvider finance) {
   final pending = finance.expenses
       .where((expense) => expense.status == ExpenseStatus.pending)
       .toList()
     ..sort((a, b) => b.date.compareTo(a.date));
 
   if (pending.isNotEmpty) {
-    final expense = pending.first;
-    return '${expense.title} · ${expense.amount.toStringAsFixed(0)} PLN';
+    return pending.first;
   }
 
   if (finance.expenses.isEmpty) {
-    return 'Brak wydatków';
+    return null;
   }
 
   final latest = [...finance.expenses]
     ..sort((a, b) => b.date.compareTo(a.date));
-  final expense = latest.first;
-  return '${expense.title} · ${expense.amount.toStringAsFixed(0)} PLN';
+  return latest.first;
+}
+
+String? _latestFinanceExpenseId(FinanceProvider finance) {
+  return _resolveLatestFinanceExpense(finance)?.id;
 }
 
 String _latestCalendarActivity(CalendarProvider calendar) {

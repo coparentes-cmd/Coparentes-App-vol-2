@@ -232,8 +232,6 @@ class _CalendarScreenState extends State<CalendarScreen>
             onAccept: () => _respondToSchedule(context, approve: true),
             onReject: () => _respondToSchedule(context, approve: false),
           ),
-        if (!isReadOnly && calendar.hasActiveSchedule)
-          const _ActiveScheduleBanner(),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
           child: AiContextualTip(
@@ -264,7 +262,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                 _focusedDay = day;
               });
             },
-            onDayDoubleTap: (day) =>
+            onDayTap: (day) =>
                 _showDayDetailSheet(context, calendar, day, isReadOnly),
             onEventDoubleTap: isReadOnly
                 ? null
@@ -294,18 +292,6 @@ class _CalendarScreenState extends State<CalendarScreen>
               _LegendItem(
                 color: AppTheme.parentBColor,
                 label: 'U Taty',
-              ),
-              const SizedBox(width: 20),
-              _LegendItem(
-                color: AppTheme.warningColor,
-                label: 'Wyjątek',
-                icon: Icons.star,
-              ),
-              const SizedBox(width: 20),
-              _LegendItem(
-                color: AppTheme.warningColor,
-                label: 'Oczekuje',
-                dot: true,
               ),
             ],
           ),
@@ -1925,26 +1911,6 @@ class _ScheduleSetupBanner extends StatelessWidget {
         actions: [
           TextButton(onPressed: onPressed, child: const Text('Utwórz grafik')),
         ],
-      ),
-    );
-  }
-}
-
-class _ActiveScheduleBanner extends StatelessWidget {
-  const _ActiveScheduleBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: MaterialBanner(
-        backgroundColor: AppTheme.successColor.withValues(alpha: 0.08),
-        content: const Text(
-          'Grafik opieki jest zatwierdzony. Zmiany dni, przekazań i całego '
-          'grafiku wymagają akceptacji drugiego rodzica.',
-        ),
-        leading: const Icon(Icons.lock_outline, color: AppTheme.successColor),
-        actions: const [SizedBox.shrink()],
       ),
     );
   }

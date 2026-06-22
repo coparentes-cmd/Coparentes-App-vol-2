@@ -27,7 +27,7 @@ class GoogleStyleMonthCalendar extends StatefulWidget {
   final bool Function(DateTime day)? isExceptionDay;
   final bool Function(DateTime day)? hasPendingException;
   final ValueChanged<DateTime> onDaySelected;
-  final ValueChanged<DateTime>? onDayDoubleTap;
+  final ValueChanged<DateTime>? onDayTap;
   final ValueChanged<CalendarEvent>? onEventDoubleTap;
   final ValueChanged<DateTime> onMonthChanged;
   final VoidCallback onTodayPressed;
@@ -42,7 +42,7 @@ class GoogleStyleMonthCalendar extends StatefulWidget {
     this.isExceptionDay,
     this.hasPendingException,
     required this.onDaySelected,
-    this.onDayDoubleTap,
+    this.onDayTap,
     this.onEventDoubleTap,
     required this.onMonthChanged,
     required this.onTodayPressed,
@@ -143,7 +143,7 @@ class _GoogleStyleMonthCalendarState extends State<GoogleStyleMonthCalendar> {
                   isExceptionDay: widget.isExceptionDay,
                   hasPendingException: widget.hasPendingException,
                   onDaySelected: widget.onDaySelected,
-                  onDayDoubleTap: widget.onDayDoubleTap,
+                  onDayTap: widget.onDayTap,
                   onEventDoubleTap: widget.onEventDoubleTap,
                 );
               },
@@ -164,7 +164,7 @@ class _MonthGrid extends StatelessWidget {
   final bool Function(DateTime day)? isExceptionDay;
   final bool Function(DateTime day)? hasPendingException;
   final ValueChanged<DateTime> onDaySelected;
-  final ValueChanged<DateTime>? onDayDoubleTap;
+  final ValueChanged<DateTime>? onDayTap;
   final ValueChanged<CalendarEvent>? onEventDoubleTap;
 
   const _MonthGrid({
@@ -176,7 +176,7 @@ class _MonthGrid extends StatelessWidget {
     this.isExceptionDay,
     this.hasPendingException,
     required this.onDaySelected,
-    this.onDayDoubleTap,
+    this.onDayTap,
     this.onEventDoubleTap,
   });
 
@@ -205,7 +205,8 @@ class _MonthGrid extends StatelessWidget {
           slots: getSlotsForDay(day),
           events: getEventsForDay(day),
           accentColor: accentColor,
-          onDoubleTap: onDayDoubleTap,
+          onDaySelected: onDaySelected,
+          onDayTap: onDayTap,
           onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
@@ -218,7 +219,8 @@ class _MonthGrid extends StatelessWidget {
           slots: getSlotsForDay(day),
           events: getEventsForDay(day),
           accentColor: accentColor,
-          onDoubleTap: onDayDoubleTap,
+          onDaySelected: onDaySelected,
+          onDayTap: onDayTap,
           onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
@@ -231,7 +233,8 @@ class _MonthGrid extends StatelessWidget {
           slots: getSlotsForDay(day),
           events: getEventsForDay(day),
           accentColor: accentColor,
-          onDoubleTap: onDayDoubleTap,
+          onDaySelected: onDaySelected,
+          onDayTap: onDayTap,
           onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
@@ -244,7 +247,8 @@ class _MonthGrid extends StatelessWidget {
           slots: getSlotsForDay(day),
           events: getEventsForDay(day),
           accentColor: accentColor,
-          onDoubleTap: onDayDoubleTap,
+          onDaySelected: onDaySelected,
+          onDayTap: onDayTap,
           onEventDoubleTap: onEventDoubleTap,
           isException: isExceptionDay?.call(day) ?? false,
           hasPending: hasPendingException?.call(day) ?? false,
@@ -362,7 +366,8 @@ class _DayCell extends StatelessWidget {
   final List<CustodySlot> slots;
   final List<CalendarEvent> events;
   final Color accentColor;
-  final ValueChanged<DateTime>? onDoubleTap;
+  final ValueChanged<DateTime> onDaySelected;
+  final ValueChanged<DateTime>? onDayTap;
   final ValueChanged<CalendarEvent>? onEventDoubleTap;
   final bool isException;
   final bool hasPending;
@@ -375,11 +380,17 @@ class _DayCell extends StatelessWidget {
     required this.slots,
     required this.events,
     required this.accentColor,
-    this.onDoubleTap,
+    required this.onDaySelected,
+    this.onDayTap,
     this.onEventDoubleTap,
     this.isException = false,
     this.hasPending = false,
   });
+
+  void _handleDayTap() {
+    onDaySelected(day);
+    onDayTap?.call(day);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +401,7 @@ class _DayCell extends StatelessWidget {
     final hiddenCount = sortedEvents.length - visibleEvents.length;
 
     return GestureDetector(
-      onDoubleTap: onDoubleTap == null ? null : () => onDoubleTap!(day),
+      onTap: _handleDayTap,
       behavior: HitTestBehavior.opaque,
       child: DecoratedBox(
       decoration: BoxDecoration(

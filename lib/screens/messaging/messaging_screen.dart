@@ -262,41 +262,6 @@ class _MessagingScreenState extends State<MessagingScreen> {
                               ),
                             ),
                           ),
-                          Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.immutableBadge.withValues(
-                                alpha: 0.08,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(
-                                  Icons.lock,
-                                  size: 14,
-                                  color: AppTheme.immutableBadge,
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Wiadomości po wysłaniu są niezmienialnie archiwizowane (hash SHA-256)',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.immutableBadge,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           if (!isReadOnly)
                             Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1237,53 +1202,45 @@ class _ThreadScreenState extends State<ThreadScreen> {
         ),
         body: Column(
           children: [
-            // Immutable + shield notice
-            Container(
-              margin: const EdgeInsets.all(8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.dividerColor),
+            if (aiShield)
+              Container(
+                margin: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.dividerColor),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.aiCoachColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.shield,
+                        size: 10,
+                        color: AppTheme.aiCoachColor,
+                      ),
+                      SizedBox(width: 3),
+                      Text(
+                        'AI Shield',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: AppTheme.aiCoachColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              child: Row(
-                children: [
-                  const ImmutableBadge(),
-                  const SizedBox(width: 8),
-                  if (aiShield) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.aiCoachColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.shield,
-                            size: 10,
-                            color: AppTheme.aiCoachColor,
-                          ),
-                          SizedBox(width: 3),
-                          Text(
-                            'AI Shield',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: AppTheme.aiCoachColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
 
             // Messages list
             Expanded(
