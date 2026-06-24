@@ -1177,8 +1177,7 @@ class _AddEventSheetState extends State<_AddEventSheet>
 
   bool get _isEditing => widget.event != null;
 
-  bool _showCyclingPlaceholder(bool aiCoachEnabled) =>
-      aiCoachEnabled &&
+  bool get _showCyclingPlaceholder =>
       !_isEditing &&
       _titleController.text.isEmpty &&
       !_titleFocusNode.hasFocus;
@@ -1231,7 +1230,7 @@ class _AddEventSheetState extends State<_AddEventSheet>
   }
 
   Future<void> _nextHint() async {
-    if (!mounted || !_showCyclingPlaceholder(context.read<AppProvider>().aiCoachEnabled)) {
+    if (!mounted || !_showCyclingPlaceholder) {
       return;
     }
     await _fadeCtrl.reverse();
@@ -1364,10 +1363,10 @@ class _AddEventSheetState extends State<_AddEventSheet>
 
   @override
   Widget build(BuildContext context) {
-    final aiCoach = context.watch<AppProvider>().aiCoachEnabled;
-    final showCyclingPlaceholder = _showCyclingPlaceholder(aiCoach);
+    final showCyclingPlaceholder = _showCyclingPlaceholder;
     final hintStyle = Theme.of(context).inputDecorationTheme.hintStyle ??
         const TextStyle(color: AppTheme.textHint);
+    const fieldPadding = EdgeInsets.fromLTRB(18, 28, 18, 12);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1403,32 +1402,45 @@ class _AddEventSheetState extends State<_AddEventSheet>
             onTap: _pickTime,
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: _titleController,
-            focusNode: _titleFocusNode,
-            decoration: InputDecoration(
-              labelText: 'Tytuł zdarzenia',
-              hintText: showCyclingPlaceholder
-                  ? null
-                  : (aiCoach &&
-                          !_isEditing &&
-                          _titleFocusNode.hasFocus &&
-                          _titleController.text.isEmpty)
+          Stack(
+            children: [
+              TextField(
+                controller: _titleController,
+                focusNode: _titleFocusNode,
+                decoration: InputDecoration(
+                  labelText: 'Tytuł zdarzenia',
+                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                  hintText: showCyclingPlaceholder
                       ? null
-                      : 'np. Angielski – Zosia',
-              hint: showCyclingPlaceholder
-                  ? FadeTransition(
-                      opacity: _fadeAnim,
-                      child: Text(
-                        AiTips.calendarPlaceholders[
-                            _hintIndex % AiTips.calendarPlaceholders.length],
-                        style: hintStyle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      : (!_isEditing &&
+                              _titleFocusNode.hasFocus &&
+                              _titleController.text.isEmpty)
+                          ? null
+                          : 'np. Angielski – Zosia',
+                ),
+              ),
+              if (showCyclingPlaceholder)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Padding(
+                      padding: fieldPadding,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FadeTransition(
+                          opacity: _fadeAnim,
+                          child: Text(
+                            AiTips.calendarPlaceholders[_hintIndex %
+                                AiTips.calendarPlaceholders.length],
+                            style: hintStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
-                    )
-                  : null,
-            ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           const Text(
