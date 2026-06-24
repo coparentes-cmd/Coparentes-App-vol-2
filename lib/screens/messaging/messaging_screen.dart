@@ -265,17 +265,6 @@ class _MessagingScreenState extends State<MessagingScreen> {
                               ),
                             ),
                           ),
-                          if (!isReadOnly)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 4,
-                              ),
-                              child: AiContextualTip(
-                                tips: AiTips.messaging,
-                                intervalSeconds: 7,
-                              ),
-                            ),
                           if (customThreads.isNotEmpty) ...[
                             ...customThreads.map(
                               (thread) => _ThreadTile(
@@ -696,6 +685,8 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
             onRemoveAttachment: _removeAttachment,
             onSend: _sendMessage,
             sending: _sending,
+            cyclingPlaceholderHints:
+                aiCoach ? AiTips.messagingPlaceholders : null,
             onChanged: (value) {
               setState(() {});
               if (aiCoach && value.length > 10) {
@@ -1328,17 +1319,6 @@ class _ThreadScreenState extends State<ThreadScreen> {
               child: _ToneIndicator(tone: _analyzedTone),
             ),
 
-          // AI tip shown when input is empty and coach is on
-          if (_controller.text.isEmpty && aiCoach && !_showAiSuggestion)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-              child: AiContextualTip(
-                tips: AiTips.messaging,
-                intervalSeconds: 8,
-                dismissible: true,
-              ),
-            ),
-
           // Input area
           if (!isReadOnly)
             MessageComposeBar(
@@ -1348,6 +1328,9 @@ class _ThreadScreenState extends State<ThreadScreen> {
               onRemoveAttachment: _removeAttachment,
               onSend: _sendMessage,
               sending: _sending,
+              cyclingPlaceholderHints:
+                  aiCoach ? AiTips.messagingPlaceholders : null,
+              cyclingIntervalSeconds: 8,
               onChanged: (value) {
                 setState(() {});
                 if (aiCoach && value.length > 10) {

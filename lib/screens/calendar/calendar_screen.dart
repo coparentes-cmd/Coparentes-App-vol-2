@@ -232,13 +232,6 @@ class _CalendarScreenState extends State<CalendarScreen>
             onAccept: () => _respondToSchedule(context, approve: true),
             onReject: () => _respondToSchedule(context, approve: false),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-          child: AiContextualTip(
-            tips: AiTips.calendar,
-            intervalSeconds: 8,
-          ),
-        ),
         Expanded(
           child: GoogleStyleMonthCalendar(
             key: ValueKey(
@@ -1170,13 +1163,25 @@ class _AddEventSheet extends StatefulWidget {
   State<_AddEventSheet> createState() => _AddEventSheetState();
 }
 
-class _AddEventSheetState extends State<_AddEventSheet> {
+class _AddEventSheetState extends State<_AddEventSheet>
+    with SingleTickerProviderStateMixin {
   final _titleController = TextEditingController();
+  final _titleFocusNode = FocusNode();
   late EventType _selectedType;
   late TimeOfDay _selectedTime;
   bool _isSubmitting = false;
+  int _hintIndex = 0;
+  Timer? _hintTimer;
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
 
   bool get _isEditing => widget.event != null;
+
+  bool _showCyclingPlaceholder(bool aiCoachEnabled) =>
+      aiCoachEnabled &&
+      !_isEditing &&
+      _titleController.text.isEmpty &&
+      !_titleFocusNode.hasFocus;
 
   @override
   void initState() {
@@ -1193,11 +1198,60 @@ class _AddEventSheetState extends State<_AddEventSheet> {
       _selectedType = EventType.school;
       _selectedTime = const TimeOfDay(hour: 9, minute: 0);
     }
+    _titleController.addListener(_onTitleChanged);
+    _titleFocusNode.addListener(_onTitleFocusChanged);
+    _fadeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+      value: 1,
+    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
+    _startHintTimer();
+  }
+
+  void _startHintTimer() {
+    if (AiTips.calendarPlaceholders.length <= 1) {
+      return;
+    }
+    _hintTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      unawaited(_nextHint());
+    });
+  }
+
+  void _onTitleChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onTitleFocusChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _nextHint() async {
+    if (!mounted || !_showCyclingPlaceholder(context.read<AppProvider>().aiCoachEnabled)) {
+      return;
+    }
+    await _fadeCtrl.reverse();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _hintIndex = (_hintIndex + 1) % AiTips.calendarPlaceholders.length;
+    });
+    _fadeCtrl.forward();
   }
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
+    _fadeCtrl.dispose();
+    _titleController.removeListener(_onTitleChanged);
+    _titleFocusNode.removeListener(_onTitleFocusChanged);
     _titleController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -1310,6 +1364,11 @@ class _AddEventSheetState extends State<_AddEventSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final aiCoach = context.watch<AppProvider>().aiCoachEnabled;
+    final showCyclingPlaceholder = _showCyclingPlaceholder(aiCoach);
+    final hintStyle = Theme.of(context).inputDecorationTheme.hintStyle ??
+        const TextStyle(color: AppTheme.textHint);
+
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -1346,9 +1405,29 @@ class _AddEventSheetState extends State<_AddEventSheet> {
           const SizedBox(height: 8),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
+            focusNode: _titleFocusNode,
+            decoration: InputDecoration(
               labelText: 'Tytuł zdarzenia',
-              hintText: 'np. Angielski – Zosia',
+              hintText: showCyclingPlaceholder
+                  ? null
+                  : (aiCoach &&
+                          !_isEditing &&
+                          _titleFocusNode.hasFocus &&
+                          _titleController.text.isEmpty)
+                      ? null
+                      : 'np. Angielski – Zosia',
+              hint: showCyclingPlaceholder
+                  ? FadeTransition(
+                      opacity: _fadeAnim,
+                      child: Text(
+                        AiTips.calendarPlaceholders[
+                            _hintIndex % AiTips.calendarPlaceholders.length],
+                        style: hintStyle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
+                  : null,
             ),
           ),
           const SizedBox(height: 12),

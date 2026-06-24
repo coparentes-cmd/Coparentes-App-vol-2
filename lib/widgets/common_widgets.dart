@@ -387,6 +387,12 @@ class AiTips {
     },
   ];
 
+  /// Coaching copy shown as rotating placeholders in the message input.
+  static List<String> get messagingPlaceholders => messaging
+      .map((tip) => tip['body'] ?? '')
+      .where((text) => text.isNotEmpty)
+      .toList();
+
   // Messaging tips
   static const List<Map<String, String>> messaging = [
     {
@@ -416,6 +422,11 @@ class AiTips {
   ];
 
   // Calendar / custody swap tips
+  static List<String> get calendarPlaceholders => calendar
+      .map((tip) => tip['body'] ?? '')
+      .where((text) => text.isNotEmpty)
+      .toList();
+
   static const List<Map<String, String>> calendar = [
     {
       'icon': '🔄',
