@@ -9,6 +9,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_widgets.dart';
+import 'consent_registration_screen.dart';
 import 'otp_verification_screen.dart';
 
 enum _AuthMode { login, register, join, joinChild }
@@ -383,10 +384,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                Text(
-                                  'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną Coparentes.ai.',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
+                                if (_mode != _AuthMode.register)
+                                  Text(
+                                    'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną Coparentes.ai.',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
                               ],
                             ),
                           ),
@@ -529,6 +531,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       }
     }
 
+    if (_mode == _AuthMode.register) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ConsentRegistrationScreen(
+            draft: RegistrationDraft(
+              name: _nameController.text.trim(),
+              email: email,
+              password: password,
+              workspaceName: _workspaceController.text.trim(),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _submitting = true);
 
     bool success;
@@ -537,12 +555,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         success = await appProvider.login(email: email, password: password);
         break;
       case _AuthMode.register:
-        success = await appProvider.registerWorkspace(
-          name: _nameController.text.trim(),
-          email: email,
-          password: password,
-          workspaceName: _workspaceController.text.trim(),
-        );
+        success = false;
         break;
       case _AuthMode.join:
         success = await appProvider.joinWorkspace(

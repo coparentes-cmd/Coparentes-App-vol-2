@@ -9,6 +9,7 @@ import 'data/api/app_api_client.dart';
 import 'data/local/pin_lock_store.dart';
 import 'data/local/offline_store.dart';
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/consent_repository.dart';
 import 'data/repositories/calendar_repository.dart';
 import 'data/repositories/documents_repository.dart';
 import 'data/repositories/export_repository.dart';
@@ -59,6 +60,7 @@ Future<void> main() async {
     apiClient: apiClient,
     offlineStore: offlineStore,
   );
+  final consentRepository = ConsentRepository(apiClient: apiClient);
 
   runApp(
     CoparentesApp(
@@ -67,6 +69,7 @@ Future<void> main() async {
         preferences: preferences,
         offlineStore: offlineStore,
       ),
+      consentRepository: consentRepository,
       messagingRepository: messagingRepository,
       exportRepository: exportRepository,
       calendarRepository: calendarRepository,
@@ -81,6 +84,7 @@ Future<void> main() async {
 
 class CoparentesApp extends StatelessWidget {
   final AuthRepository authRepository;
+  final ConsentRepository consentRepository;
   final MessagingRepository messagingRepository;
   final ExportRepository exportRepository;
   final CalendarRepository calendarRepository;
@@ -93,6 +97,7 @@ class CoparentesApp extends StatelessWidget {
   const CoparentesApp({
     super.key,
     required this.authRepository,
+    required this.consentRepository,
     required this.messagingRepository,
     required this.exportRepository,
     required this.calendarRepository,
@@ -110,6 +115,7 @@ class CoparentesApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AppProvider(
             authRepository: authRepository,
+            consentRepository: consentRepository,
             pinLockStore: pinLockStore,
           ),
         ),

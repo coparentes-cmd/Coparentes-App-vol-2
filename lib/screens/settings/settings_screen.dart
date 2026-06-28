@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../auth/child_onboarding_sheet.dart';
+import 'privacy_consents_section.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -559,6 +560,23 @@ class SettingsScreen extends StatelessWidget {
                           roleColor),
                     ),
                   ]),
+
+                  const SizedBox(height: 20),
+
+                  // ── Prywatność i zgody ───────────────────────────────────
+                  _SectionHeader(
+                    label: 'Prywatność i zgody',
+                    icon: Icons.verified_user_outlined,
+                  ),
+                  _SettingsCard(
+                    isDark: isDark,
+                    children: [
+                      PrivacyConsentsSection(
+                        roleColor: roleColor,
+                        isDark: isDark,
+                      ),
+                    ],
+                  ),
 
                   const SizedBox(height: 20),
 

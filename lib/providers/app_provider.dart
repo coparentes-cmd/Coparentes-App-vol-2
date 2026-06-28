@@ -10,6 +10,8 @@ import '../data/models/auth_session.dart';
 import '../data/models/login_challenge.dart';
 import '../data/local/pin_lock_store.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/consent_repository.dart';
+import '../data/models/user_consent.dart';
 import '../config/messaging_categories.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../models/models.dart';
@@ -104,12 +106,15 @@ extension AppColorSchemeExt on AppColorScheme {
 
 class AppProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
+  final ConsentRepository _consentRepository;
   final PinLockStore _pinLockStore;
 
   AppProvider({
     required AuthRepository authRepository,
+    required ConsentRepository consentRepository,
     required PinLockStore pinLockStore,
   })  : _authRepository = authRepository,
+        _consentRepository = consentRepository,
         _pinLockStore = pinLockStore {
     unawaited(bootstrap());
   }
@@ -126,6 +131,7 @@ class AppProvider extends ChangeNotifier {
   LoginChallenge? _pendingLoginChallenge;
   int? _otpAttemptsRemaining;
   bool _otpLocked = false;
+  List<UserConsentRecord>? _userConsents;
   Locale _locale = const Locale('pl');
   CountryProfile _countryProfile = CountryProfiles.poland;
 
@@ -187,6 +193,10 @@ class AppProvider extends ChangeNotifier {
           return 'Ten e-mail jest już zarejestrowany. Spróbuj się zalogować.';
         case 'invalid_request':
           return 'Sprawdź dane: hasło min. 10 znaków, imię i nazwa przestrzeni min. 2 znaki.';
+        case 'required_consents_missing':
+          return 'Zaakceptuj wszystkie wymagane zgody, aby dokończyć rejestrację.';
+        case 'required_consent_locked':
+          return 'Ta zgoda jest wymagana do korzystania z aplikacji.';
         case 'invalid_credentials':
           return 'Nieprawidłowy e-mail lub hasło.';
         case 'invalid_otp':
@@ -368,6 +378,7 @@ class AppProvider extends ChangeNotifier {
     required String email,
     required String password,
     required String workspaceName,
+    required Map<ConsentType, bool> consents,
   }) async {
     try {
       _authError = null;
@@ -376,16 +387,74 @@ class AppProvider extends ChangeNotifier {
         email: email,
         password: password,
         workspaceName: workspaceName,
+        consents: consents,
       );
       _isDemoMode = false;
       _needsChildOnboarding = true;
       _applySession(session);
+      await loadUserConsents();
       notifyListeners();
       return true;
     } catch (error) {
       _authError = _mapAuthError(
         error,
         fallback: 'Nie udało się utworzyć konta i workspace.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  List<UserConsentRecord>? get userConsents => _userConsents;
+
+  Future<bool> loadUserConsents() async {
+    if (_currentUser == null || _isDemoMode) {
+      _userConsents = null;
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      _authError = null;
+      _userConsents = await _consentRepository.fetchConsents();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _authError = 'Nie udało się pobrać zgód.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateUserConsent({
+    required ConsentType type,
+    required bool granted,
+  }) async {
+    if (_currentUser == null || _isDemoMode) {
+      return false;
+    }
+
+    try {
+      _authError = null;
+      final updated = await _consentRepository.updateConsent(
+        type: type,
+        granted: granted,
+      );
+
+      final current = List<UserConsentRecord>.from(_userConsents ?? []);
+      final index = current.indexWhere((item) => item.type == type);
+      if (index >= 0) {
+        current[index] = updated;
+      } else {
+        current.add(updated);
+      }
+      _userConsents = current;
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się zaktualizować zgody.',
       );
       notifyListeners();
       return false;

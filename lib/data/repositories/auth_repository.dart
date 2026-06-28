@@ -7,6 +7,7 @@ import '../local/offline_store.dart';
 import '../../models/models.dart';
 import '../models/auth_session.dart';
 import '../models/login_challenge.dart';
+import '../models/user_consent.dart';
 import '../serializers/api_serializers.dart';
 import '../serializers/document_serializers.dart';
 
@@ -161,12 +162,14 @@ class AuthRepository {
     required String email,
     required String password,
     required String workspaceName,
+    required Map<ConsentType, bool> consents,
   }) async {
     final payload = await _apiClient.postJson('/auth/register', {
       'name': name,
       'email': email,
       'password': password,
       'workspaceName': workspaceName,
+      'consents': consentSelectionsToApi(consents),
     });
     return _saveSession(payload);
   }
