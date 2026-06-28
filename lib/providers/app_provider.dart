@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../config/country_profiles.dart';
 import '../data/api/app_api_client.dart';
 import '../data/models/auth_session.dart';
+import '../data/models/login_challenge.dart';
 import '../data/repositories/auth_repository.dart';
 import '../config/messaging_categories.dart';
 import '../data/repositories/messaging_repository.dart';
@@ -117,6 +118,9 @@ class AppProvider extends ChangeNotifier {
   bool _isDemoMode = false;
   bool _needsChildOnboarding = false;
   String? _authError;
+  LoginChallenge? _pendingLoginChallenge;
+  int? _otpAttemptsRemaining;
+  bool _otpLocked = false;
   Locale _locale = const Locale('pl');
   CountryProfile _countryProfile = CountryProfiles.poland;
 
@@ -154,6 +158,10 @@ class AppProvider extends ChangeNotifier {
   bool get isDemoMode => _isDemoMode;
   bool get needsChildOnboarding => _needsChildOnboarding;
   String? get authError => _authError;
+  LoginChallenge? get pendingLoginChallenge => _pendingLoginChallenge;
+  bool get needsOtpVerification => _pendingLoginChallenge != null;
+  int? get otpAttemptsRemaining => _otpAttemptsRemaining;
+  bool get otpLocked => _otpLocked;
   Locale get locale => _locale;
   CountryProfile get countryProfile => _countryProfile;
   String get currencyCode => _countryProfile.currencyCode;
@@ -172,12 +180,24 @@ class AppProvider extends ChangeNotifier {
           return 'Sprawdź dane: hasło min. 10 znaków, imię i nazwa przestrzeni min. 2 znaki.';
         case 'invalid_credentials':
           return 'Nieprawidłowy e-mail lub hasło.';
+        case 'invalid_otp':
+          return 'Nieprawidłowy kod weryfikacyjny.';
+        case 'otp_expired':
+          return 'Kod wygasł. Poproś o nowy kod.';
+        case 'otp_locked':
+          return 'Zbyt wiele prób. Poproś o nowy kod.';
+        case 'resend_cooldown':
+          return 'Poczekaj chwilę przed ponownym wysłaniem kodu.';
         case 'not_found':
           return 'Nie znaleziono API backendu. W Netlify ustaw COPARENTES_API_BASE_URL z końcówką /api.';
         case 'internal_server_error':
           return 'Błąd serwera podczas zapisu konta. Spróbuj ponownie za chwilę.';
         case 'invalid_invite':
           return 'Nieprawidłowy kod zaproszenia.';
+        case 'invite_expired':
+          return 'Kod zaproszenia wygasł. Poproś drugiego rodzica o nowy kod w Ustawieniach.';
+        case 'parent_already_joined':
+          return 'Drugi rodzic dołączył już do tej rodziny.';
         case 'child_not_found':
           return 'Nie znaleziono profilu dziecka dla tej daty urodzenia.';
         case 'ambiguous_child_profile':
@@ -240,12 +260,19 @@ class AppProvider extends ChangeNotifier {
   }) async {
     try {
       _authError = null;
-      final session = await _authRepository.login(
+      final response = await _authRepository.login(
         email: email,
         password: password,
       );
+      if (response.requiresOtp) {
+        _pendingLoginChallenge = response.challenge;
+        _isDemoMode = false;
+        notifyListeners();
+        return true;
+      }
+      _pendingLoginChallenge = null;
       _isDemoMode = false;
-      _applySession(session);
+      _applySession(response.session!);
       notifyListeners();
       return true;
     } catch (error) {
@@ -256,6 +283,75 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> verifyLoginOtp({
+    required String code,
+    bool trustDevice = false,
+  }) async {
+    final challenge = _pendingLoginChallenge;
+    if (challenge == null) {
+      return false;
+    }
+
+    try {
+      _authError = null;
+      final session = await _authRepository.verifyLoginOtp(
+        challengeId: challenge.challengeId,
+        code: code,
+        trustDevice: trustDevice,
+      );
+      _pendingLoginChallenge = null;
+      _otpAttemptsRemaining = null;
+      _otpLocked = false;
+      _isDemoMode = false;
+      _applySession(session);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      if (error is ApiException && error.message == 'invalid_otp') {
+        _otpAttemptsRemaining = error.data?['attemptsRemaining'] as int?;
+        _otpLocked = error.data?['locked'] == true;
+      }
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się zweryfikować kodu.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resendLoginOtp() async {
+    final challenge = _pendingLoginChallenge;
+    if (challenge == null) {
+      return false;
+    }
+
+    try {
+      _authError = null;
+      _pendingLoginChallenge = await _authRepository.resendLoginOtp(
+        challengeId: challenge.challengeId,
+        maskedEmail: challenge.maskedEmail,
+      );
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się wysłać kodu ponownie.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void clearLoginChallenge() {
+    _pendingLoginChallenge = null;
+    _otpAttemptsRemaining = null;
+    _otpLocked = false;
+    _authError = null;
+    notifyListeners();
   }
 
   Future<bool> registerWorkspace({

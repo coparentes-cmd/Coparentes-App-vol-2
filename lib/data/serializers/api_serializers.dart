@@ -133,6 +133,9 @@ Workspace workspaceFromJson(Map<String, dynamic> json) {
     name: json['name'] as String,
     inviteCode: json['inviteCode'] as String?,
     childInviteCode: json['childInviteCode'] as String?,
+    inviteCodeExpiresAt: json['inviteCodeExpiresAt'] != null
+        ? DateTime.parse(json['inviteCodeExpiresAt'] as String)
+        : null,
     members: (json['members'] as List<dynamic>)
         .map((item) => appUserFromJson(Map<String, dynamic>.from(item as Map)))
         .toList(),
@@ -153,6 +156,8 @@ Map<String, dynamic> workspaceToJson(Workspace workspace) {
     'name': workspace.name,
     'inviteCode': workspace.inviteCode,
     'childInviteCode': workspace.childInviteCode,
+    if (workspace.inviteCodeExpiresAt != null)
+      'inviteCodeExpiresAt': workspace.inviteCodeExpiresAt!.toIso8601String(),
     'members': workspace.members.map(appUserToJson).toList(),
     'children': workspace.children.map(childProfileToJson).toList(),
     'createdAt': workspace.createdAt.toIso8601String(),

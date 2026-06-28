@@ -82,6 +82,7 @@ class Workspace {
   final String name;
   final String? inviteCode;
   final String? childInviteCode;
+  final DateTime? inviteCodeExpiresAt;
   final List<AppUser> members;
   final List<ChildProfile> children;
   final DateTime createdAt;
@@ -91,6 +92,7 @@ class Workspace {
     required this.name,
     this.inviteCode,
     this.childInviteCode,
+    this.inviteCodeExpiresAt,
     required this.members,
     required this.children,
     required this.createdAt,

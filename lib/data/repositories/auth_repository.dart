@@ -6,6 +6,7 @@ import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../../models/models.dart';
 import '../models/auth_session.dart';
+import '../models/login_challenge.dart';
 import '../serializers/api_serializers.dart';
 import '../serializers/document_serializers.dart';
 
@@ -33,6 +34,7 @@ class ChildJoinPreview {
 
 class AuthRepository {
   static const _tokenKey = 'coparentes_auth_token';
+  static const _trustedDeviceKey = 'coparentes_trusted_device_token';
 
   final AppApiClient _apiClient;
   final SharedPreferences _preferences;
@@ -71,6 +73,8 @@ class AuthRepository {
     }
 
     _apiClient.setToken(token);
+    final trustedToken = await _readTrustedDeviceToken();
+    _apiClient.setTrustedDeviceToken(trustedToken);
     try {
       final payload = await _apiClient.getJson('/auth/session');
       await _offlineStore.saveSessionPayload(payload);
@@ -94,15 +98,62 @@ class AuthRepository {
     }
   }
 
-  Future<AuthSession> login({
+  Future<LoginResponse> login({
     required String email,
     required String password,
   }) async {
+    final trustedToken = await _readTrustedDeviceToken();
+    if (trustedToken != null) {
+      _apiClient.setTrustedDeviceToken(trustedToken);
+    }
+
     final payload = await _apiClient.postJson('/auth/login', {
       'email': email,
       'password': password,
     });
+
+    if (payload['requiresOtp'] == true) {
+      return LoginResponse(
+        challenge: LoginChallenge.fromJson(payload),
+      );
+    }
+
+    return LoginResponse(session: await _saveSession(payload));
+  }
+
+  Future<AuthSession> verifyLoginOtp({
+    required String challengeId,
+    required String code,
+    bool trustDevice = false,
+  }) async {
+    final payload = await _apiClient.postJson('/auth/login/verify-otp', {
+      'challengeId': challengeId,
+      'code': code,
+      'trustDevice': trustDevice,
+    });
+
+    final trustedToken = payload['trustedDeviceToken'] as String?;
+    if (trustDevice && trustedToken != null && trustedToken.isNotEmpty) {
+      await _writeTrustedDeviceToken(trustedToken);
+      _apiClient.setTrustedDeviceToken(trustedToken);
+    }
+
     return _saveSession(payload);
+  }
+
+  Future<LoginChallenge> resendLoginOtp({
+    required String challengeId,
+    required String maskedEmail,
+  }) async {
+    final payload = await _apiClient.postJson('/auth/login/resend-otp', {
+      'challengeId': challengeId,
+    });
+    return LoginChallenge(
+      challengeId: payload['challengeId'] as String,
+      maskedEmail: payload['email'] as String? ?? maskedEmail,
+      expiresAt: DateTime.parse(payload['expiresAt'] as String),
+      resendAvailableAt: DateTime.parse(payload['resendAvailableAt'] as String),
+    );
   }
 
   Future<AuthSession> registerWorkspace({
@@ -246,6 +297,7 @@ class AuthRepository {
       // Ignore backend logout failures and always clear local session.
     } finally {
       await clearToken();
+      await _clearTrustedDeviceToken();
       await _offlineStore.clearSessionScopedData();
     }
   }
@@ -284,6 +336,30 @@ class AuthRepository {
     }
 
     await _preferences.setString(_tokenKey, token);
+  }
+
+  Future<String?> _readTrustedDeviceToken() async {
+    if (_secureStorage != null) {
+      return _secureStorage!.read(key: _trustedDeviceKey);
+    }
+    return _preferences.getString(_trustedDeviceKey);
+  }
+
+  Future<void> _writeTrustedDeviceToken(String token) async {
+    if (_secureStorage != null) {
+      await _secureStorage!.write(key: _trustedDeviceKey, value: token);
+      await _preferences.remove(_trustedDeviceKey);
+      return;
+    }
+    await _preferences.setString(_trustedDeviceKey, token);
+  }
+
+  Future<void> _clearTrustedDeviceToken() async {
+    _apiClient.setTrustedDeviceToken(null);
+    if (_secureStorage != null) {
+      await _secureStorage!.delete(key: _trustedDeviceKey);
+    }
+    await _preferences.remove(_trustedDeviceKey);
   }
 
   Future<AuthSession> _saveSession(Map<String, dynamic> payload) async {

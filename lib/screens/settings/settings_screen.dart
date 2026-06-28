@@ -189,7 +189,9 @@ class SettingsScreen extends StatelessWidget {
                       _ActionTile(
                         icon: Icons.family_restroom_outlined,
                         label: 'Kod zaproszenia dla drugiego rodzica',
-                        subtitle: workspace.inviteCode!,
+                        subtitle: workspace.inviteCodeExpiresAt != null
+                            ? '${workspace.inviteCode!}\nWażny do ${_formatInviteExpiry(workspace.inviteCodeExpiresAt!)}'
+                            : workspace.inviteCode!,
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _copyInviteCode(
@@ -885,6 +887,16 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatInviteExpiry(DateTime expiresAt) {
+    final local = expiresAt.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year;
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$day.$month.$year $hour:$minute';
   }
 
   Future<void> _copyInviteCode(

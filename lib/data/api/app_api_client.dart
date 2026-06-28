@@ -5,8 +5,9 @@ import 'package:http/http.dart' as http;
 class ApiException implements Exception {
   final int statusCode;
   final String message;
+  final Map<String, dynamic>? data;
 
-  const ApiException(this.statusCode, this.message);
+  const ApiException(this.statusCode, this.message, {this.data});
 
   @override
   String toString() => 'ApiException($statusCode, $message)';
@@ -18,6 +19,7 @@ class AppApiClient {
   final String baseUrl;
   final http.Client _httpClient;
   String? _token;
+  String? _trustedDeviceToken;
 
   AppApiClient({
     required this.baseUrl,
@@ -26,6 +28,10 @@ class AppApiClient {
 
   void setToken(String? token) {
     _token = token;
+  }
+
+  void setTrustedDeviceToken(String? token) {
+    _trustedDeviceToken = token;
   }
 
   void dispose() {
@@ -48,11 +54,12 @@ class AppApiClient {
     String path,
     Map<String, dynamic> body, {
     Duration? timeout,
+    Map<String, String>? extraHeaders,
   }) async {
     final response = await _httpClient
         .post(
           Uri.parse('$baseUrl$path'),
-          headers: _headers(),
+          headers: _headers(extra: extraHeaders),
           body: jsonEncode(body),
         )
         .timeout(timeout ?? _requestTimeout);
@@ -101,10 +108,13 @@ class AppApiClient {
     }
   }
 
-  Map<String, String> _headers() {
+  Map<String, String> _headers({Map<String, String>? extra}) {
     return {
       'Content-Type': 'application/json',
       if (_token != null) 'Authorization': 'Bearer $_token',
+      if (_trustedDeviceToken != null && _trustedDeviceToken!.isNotEmpty)
+        'X-Trusted-Device-Token': _trustedDeviceToken!,
+      ...?extra,
     };
   }
 
@@ -132,7 +142,7 @@ class AppApiClient {
 
     if (response.statusCode >= 400) {
       final message = data['error'] as String? ?? 'request_failed';
-      throw ApiException(response.statusCode, message);
+      throw ApiException(response.statusCode, message, data: data);
     }
     return data;
   }

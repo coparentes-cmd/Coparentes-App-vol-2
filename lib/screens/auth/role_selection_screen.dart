@@ -9,6 +9,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_widgets.dart';
+import 'otp_verification_screen.dart';
 
 enum _AuthMode { login, register, join, joinChild }
 
@@ -71,7 +72,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authError = context.watch<AppProvider>().authError;
+    final appProvider = context.watch<AppProvider>();
+    final pendingOtp = appProvider.pendingLoginChallenge;
+    if (pendingOtp != null) {
+      return OtpVerificationScreen(
+        challenge: pendingOtp,
+        onCancel: appProvider.clearLoginChallenge,
+      );
+    }
+
+    final authError = appProvider.authError;
 
     return Scaffold(
       body: BrandBackdrop(
@@ -598,7 +608,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       case _AuthMode.register:
         return 'Załóż pierwsze konto rodzica, skonfiguruj rodzinę i zaproś drugiego opiekuna.';
       case _AuthMode.join:
-        return 'Wpisz kod zaproszenia rodzica, aby dołączyć jako drugi opiekun.';
+        return 'Wpisz kod zaproszenia rodzica (ważny 24 godziny), aby dołączyć jako drugi opiekun.';
       case _AuthMode.joinChild:
         return 'Wpisz kod od rodzica i datę urodzenia, aby wejść do panelu dziecka.';
     }
