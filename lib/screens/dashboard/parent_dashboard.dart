@@ -354,6 +354,7 @@ class _DashboardHome extends StatelessWidget {
                   BrandLogo(
                     width: compact ? 96 : 112,
                     height: compact ? 28 : 34,
+                    onDarkBackground: true,
                   ),
                   SizedBox(height: compact ? 6 : 10),
                   Text(

@@ -107,7 +107,7 @@ class _ObserverHome extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            const BrandLogo(width: 108, height: 30),
+            const BrandLogo(width: 108, height: 30, onDarkBackground: true),
             const SizedBox(width: 10),
             const Expanded(
               child: Column(

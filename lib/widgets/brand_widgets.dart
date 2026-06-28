@@ -54,28 +54,57 @@ class BrandLogo extends StatelessWidget {
   final double width;
   final double height;
   final BoxFit fit;
+  final bool onDarkBackground;
   const BrandLogo({
     super.key,
     this.width = 168,
     this.height = 54,
     this.fit = BoxFit.contain,
+    this.onDarkBackground = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/branding/coparentes-logo.png',
+    final textColor =
+        onDarkBackground ? Colors.white : AppTheme.textPrimary;
+    final markSize = height.clamp(24, 96);
+    final spacing = height * 0.14;
+    final fontSize = (height * 0.52).clamp(14, 34);
+
+    return SizedBox(
       width: width,
       height: height,
-      fit: fit,
-      errorBuilder: (_, __, ___) => const Text(
-        'Coparentes',
-        style: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w800,
-          color: AppTheme.textPrimary,
-          letterSpacing: -1,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/branding/coparentes-logo.png',
+            width: markSize,
+            height: markSize,
+            fit: fit,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.family_restroom,
+              size: markSize * 0.82,
+              color: textColor,
+            ),
+          ),
+          SizedBox(width: spacing),
+          Flexible(
+            child: Text(
+              'Coparentes',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w800,
+                color: textColor,
+                letterSpacing: -0.8,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
