@@ -1,4 +1,5 @@
 import 'package:coparentes/data/api/app_api_client.dart';
+import 'package:coparentes/data/local/pin_lock_store.dart';
 import 'package:coparentes/data/local/offline_store.dart';
 import 'package:coparentes/data/repositories/auth_repository.dart';
 import 'package:coparentes/data/repositories/calendar_repository.dart';
@@ -225,7 +226,12 @@ Future<void> _pumpChildDashboard(WidgetTester tester, AppUser child) async {
     offlineStore: offlineStore,
   );
 
-  final appProvider = AppProvider(authRepository: authRepository);
+  final pinLockStore = PinLockStore(preferences: preferences);
+
+  final appProvider = AppProvider(
+    authRepository: authRepository,
+    pinLockStore: pinLockStore,
+  );
   final calendarProvider = CalendarProvider(repository: calendarRepository);
   final messagingProvider = MessagingProvider(repository: messagingRepository);
 

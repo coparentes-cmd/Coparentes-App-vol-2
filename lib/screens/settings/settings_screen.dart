@@ -388,17 +388,26 @@ class SettingsScreen extends StatelessWidget {
                     _SwitchTile(
                       icon: Icons.lock_outline,
                       label: 'PIN przy wznowieniu',
-                      subtitle: 'Wkrótce – wymagaj PIN-u po przejściu w tło',
+                      subtitle: ap.hasPinSet
+                          ? 'Wymagaj PIN-u po przejściu aplikacji w tło'
+                          : 'Najpierw ustaw PIN w „Zmień PIN logowania”',
                       value: ap.requirePinOnResume,
                       activeColor: roleColor,
                       isDark: isDark,
-                      onChanged: null,
+                      onChanged: ap.hasPinSet
+                          ? (value) => _togglePinOnResume(context, ap, value)
+                          : (value) {
+                              if (value) {
+                                _showSetupPinSheet(context, roleColor, ap,
+                                    enableOnResume: true);
+                              }
+                            },
                     ),
                     _Divider(),
                     _SwitchTile(
                       icon: Icons.verified_user_outlined,
                       label: '2FA (dwuetapowa weryfikacja)',
-                      subtitle: 'Wkrótce – TOTP w przygotowaniu',
+                      subtitle: 'Kod weryfikacyjny e-mail przy logowaniu',
                       value: user?.twoFactorEnabled ?? false,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -408,10 +417,12 @@ class SettingsScreen extends StatelessWidget {
                     _ActionTile(
                       icon: Icons.pin_outlined,
                       label: 'Zmień PIN logowania',
-                      subtitle: 'Wkrótce',
+                      subtitle: ap.hasPinSet
+                          ? 'Zmień 4-cyfrowy PIN'
+                          : 'Ustaw 4-cyfrowy PIN',
                       color: roleColor,
                       isDark: isDark,
-                      onTap: null,
+                      onTap: () => _showChangePinDialog(context, roleColor, ap),
                     ),
                     _Divider(),
                     _InfoTile(
@@ -966,78 +977,55 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showChangePinDialog(BuildContext context, Color color) {
+  Future<void> _togglePinOnResume(
+    BuildContext context,
+    AppProvider ap,
+    bool enabled,
+  ) async {
+    final ok = await ap.setRequirePinOnResumeEnabled(enabled);
+    if (!context.mounted) {
+      return;
+    }
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nie udało się zmienić ustawienia PIN')),
+      );
+    }
+  }
+
+  Future<void> _showSetupPinSheet(
+    BuildContext context,
+    Color color,
+    AppProvider ap, {
+    bool enableOnResume = false,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _SetupPinSheet(
+        color: color,
+        enableOnResume: enableOnResume,
+      ),
+    );
+  }
+
+  void _showChangePinDialog(
+    BuildContext context,
+    Color color,
+    AppProvider ap,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Zmień PIN',
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            const Text('Wpisz nowy 4-cyfrowy PIN logowania',
-                style: TextStyle(
-                    fontSize: 13, color: AppTheme.textSecondary)),
-            const SizedBox(height: 16),
-            TextFormField(
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              decoration: const InputDecoration(
-                  labelText: 'Aktualny PIN',
-                  prefixIcon: Icon(Icons.lock_outline)),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              decoration: const InputDecoration(
-                  labelText: 'Nowy PIN',
-                  prefixIcon: Icon(Icons.lock_reset_outlined)),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              obscureText: true,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              decoration: const InputDecoration(
-                  labelText: 'Powtórz nowy PIN',
-                  prefixIcon: Icon(Icons.lock_reset_outlined)),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('PIN został zmieniony ✓'),
-                        backgroundColor: AppTheme.successColor),
-                  );
-                },
-                style:
-                    ElevatedButton.styleFrom(backgroundColor: color),
-                child: const Text('Zapisz PIN',
-                    style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
+      builder: (_) => _ChangePinSheet(
+        color: color,
+        hasExistingPin: ap.hasPinSet,
       ),
     );
   }
@@ -1750,6 +1738,274 @@ class _SwitchTile extends StatelessWidget {
       value: value,
       activeColor: activeColor, // ignore: deprecated_member_use
       onChanged: onChanged,
+    );
+  }
+}
+
+class _SetupPinSheet extends StatefulWidget {
+  final Color color;
+  final bool enableOnResume;
+
+  const _SetupPinSheet({
+    required this.color,
+    this.enableOnResume = false,
+  });
+
+  @override
+  State<_SetupPinSheet> createState() => _SetupPinSheetState();
+}
+
+class _SetupPinSheetState extends State<_SetupPinSheet> {
+  final _newPinController = TextEditingController();
+  final _confirmPinController = TextEditingController();
+  String? _error;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _newPinController.dispose();
+    _confirmPinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _error = null;
+      _saving = true;
+    });
+
+    final error = await context.read<AppProvider>().setupPin(
+          newPin: _newPinController.text.trim(),
+          confirmPin: _confirmPinController.text.trim(),
+          enableOnResume: widget.enableOnResume,
+        );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _saving = false);
+
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
+
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.enableOnResume
+              ? 'PIN ustawiony i blokada po wznowieniu włączona ✓'
+              : 'PIN ustawiony ✓',
+        ),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ustaw PIN',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Wpisz 4-cyfrowy PIN logowania',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _newPinController,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Nowy PIN',
+              prefixIcon: Icon(Icons.lock_reset_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _confirmPinController,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: 'Powtórz nowy PIN',
+              prefixIcon: const Icon(Icons.lock_reset_outlined),
+              errorText: _error,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(backgroundColor: widget.color),
+              child: Text(
+                _saving ? 'Zapisywanie…' : 'Zapisz PIN',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChangePinSheet extends StatefulWidget {
+  final Color color;
+  final bool hasExistingPin;
+
+  const _ChangePinSheet({
+    required this.color,
+    required this.hasExistingPin,
+  });
+
+  @override
+  State<_ChangePinSheet> createState() => _ChangePinSheetState();
+}
+
+class _ChangePinSheetState extends State<_ChangePinSheet> {
+  final _currentPinController = TextEditingController();
+  final _newPinController = TextEditingController();
+  final _confirmPinController = TextEditingController();
+  String? _error;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _currentPinController.dispose();
+    _newPinController.dispose();
+    _confirmPinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _error = null;
+      _saving = true;
+    });
+
+    final error = await context.read<AppProvider>().changePin(
+          currentPin: widget.hasExistingPin
+              ? _currentPinController.text.trim()
+              : null,
+          newPin: _newPinController.text.trim(),
+          confirmPin: _confirmPinController.text.trim(),
+        );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _saving = false);
+
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
+
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('PIN został zmieniony ✓'),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.hasExistingPin ? 'Zmień PIN' : 'Ustaw PIN',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Wpisz 4-cyfrowy PIN logowania',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          if (widget.hasExistingPin) ...[
+            TextFormField(
+              controller: _currentPinController,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: 'Aktualny PIN',
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          TextFormField(
+            controller: _newPinController,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Nowy PIN',
+              prefixIcon: Icon(Icons.lock_reset_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _confirmPinController,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: 'Powtórz nowy PIN',
+              prefixIcon: const Icon(Icons.lock_reset_outlined),
+              errorText: _error,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(backgroundColor: widget.color),
+              child: Text(
+                _saving ? 'Zapisywanie…' : 'Zapisz PIN',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

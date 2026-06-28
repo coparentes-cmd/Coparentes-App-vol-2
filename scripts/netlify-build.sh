@@ -39,6 +39,9 @@ flutter config --enable-web
 
 # PWA icons (web/icons, favicon, assets/icon)
 if command -v node >/dev/null 2>&1; then
+  if [ -f scripts/package.json ]; then
+    npm --prefix scripts install --no-audit --no-fund --omit=dev
+  fi
   node scripts/generate_pwa_icons.mjs
 else
   echo "WARN: node not found; ensure web/icons exist before deploy"

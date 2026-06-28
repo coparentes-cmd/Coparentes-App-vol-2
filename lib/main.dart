@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/app_environment.dart';
 import 'data/api/app_api_client.dart';
+import 'data/local/pin_lock_store.dart';
 import 'data/local/offline_store.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/calendar_repository.dart';
@@ -29,12 +30,14 @@ import 'theme/app_theme.dart';
 import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
+import 'widgets/pin_lock_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pl_PL', null);
   final preferences = await SharedPreferences.getInstance();
   final offlineStore = OfflineStore(preferences: preferences);
+  final pinLockStore = PinLockStore(preferences: preferences);
   final apiClient = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
   final messagingRepository = MessagingRepository(
     apiClient: apiClient,
@@ -70,6 +73,7 @@ Future<void> main() async {
       financeRepository: financeRepository,
       documentsRepository: documentsRepository,
       offlineStore: offlineStore,
+      pinLockStore: pinLockStore,
       apiClient: apiClient,
     ),
   );
@@ -83,6 +87,7 @@ class CoparentesApp extends StatelessWidget {
   final FinanceRepository financeRepository;
   final DocumentsRepository documentsRepository;
   final OfflineStore offlineStore;
+  final PinLockStore pinLockStore;
   final AppApiClient apiClient;
 
   const CoparentesApp({
@@ -94,6 +99,7 @@ class CoparentesApp extends StatelessWidget {
     required this.financeRepository,
     required this.documentsRepository,
     required this.offlineStore,
+    required this.pinLockStore,
     required this.apiClient,
   });
 
@@ -102,7 +108,10 @@ class CoparentesApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => AppProvider(authRepository: authRepository),
+          create: (_) => AppProvider(
+            authRepository: authRepository,
+            pinLockStore: pinLockStore,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => MessagingProvider(repository: messagingRepository),
@@ -179,16 +188,20 @@ class CoparentesApp extends StatelessWidget {
             theme: AppTheme.buildLight(ap.colorScheme.primary),
             darkTheme: AppTheme.buildDark(ap.colorScheme.primary),
             builder: (context, child) {
-              return AppLifecycleRefresher(
-                child: MessageNotificationListener(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: child ?? const SizedBox.shrink()),
-                      const Align(
-                        alignment: Alignment.topCenter,
-                        child: OfflineStatusBanner(),
-                      ),
-                    ],
+              return PinLockGate(
+                child: AppLifecycleRefresher(
+                  child: MessageNotificationListener(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: child ?? const SizedBox.shrink(),
+                        ),
+                        const Align(
+                          alignment: Alignment.topCenter,
+                          child: OfflineStatusBanner(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

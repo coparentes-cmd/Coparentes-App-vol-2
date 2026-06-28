@@ -34,11 +34,11 @@ class MessagingScreen extends StatefulWidget {
   });
 
   @override
-  State<MessagingScreen> createState() => _MessagingScreenState();
+  State<MessagingScreen> createState() => MessagingScreenState();
 }
 
-class _MessagingScreenState extends State<MessagingScreen> {
-  String _selectedCategory = 'Szkoła';
+class MessagingScreenState extends State<MessagingScreen> {
+  String _selectedCategory = 'Wszystkie';
   String _searchQuery = '';
   String? _activeThreadId;
   bool _returnToPreviousTab = false;
@@ -132,8 +132,40 @@ class _MessagingScreenState extends State<MessagingScreen> {
         );
   }
 
+  /// Handles in-tab back navigation. Returns true when consumed.
+  bool handleBack() {
+    if (_activeThreadId != null) {
+      _closeThread();
+      return true;
+    }
+    if (_selectedCategory != 'Wszystkie') {
+      setState(() => _selectedCategory = 'Wszystkie');
+      return true;
+    }
+    return false;
+  }
+
+  bool get _hasInternalBackState =>
+      _activeThreadId != null || _selectedCategory != 'Wszystkie';
+
+  bool get hasInternalNavigation => _hasInternalBackState;
+
   @override
   Widget build(BuildContext context) {
+    final content = _buildContent(context);
+
+    return PopScope(
+      canPop: !_hasInternalBackState,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          handleBack();
+        }
+      },
+      child: content,
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     if (_activeThreadId != null) {
       return ThreadScreen(
         threadId: _activeThreadId!,

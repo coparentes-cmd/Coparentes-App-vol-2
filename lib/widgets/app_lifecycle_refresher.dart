@@ -29,12 +29,27 @@ class _AppLifecycleRefresherState extends State<AppLifecycleRefresher>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed || !mounted) {
+    if (!mounted) {
       return;
     }
 
     final appProvider = context.read<AppProvider>();
     if (appProvider.currentUser == null || appProvider.isDemoMode) {
+      return;
+    }
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      appProvider.lockOnBackground();
+      return;
+    }
+
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+
+    if (appProvider.isPinLocked) {
       return;
     }
 

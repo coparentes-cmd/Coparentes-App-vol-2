@@ -8,6 +8,7 @@ import '../config/country_profiles.dart';
 import '../data/api/app_api_client.dart';
 import '../data/models/auth_session.dart';
 import '../data/models/login_challenge.dart';
+import '../data/local/pin_lock_store.dart';
 import '../data/repositories/auth_repository.dart';
 import '../config/messaging_categories.dart';
 import '../data/repositories/messaging_repository.dart';
@@ -103,9 +104,13 @@ extension AppColorSchemeExt on AppColorScheme {
 
 class AppProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
+  final PinLockStore _pinLockStore;
 
-  AppProvider({required AuthRepository authRepository})
-      : _authRepository = authRepository {
+  AppProvider({
+    required AuthRepository authRepository,
+    required PinLockStore pinLockStore,
+  })  : _authRepository = authRepository,
+        _pinLockStore = pinLockStore {
     unawaited(bootstrap());
   }
 
@@ -135,7 +140,9 @@ class AppProvider extends ChangeNotifier {
   bool _notifySwaps = true;
 
   // PIN lock setting
-  bool _requirePinOnResume = true;
+  bool _requirePinOnResume = false;
+  bool _hasPinSet = false;
+  bool _isPinLocked = false;
 
   // Language (placeholder for future)
   String _language = 'pl';
@@ -153,6 +160,8 @@ class AppProvider extends ChangeNotifier {
   bool get notifyFinance => _notifyFinance;
   bool get notifySwaps => _notifySwaps;
   bool get requirePinOnResume => _requirePinOnResume;
+  bool get hasPinSet => _hasPinSet;
+  bool get isPinLocked => _isPinLocked;
   String get language => _language;
   bool get isInitializing => _isInitializing;
   bool get isDemoMode => _isDemoMode;
@@ -639,6 +648,137 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadPinSettings() async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      _requirePinOnResume = false;
+      _hasPinSet = false;
+      _isPinLocked = false;
+      return;
+    }
+
+    _hasPinSet = await _pinLockStore.hasPin(userId);
+    _requirePinOnResume = await _pinLockStore.isRequirePinOnResume(userId);
+    if (!_hasPinSet) {
+      _requirePinOnResume = false;
+    }
+    notifyListeners();
+  }
+
+  Future<bool> setRequirePinOnResumeEnabled(bool enabled) async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      return false;
+    }
+
+    if (enabled && !_hasPinSet) {
+      return false;
+    }
+
+    await _pinLockStore.setRequirePinOnResume(userId, enabled);
+    _requirePinOnResume = enabled;
+    notifyListeners();
+    return true;
+  }
+
+  Future<String?> setupPin({
+    required String newPin,
+    required String confirmPin,
+    bool enableOnResume = false,
+  }) async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      return 'Brak aktywnej sesji';
+    }
+
+    final validationError = _validatePinPair(newPin, confirmPin);
+    if (validationError != null) {
+      return validationError;
+    }
+
+    await _pinLockStore.savePin(userId, newPin);
+    _hasPinSet = true;
+    if (enableOnResume) {
+      await _pinLockStore.setRequirePinOnResume(userId, true);
+      _requirePinOnResume = true;
+    }
+    notifyListeners();
+    return null;
+  }
+
+  Future<String?> changePin({
+    required String? currentPin,
+    required String newPin,
+    required String confirmPin,
+  }) async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      return 'Brak aktywnej sesji';
+    }
+
+    final validationError = _validatePinPair(newPin, confirmPin);
+    if (validationError != null) {
+      return validationError;
+    }
+
+    if (_hasPinSet) {
+      if (currentPin == null || currentPin.isEmpty) {
+        return 'Podaj aktualny PIN';
+      }
+      if (!PinLockStore.isValidPin(currentPin)) {
+        return 'Aktualny PIN musi mieć 4 cyfry';
+      }
+    }
+
+    final changed = await _pinLockStore.changePin(
+      userId,
+      currentPin: _hasPinSet ? currentPin : null,
+      newPin: newPin,
+    );
+    if (!changed) {
+      return 'Aktualny PIN jest nieprawidłowy';
+    }
+
+    _hasPinSet = true;
+    notifyListeners();
+    return null;
+  }
+
+  Future<bool> verifyPinAndUnlock(String pin) async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      return false;
+    }
+
+    final ok = await _pinLockStore.verifyPin(userId, pin);
+    if (ok) {
+      _isPinLocked = false;
+      notifyListeners();
+    }
+    return ok;
+  }
+
+  void lockOnBackground() {
+    if (_currentUser == null ||
+        _isDemoMode ||
+        !_requirePinOnResume ||
+        !_hasPinSet) {
+      return;
+    }
+    _isPinLocked = true;
+    notifyListeners();
+  }
+
+  String? _validatePinPair(String newPin, String confirmPin) {
+    if (!PinLockStore.isValidPin(newPin)) {
+      return 'PIN musi mieć dokładnie 4 cyfry';
+    }
+    if (newPin != confirmPin) {
+      return 'PIN-y nie są identyczne';
+    }
+    return null;
+  }
+
   void setLocale(Locale locale) {
     _locale = locale;
     _language = locale.languageCode;
@@ -660,6 +800,9 @@ class AppProvider extends ChangeNotifier {
     _authError = null;
     _isDemoMode = false;
     _needsChildOnboarding = false;
+    _requirePinOnResume = false;
+    _hasPinSet = false;
+    _isPinLocked = false;
     unawaited(_authRepository.logout());
     notifyListeners();
   }
@@ -668,6 +811,8 @@ class AppProvider extends ChangeNotifier {
     _currentUser = session.user;
     _currentWorkspace = session.workspace;
     _highConflictMode = session.user.highConflictMode;
+    _isPinLocked = false;
+    unawaited(_loadPinSettings());
   }
 
   Workspace _buildDemoWorkspace() {

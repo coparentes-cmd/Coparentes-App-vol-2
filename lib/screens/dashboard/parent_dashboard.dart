@@ -27,15 +27,20 @@ class ParentDashboard extends StatefulWidget {
 
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
+  int _previousTabIndex = 0;
   DateTime _calendarFocusDay = DateTime.now();
   int _calendarFocusRequestId = 0;
   String? _pendingOpenThreadId;
   int _openThreadRequestId = 0;
   String? _pendingOpenExpenseId;
   int _openExpenseRequestId = 0;
+  final GlobalKey<MessagingScreenState> _messagingKey = GlobalKey();
   final GlobalKey<FinanceScreenState> _financeScreenKey = GlobalKey();
 
   void _navigateToTab(int index) {
+    if (index != _selectedIndex) {
+      _previousTabIndex = _selectedIndex;
+    }
     setState(() => _selectedIndex = index);
     if (index == 1) {
       context.read<OfflineSyncProvider>().pollMessagingNow();
@@ -54,6 +59,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   void _openChatThread(String threadId) {
+    _previousTabIndex = _selectedIndex;
     setState(() {
       _pendingOpenThreadId = threadId;
       _openThreadRequestId += 1;
@@ -63,6 +69,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   void _openFinanceExpense(String expenseId) {
+    _previousTabIndex = _selectedIndex;
     setState(() {
       _pendingOpenExpenseId = expenseId;
       _openExpenseRequestId += 1;
@@ -79,10 +86,28 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
   void _returnFromChatThread() {
     setState(() {
-      _selectedIndex = 0;
+      _selectedIndex = _previousTabIndex;
       _pendingOpenThreadId = null;
     });
   }
+
+  bool _handleDashboardBack() {
+    if (_selectedIndex == 1) {
+      if (_messagingKey.currentState?.handleBack() ?? false) {
+        return true;
+      }
+    }
+
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = _previousTabIndex);
+      return true;
+    }
+
+    return false;
+  }
+
+  bool get _canExitApp => _selectedIndex == 0 &&
+      !(_messagingKey.currentState?.hasInternalNavigation ?? false);
 
   void _refreshFinanceNow() {
     final app = context.read<AppProvider>();
@@ -98,7 +123,14 @@ class _ParentDashboardState extends State<ParentDashboard> {
     final user = context.watch<AppProvider>().currentUser;
     final isParentA = user?.role == UserRole.parentA;
 
-    return Scaffold(
+    return PopScope(
+      canPop: _canExitApp,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleDashboardBack();
+        }
+      },
+      child: Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
         children: [
@@ -109,6 +141,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
             onOpenFinanceExpense: _openFinanceExpense,
           ),
           MessagingScreen(
+            key: _messagingKey,
             openThreadId: _pendingOpenThreadId,
             openThreadRequestId: _openThreadRequestId,
             onReturnTab: _returnFromChatThread,
@@ -215,6 +248,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ],
         ),
       ),
+    ),
     );
   }
 }

@@ -1,83 +1,67 @@
 #!/usr/bin/env node
-import { writeFileSync, mkdirSync } from 'node:fs';
+/**
+ * Generates PWA + favicon assets from assets/branding/coparentes-app-icon-source.png
+ */
+import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deflateSync } from 'node:zlib';
+import sharp from 'sharp';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const BRAND = [0, 200, 150, 255];
-const TRANSPARENT = [0, 0, 0, 0];
+const source = join(root, 'assets/branding/coparentes-app-icon-source.png');
+const themeBackground = '#F8F8FB';
 
-function crc32(buffer) {
-  let crc = 0xffffffff;
-  for (let i = 0; i < buffer.length; i += 1) {
-    crc ^= buffer[i];
-    for (let j = 0; j < 8; j += 1) {
-      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-    }
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+async function renderIcon(size, { maskable = false } = {}) {
+  const inset = maskable ? Math.round(size * 0.12) : Math.round(size * 0.08);
+  const inner = size - inset * 2;
+
+  const logo = await sharp(source)
+    .resize(inner, inner, {
+      fit: 'contain',
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .png()
+    .toBuffer();
+
+  const background = maskable
+    ? { r: 248, g: 248, b: 251, alpha: 1 }
+    : { r: 0, g: 0, b: 0, alpha: 0 };
+
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background,
+    },
+  })
+    .composite([{ input: logo, gravity: 'centre' }])
+    .png()
+    .toBuffer();
 }
 
-function chunk(type, data) {
-  const typeBuf = Buffer.from(type);
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])) >>> 0);
-  return Buffer.concat([len, typeBuf, data, crc]);
-}
-
-function writePng(path, size, maskable = false) {
+async function writeIcon(path, size, options) {
   mkdirSync(dirname(path), { recursive: true });
-  const margin = Math.floor(size * (maskable ? 0.1 : 0.06));
-  const radius = size / 2 - margin;
-  const cx = size / 2;
-  const cy = size / 2;
-  const rows = [];
-
-  for (let y = 0; y < size; y += 1) {
-    const row = [0];
-    for (let x = 0; x < size; x += 1) {
-      let rgba = TRANSPARENT;
-      if (maskable) {
-        rgba = BRAND;
-      } else {
-        const dx = x - cx;
-        const dy = y - cy;
-        if (dx * dx + dy * dy <= radius * radius) rgba = BRAND;
-      }
-      row.push(...rgba);
-    }
-    rows.push(Buffer.from(row));
-  }
-
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8;
-  ihdr[9] = 6;
-
-  const idat = deflateSync(Buffer.concat(rows));
-  const png = Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', idat),
-    chunk('IEND', Buffer.alloc(0))
-  ]);
-  writeFileSync(path, png);
+  const png = await renderIcon(size, options);
+  await sharp(png).toFile(path);
   console.log(`Wrote ${path}`);
 }
 
 const targets = [
-  [join(root, 'web/icons/Icon-192-v2.png'), 192, false],
-  [join(root, 'web/icons/Icon-512.png'), 512, false],
-  [join(root, 'web/icons/Icon-maskable-192.png'), 192, true],
-  [join(root, 'web/icons/Icon-maskable-512.png'), 512, true],
-  [join(root, 'web/favicon.png'), 32, false],
-  [join(root, 'assets/icon/app_icon.png'), 512, false]
+  [join(root, 'web/icons/Icon-192-v2.png'), 192, {}],
+  [join(root, 'web/icons/Icon-192.png'), 192, {}],
+  [join(root, 'web/icons/Icon-512.png'), 512, {}],
+  [join(root, 'web/icons/Icon-maskable-192.png'), 192, { maskable: true }],
+  [join(root, 'web/icons/Icon-maskable-512.png'), 512, { maskable: true }],
+  [join(root, 'web/favicon.png'), 32, {}],
+  [join(root, 'web/icons/favicon-16.png'), 16, {}],
+  [join(root, 'web/icons/favicon-32.png'), 32, {}],
+  [join(root, 'web/icons/apple-touch-icon.png'), 180, {}],
+  [join(root, 'assets/icon/app_icon.png'), 512, {}],
 ];
 
-for (const [path, size, maskable] of targets) {
-  writePng(path, size, maskable);
+for (const [path, size, options] of targets) {
+  await writeIcon(path, size, options);
 }
+
+console.log(`Done — source: ${source}, maskable bg: ${themeBackground}`);
