@@ -412,7 +412,25 @@ class SettingsScreen extends StatelessWidget {
                       value: user?.twoFactorEnabled ?? false,
                       activeColor: roleColor,
                       isDark: isDark,
-                      onChanged: null,
+                      onChanged: ap.isDemoMode
+                          ? null
+                          : (value) async {
+                              final ok = await ap.updateProfile(
+                                twoFactorEnabled: value,
+                              );
+                              if (!context.mounted) return;
+                              if (!ok) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      ap.authError ??
+                                          'Nie udało się zaktualizować 2FA.',
+                                    ),
+                                    backgroundColor: AppTheme.errorColor,
+                                  ),
+                                );
+                              }
+                            },
                     ),
                     _Divider(),
                     _ActionTile(

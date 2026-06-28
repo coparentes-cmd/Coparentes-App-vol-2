@@ -205,6 +205,8 @@ class AppProvider extends ChangeNotifier {
           return 'Kod wygasł. Poproś o nowy kod.';
         case 'otp_locked':
           return 'Zbyt wiele prób. Poproś o nowy kod.';
+        case 'otp_email_failed':
+          return 'Nie udało się wysłać kodu e-mail. Sprawdź konfigurację poczty lub wyłącz 2FA w Ustawieniach.';
         case 'resend_cooldown':
           return 'Poczekaj chwilę przed ponownym wysłaniem kodu.';
         case 'not_found':
