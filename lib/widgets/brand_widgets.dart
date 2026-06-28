@@ -67,9 +67,9 @@ class BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final textColor =
         onDarkBackground ? Colors.white : AppTheme.textPrimary;
-    final markSize = height.clamp(24, 96);
+    final markSize = height.clamp(24.0, 96.0);
     final spacing = height * 0.14;
-    final fontSize = (height * 0.52).clamp(14, 34);
+    final fontSize = (height * 0.52).clamp(14.0, 34.0);
 
     return SizedBox(
       width: width,

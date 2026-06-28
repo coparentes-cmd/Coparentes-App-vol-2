@@ -64,9 +64,10 @@ const targets = [
   [join(root, 'web/icons/Icon-512.png'), 512, { fill: 0.86 }],
   [join(root, 'web/icons/Icon-maskable-192.png'), 192, { maskable: true }],
   [join(root, 'web/icons/Icon-maskable-512.png'), 512, { maskable: true }],
-  [join(root, 'web/favicon.png'), 32, { fill: 0.92 }],
-  [join(root, 'web/icons/favicon-16.png'), 16, { fill: 0.92 }],
-  [join(root, 'web/icons/favicon-32.png'), 32, { fill: 0.92 }],
+  [join(root, 'web/favicon.png'), 32, { fill: 0.98 }],
+  [join(root, 'web/icons/favicon-16.png'), 16, { fill: 0.98 }],
+  [join(root, 'web/icons/favicon-32.png'), 32, { fill: 0.98 }],
+  [join(root, 'web/icons/favicon-48.png'), 48, { fill: 0.96 }],
   [join(root, 'web/icons/apple-touch-icon.png'), 180, { fill: 0.86 }],
   [join(root, 'assets/icon/app_icon.png'), 512, { fill: 0.86 }],
 ];
