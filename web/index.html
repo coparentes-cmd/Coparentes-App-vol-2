@@ -35,8 +35,63 @@
 
   <title>Coparentes</title>
   <link rel="manifest" href="manifest.json">
+  <script>
+    (function () {
+      window.__coparentesStartApp = async function () {
+        try {
+          var response = await fetch('/version.json', { cache: 'no-store' });
+          if (!response.ok) {
+            return true;
+          }
+          var payload = await response.json();
+          var buildId = payload && payload.buildId;
+          if (!buildId) {
+            return true;
+          }
+
+          var storageKey = 'coparentes_build_id';
+          var previousBuildId = localStorage.getItem(storageKey);
+          localStorage.setItem(storageKey, buildId);
+
+          if (previousBuildId && previousBuildId !== buildId) {
+            if ('serviceWorker' in navigator) {
+              var registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(
+                registrations.map(function (registration) {
+                  return registration.unregister();
+                }),
+              );
+            }
+            if ('caches' in window) {
+              var cacheKeys = await caches.keys();
+              await Promise.all(
+                cacheKeys.map(function (cacheKey) {
+                  return caches.delete(cacheKey);
+                }),
+              );
+            }
+            location.reload();
+            return false;
+          }
+        } catch (error) {
+          // Ignore update checks offline or when version.json is unavailable.
+        }
+        return true;
+      };
+    })();
+  </script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.__coparentesStartApp().then(function (shouldBoot) {
+      if (!shouldBoot) {
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js';
+      script.async = true;
+      document.body.appendChild(script);
+    });
+  </script>
 </body>
 </html>
