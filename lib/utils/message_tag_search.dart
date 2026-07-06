@@ -68,6 +68,50 @@ bool threadMatchesAllTabSearch({
   return tagMatch;
 }
 
+bool messageMatchesAllTabSearch({
+  required Message message,
+  required MessageSearchQuery query,
+  required Map<String, Set<String>> tagsByMessageId,
+}) {
+  if (query.isEmpty) {
+    return true;
+  }
+
+  final textMatch = query.text.isEmpty ||
+      message.content.toLowerCase().contains(query.text);
+
+  if (query.tags.isEmpty) {
+    return textMatch;
+  }
+
+  final messageTags = tagsByMessageId[message.id] ?? const {};
+  final tagMatch = query.tags.every(messageTags.contains);
+
+  if (query.text.isNotEmpty) {
+    return textMatch && tagMatch;
+  }
+  return tagMatch;
+}
+
+List<Message> filterMessagesForSearch({
+  required List<Message> messages,
+  required MessageSearchQuery query,
+  required Map<String, Set<String>> tagsByMessageId,
+}) {
+  if (query.isEmpty) {
+    return messages;
+  }
+  return messages
+      .where(
+        (message) => messageMatchesAllTabSearch(
+          message: message,
+          query: query,
+          tagsByMessageId: tagsByMessageId,
+        ),
+      )
+      .toList();
+}
+
 Set<String> collectThreadUserTags(
   MessageThread thread,
   Map<String, Set<String>> tagsByMessageId,

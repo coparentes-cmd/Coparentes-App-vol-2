@@ -200,33 +200,10 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
           const SizedBox(height: 6),
           const Text(
             'Prywatne — widzisz je tylko Ty. Inni rodzice mogą mieć własne etykiety '
-            'na tej samej wiadomości. Szukaj: tag:szkoła',
+            'na tej samej wiadomości. Szukaj: tag:paragon',
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Sugerowane',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: suggestedMessageTags
-                .map(
-                  (tag) => _SuggestedTagToggle(
-                    tag: tag,
-                    selected: _tags.contains(tag),
-                    onTap: () => _toggleTag(tag),
-                  ),
-                )
-                .toList(),
-          ),
-          if (_tags.any((tag) => !isSuggestedMessageTag(tag))) ...[
+          if (_tags.isNotEmpty) ...[
             const SizedBox(height: 16),
             const Text(
               'Twoje etykiety na tej wiadomości',
@@ -241,7 +218,6 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
               spacing: 8,
               runSpacing: 8,
               children: _tags
-                  .where((tag) => !isSuggestedMessageTag(tag))
                   .map(
                     (tag) => InputChip(
                       label: Text(messageTagDisplayLabel(tag)),
@@ -253,6 +229,30 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
                       backgroundColor:
                           messageTagColor(tag).withValues(alpha: 0.1),
                       onDeleted: () => _toggleTag(tag),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+          if (customSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Twoje wcześniejsze etykiety',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: customSuggestions
+                  .map(
+                    (tag) => ActionChip(
+                      label: Text(messageTagDisplayLabel(tag)),
+                      onPressed: () => _toggleTag(tag),
                     ),
                   )
                   .toList(),
@@ -274,36 +274,6 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
             ),
             onSubmitted: _addCustomTag,
           ),
-          if (customSuggestions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'Ostatnio używane',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: customSuggestions
-                  .take(8)
-                  .map(
-                    (tag) => ActionChip(
-                      avatar: Icon(
-                        Icons.label_outline,
-                        size: 16,
-                        color: messageTagColor(tag),
-                      ),
-                      label: Text(messageTagDisplayLabel(tag)),
-                      onPressed: () => _toggleTag(tag),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
           const SizedBox(height: 20),
           Row(
             children: [
@@ -320,41 +290,6 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SuggestedTagToggle extends StatelessWidget {
-  final String tag;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _SuggestedTagToggle({
-    required this.tag,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = messageTagColor(tag);
-
-    return FilterChip(
-      label: Text(messageTagDisplayLabel(tag)),
-      selected: selected,
-      showCheckmark: true,
-      checkmarkColor: color,
-      selectedColor: color.withValues(alpha: 0.16),
-      backgroundColor: Colors.white,
-      side: BorderSide(
-        color: selected ? color.withValues(alpha: 0.5) : AppTheme.dividerColor,
-      ),
-      avatar: Icon(
-        selected ? Icons.label : Icons.label_outline,
-        size: 18,
-        color: color,
-      ),
-      onSelected: (_) => onTap(),
     );
   }
 }

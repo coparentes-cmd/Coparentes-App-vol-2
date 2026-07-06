@@ -1264,6 +1264,9 @@ class MessagingProvider extends ChangeNotifier {
     if (category == familyCategoryChannel) {
       return findFamilyChannel(_threads);
     }
+    if (category == allTabLabel) {
+      return findCategoryChannel(_threads, allTabLabel);
+    }
     return findCategoryThreadFallback(_threads, category);
   }
 

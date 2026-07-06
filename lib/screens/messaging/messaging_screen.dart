@@ -50,9 +50,6 @@ class MessagingScreen extends StatefulWidget {
 class MessagingScreenState extends State<MessagingScreen> {
   String _selectedCategory = allTabLabel;
   final TextEditingController _searchController = TextEditingController();
-  String? _inlineThreadId;
-  String? _allTabActiveThreadId;
-  bool _inlineThreadAllowsPrivateTags = false;
   bool _returnToPreviousTab = false;
 
   @override
@@ -103,7 +100,6 @@ class MessagingScreenState extends State<MessagingScreen> {
       markBrowserHistoryForward();
       setState(() {
         _selectedCategory = category;
-        _inlineThreadId = null;
         _returnToPreviousTab = returnToPreviousTab;
       });
     });
@@ -118,58 +114,17 @@ class MessagingScreenState extends State<MessagingScreen> {
     });
   }
 
-  void _openInlineThread(
-    String threadId, {
-    bool returnToPreviousTab = false,
-    bool allowPrivateTags = false,
-  }) {
-    setState(() {
-      _selectedCategory = allTabLabel;
-      _inlineThreadId = threadId;
-      _allTabActiveThreadId = threadId;
-      _inlineThreadAllowsPrivateTags = allowPrivateTags;
-      _returnToPreviousTab = returnToPreviousTab;
-    });
-  }
-
-  void _selectAllTabThread(String threadId) {
-    setState(() {
-      _allTabActiveThreadId = threadId;
-      _inlineThreadId = null;
-      _inlineThreadAllowsPrivateTags = false;
-    });
-  }
-
-  void _ensureAllTabActiveThread(List<MessageThread> threads) {
-    if (threads.isEmpty) {
-      if (_allTabActiveThreadId != null) {
-        setState(() => _allTabActiveThreadId = null);
+  void _scheduleOpenAllTab({bool returnToPreviousTab = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
       }
-      return;
-    }
-
-    final activeStillVisible =
-        threads.any((thread) => thread.id == _allTabActiveThreadId);
-    if (!activeStillVisible) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        setState(() => _allTabActiveThreadId = threads.first.id);
+      markBrowserHistoryForward();
+      setState(() {
+        _selectedCategory = allTabLabel;
+        _returnToPreviousTab = returnToPreviousTab;
       });
-    }
-  }
-
-  void _closeInlineThread() {
-    final shouldReturn = _returnToPreviousTab;
-    setState(() {
-      _inlineThreadId = null;
-      _inlineThreadAllowsPrivateTags = false;
-      _returnToPreviousTab = false;
     });
-    if (shouldReturn) {
-      widget.onReturnTab?.call();
-    }
   }
 
   Future<void> _openThreadById(
@@ -214,11 +169,7 @@ class MessagingScreenState extends State<MessagingScreen> {
       return;
     }
 
-    _openInlineThread(
-      thread.id,
-      returnToPreviousTab: returnToPreviousTab,
-      allowPrivateTags: true,
-    );
+    _scheduleOpenAllTab(returnToPreviousTab: returnToPreviousTab);
   }
 
   void _loadThreads(BuildContext context) {
@@ -231,10 +182,6 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   /// Handles in-tab back navigation. Returns true when consumed.
   bool handleBack() {
-    if (_inlineThreadId != null) {
-      _closeInlineThread();
-      return true;
-    }
     if (_selectedCategory != allTabLabel) {
       final shouldReturn = _returnToPreviousTab;
       setState(() {
@@ -249,8 +196,7 @@ class MessagingScreenState extends State<MessagingScreen> {
     return false;
   }
 
-  bool get _hasInternalBackState =>
-      _inlineThreadId != null || _selectedCategory != allTabLabel;
+  bool get _hasInternalBackState => _selectedCategory != allTabLabel;
 
   bool get hasInternalNavigation => _hasInternalBackState;
 
@@ -270,7 +216,6 @@ class MessagingScreenState extends State<MessagingScreen> {
   }
 
   Widget _buildContent(BuildContext context) {
-    final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
     final childFamilyOnly = widget.familyOnly || user?.role == UserRole.child;
 
@@ -288,61 +233,23 @@ class MessagingScreenState extends State<MessagingScreen> {
           key: const ValueKey(familyCategoryChannel),
           category: familyCategoryChannel,
           showChildQuickReplies: user?.role == UserRole.child,
-          allowPrivateTags:
-              user?.role != UserRole.child && user?.role != UserRole.observer,
+          allowPrivateTags: false,
         ),
       );
     }
 
     final isReadOnly = user?.role == UserRole.observer;
     final searchQuery = parseMessageSearchQuery(_searchController.text);
-    final allTabThreads = messaging.allTabThreads
-        .where(
-          (thread) => threadMatchesAllTabSearch(
-            thread: thread,
-            query: searchQuery,
-            tagsByMessageId: messaging.tagsByMessageId,
-          ),
-        )
-        .toList();
     final showInlineChat = _selectedCategory != allTabLabel;
-    final inlineThread = _inlineThreadId == null
-        ? null
-        : messaging.getThreadById(_inlineThreadId!);
-    final showAllTabInlineThread =
-        !showInlineChat && _inlineThreadId != null && inlineThread != null;
-    final showAllTabSplitView =
-        !showInlineChat && !showAllTabInlineThread;
-    if (showAllTabSplitView) {
-      _ensureAllTabActiveThread(allTabThreads);
-    }
-    final activeAllTabThreadId = _allTabActiveThreadId;
-    final activeAllTabThread = activeAllTabThreadId == null
-        ? null
-        : messaging.getThreadById(activeAllTabThreadId);
 
     return ParentTabScaffold(
-      title: showInlineChat
-          ? _selectedCategory
-          : showAllTabInlineThread
-              ? threadListTitle(inlineThread!)
-              : activeAllTabThread != null
-                  ? threadListTitle(activeAllTabThread)
-                  : 'Wiadomości',
+      title: showInlineChat ? _selectedCategory : 'Wiadomości',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
           tooltip: 'Odśwież wiadomości',
           onPressed: () => _loadThreads(context),
         ),
-        if (!isReadOnly && !showInlineChat)
-          ParentHeaderActionButton(
-            label: 'Nowy wątek',
-            icon: Icons.edit_note,
-            backgroundColor: AppTheme.purpleColor,
-            prominent: true,
-            onPressed: () => _newThread(context),
-          ),
       ],
       body: Column(
         children: [
@@ -357,19 +264,11 @@ class MessagingScreenState extends State<MessagingScreen> {
                       category: cat,
                       selected: _selectedCategory == cat,
                       onTap: () {
-                        if (cat == allTabLabel && _inlineThreadId != null) {
-                          _closeInlineThread();
-                          return;
-                        }
                         if (cat != _selectedCategory && cat != allTabLabel) {
                           markBrowserHistoryForward();
                         }
                         setState(() {
                           _selectedCategory = cat;
-                          if (cat != allTabLabel) {
-                            _inlineThreadId = null;
-                            _allTabActiveThreadId = null;
-                          }
                         });
                       },
                     ),
@@ -377,13 +276,13 @@ class MessagingScreenState extends State<MessagingScreen> {
                   .toList(),
             ),
           ),
-          if (!showInlineChat && !showAllTabInlineThread) ...[
+          if (!showInlineChat) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Szukaj lub tag:szkoła',
+                  hintText: 'Szukaj lub tag:paragon',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
@@ -416,128 +315,21 @@ class MessagingScreenState extends State<MessagingScreen> {
               child: _InlineCategoryChatPanel(
                 key: ValueKey(_selectedCategory),
                 category: _selectedCategory,
-                allowPrivateTags: !isReadOnly,
-              ),
-            )
-          else if (showAllTabInlineThread)
-            Expanded(
-              child: _InlineCategoryChatPanel(
-                key: ValueKey(_inlineThreadId),
-                threadId: _inlineThreadId,
-                allowPrivateTags: _inlineThreadAllowsPrivateTags,
+                allowPrivateTags: false,
               ),
             )
           else
             Expanded(
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 168,
-                    child: RefreshIndicator(
-                      onRefresh: () async => _loadThreads(context),
-                      child: messaging.isLoading && messaging.threads.isEmpty
-                          ? const Center(child: CircularProgressIndicator())
-                          : allTabThreads.isEmpty
-                              ? ListView(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  children: [
-                                    SizedBox(
-                                      height:
-                                          MediaQuery.of(context).size.height *
-                                              0.08,
-                                    ),
-                                    EmptyState(
-                                      icon: searchQuery.isEmpty
-                                          ? Icons.inbox_outlined
-                                          : Icons.search_off,
-                                      title: searchQuery.isEmpty
-                                          ? 'Brak wiadomości'
-                                          : 'Brak wyników',
-                                      subtitle: searchQuery.isEmpty
-                                          ? 'Utwórz nowy wątek, aby zacząć rozmowę.'
-                                          : 'Spróbuj innej frazy lub tagu, np. tag:szkoła',
-                                    ),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  itemCount: allTabThreads.length,
-                                  itemBuilder: (context, index) {
-                                    final thread = allTabThreads[index];
-                                    final selected =
-                                        thread.id == activeAllTabThreadId;
-                                    return _ThreadTile(
-                                      thread: thread,
-                                      viewerUserId: user?.id,
-                                      selected: selected,
-                                      userTags: sortedMessageTags(
-                                        collectThreadUserTags(
-                                          thread,
-                                          messaging.tagsByMessageId,
-                                        ),
-                                      ).toSet(),
-                                      onTap: () => _selectAllTabThread(
-                                        thread.id,
-                                      ),
-                                    );
-                                  },
-                                ),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: activeAllTabThreadId == null
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                isReadOnly
-                                    ? 'Brak wątków do wyświetlenia.'
-                                    : 'Utwórz nowy wątek, aby napisać wiadomość.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                          )
-                        : _InlineCategoryChatPanel(
-                            key: ValueKey(activeAllTabThreadId),
-                            threadId: activeAllTabThreadId,
-                            allowPrivateTags: !isReadOnly,
-                          ),
-                  ),
-                ],
+              child: _InlineCategoryChatPanel(
+                key: const ValueKey(allTabLabel),
+                category: allTabLabel,
+                allowPrivateTags: !isReadOnly,
+                messageSearchQuery: searchQuery,
               ),
             ),
         ],
       ),
     );
-  }
-
-  Future<void> _newThread(BuildContext context) async {
-    final thread = await showModalBottomSheet<MessageThread>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _NewThreadSheet(),
-    );
-
-    if (!context.mounted || thread == null) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Wątek „${thread.subject}” został utworzony'),
-        backgroundColor: AppTheme.successColor,
-      ),
-    );
-
-    _openInlineThread(thread.id, allowPrivateTags: true);
   }
 }
 
@@ -584,6 +376,7 @@ class _InlineCategoryChatPanel extends StatefulWidget {
   final String? threadId;
   final bool showChildQuickReplies;
   final bool allowPrivateTags;
+  final MessageSearchQuery? messageSearchQuery;
 
   const _InlineCategoryChatPanel({
     super.key,
@@ -591,6 +384,7 @@ class _InlineCategoryChatPanel extends StatefulWidget {
     this.threadId,
     this.showChildQuickReplies = false,
     this.allowPrivateTags = false,
+    this.messageSearchQuery,
   }) : assert(
           (category != null) ^ (threadId != null),
           'Provide either category or threadId',
@@ -816,6 +610,16 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     final panelSubtitle = widget.threadId != null
         ? thread.subject
         : categoryChannelSubtitle(panelCategory);
+    final messaging = context.watch<MessagingProvider>();
+    final visibleMessages = widget.messageSearchQuery == null
+        ? thread.messages
+        : filterMessagesForSearch(
+            messages: thread.messages,
+            query: widget.messageSearchQuery!,
+            tagsByMessageId: messaging.tagsByMessageId,
+          );
+    final hasSearchFilter =
+        widget.messageSearchQuery != null && !widget.messageSearchQuery!.isEmpty;
 
     return Column(
       children: [
@@ -847,9 +651,11 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            widget.threadId != null
-                                ? 'Brak wiadomości w tym wątku'
-                                : 'Brak wiadomości w „$panelCategory”',
+                            panelCategory == allTabLabel
+                                ? 'Brak wiadomości'
+                                : widget.threadId != null
+                                    ? 'Brak wiadomości w tym wątku'
+                                    : 'Brak wiadomości w „$panelCategory”',
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary,
@@ -867,8 +673,43 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                       ),
                     ),
                   )
-                : _ThreadMessagesList(
-                    messages: thread.messages,
+                : visibleMessages.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 48,
+                                color: AppTheme.textHint.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Brak wyników',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                hasSearchFilter
+                                    ? 'Spróbuj innej frazy lub tagu, np. tag:paragon'
+                                    : 'Brak wiadomości do wyświetlenia',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _ThreadMessagesList(
+                    messages: visibleMessages,
                     threadId: thread.id,
                     threadCategory: panelCategory,
                     viewerUserId: user?.id,
@@ -919,158 +760,6 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
           ),
       ],
     );
-  }
-}
-
-class _ThreadTile extends StatelessWidget {
-  final MessageThread thread;
-  final String? viewerUserId;
-  final Set<String> userTags;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ThreadTile({
-    required this.thread,
-    required this.viewerUserId,
-    this.userTags = const {},
-    this.selected = false,
-    required this.onTap,
-  });
-
-  bool get _hasUnread {
-    if (viewerUserId == null) {
-      return thread.hasUnread;
-    }
-    return threadHasUnreadForViewer(thread, viewerUserId!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final lastMsg = thread.messages.isNotEmpty ? thread.messages.last : null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
-        color: selected
-            ? AppTheme.primaryTeal.withValues(alpha: 0.08)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: thread.categoryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: selected
-                        ? Border.all(color: AppTheme.primaryTeal, width: 2)
-                        : null,
-                  ),
-                  child: Icon(
-                    thread.categoryIcon,
-                    color: thread.categoryColor,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              threadListTitle(thread),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: _hasUnread
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            _formatTime(thread.lastActivity),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textHint,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      if (lastMsg != null)
-                        Text(
-                          '${lastMsg.senderName}: ${lastMsg.content}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      if (userTags.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: userTags
-                              .map(
-                                (tag) => MessageTagChip(
-                                  tag: tag,
-                                  compact: true,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  children: [
-                    if (_hasUnread)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primaryTeal,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${thread.messages.length}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textHint,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    return '${diff.inDays}d';
   }
 }
 
@@ -2080,7 +1769,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
       ),
       builder: (_) => MessageTagEditorSheet(
         initialTags: currentTags.toList(),
-        customSuggestions: context.read<MessagingProvider>().allUserTags.toList(),
+        customSuggestions: customMessageTags(
+          context.read<MessagingProvider>().allUserTags,
+        ).toList(),
       ),
     );
 
@@ -2252,130 +1943,6 @@ class _ToneIndicator extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _NewThreadSheet extends StatefulWidget {
-  const _NewThreadSheet();
-
-  @override
-  State<_NewThreadSheet> createState() => _NewThreadSheetState();
-}
-
-class _NewThreadSheetState extends State<_NewThreadSheet> {
-  final _subjectController = TextEditingController();
-  String? _selectedChildId;
-
-  @override
-  void dispose() {
-    _subjectController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final workspace = context.watch<AppProvider>().currentWorkspace;
-    final children = workspace?.children ?? const [];
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Nowy wątek',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Wątek pojawi się w zakładce Wszystkie. Możesz oznaczać wiadomości '
-            'prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _subjectController,
-            decoration: const InputDecoration(
-              labelText: 'Temat wątku',
-              hintText: 'np. Angielski – zmiana terminu',
-            ),
-          ),
-          if (children.length > 1) ...[
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedChildId ?? children.first.id,
-              decoration: const InputDecoration(labelText: 'Dotyczy dziecka'),
-              items: children
-                  .map(
-                    (child) => DropdownMenuItem(
-                      value: child.id,
-                      child: Text(child.name),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _selectedChildId = value),
-            ),
-          ],
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _createThread,
-              child: const Text('Utwórz wątek'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _createThread() {
-    final subject = _subjectController.text.trim();
-    if (subject.isEmpty) {
-      return;
-    }
-    if (messagingCategoryChannels.contains(subject)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Ten temat jest zarezerwowany dla kanału systemowego.',
-          ),
-        ),
-      );
-      return;
-    }
-
-    final workspace = context.read<AppProvider>().currentWorkspace;
-    final children = workspace?.children ?? const [];
-    final childId = children.isEmpty
-        ? null
-        : (_selectedChildId ?? children.first.id);
-
-    context.read<MessagingProvider>()
-        .createThread(
-          subject: subject,
-          category: 'Ogólne',
-          childId: childId,
-        )
-        .then((thread) {
-      if (!mounted || thread == null) {
-        return;
-      }
-      Navigator.pop(context, thread);
-    });
   }
 }
 

@@ -17,6 +17,7 @@ const List<String> messagingParentCategoryChannels = [
 
 /// Reserved channel names — cannot be used as custom thread subjects.
 const List<String> messagingCategoryChannels = [
+  allTabLabel,
   familyCategoryChannel,
   ...messagingParentCategoryChannels,
 ];
@@ -42,8 +43,12 @@ bool isScheduleChannel(MessageThread thread) {
       subject == scheduleCategoryChannel;
 }
 
+bool isParentsInboxChannel(MessageThread thread) {
+  return thread.category == allTabLabel && thread.subject == allTabLabel;
+}
+
 bool isAllTabThread(MessageThread thread) {
-  return !isFamilyChannel(thread) && !isScheduleChannel(thread);
+  return isParentsInboxChannel(thread);
 }
 
 bool isCategoryChannel(MessageThread thread) {
@@ -68,6 +73,15 @@ MessageThread? findCategoryChannel(
   List<MessageThread> threads,
   String category,
 ) {
+  if (category == allTabLabel) {
+    for (final thread in threads) {
+      if (isParentsInboxChannel(thread)) {
+        return thread;
+      }
+    }
+    return null;
+  }
+
   if (category == familyCategoryChannel) {
     return findFamilyChannel(threads);
   }
@@ -118,6 +132,8 @@ MessageThread? findCategoryThreadFallback(
 
 String categoryChannelSubtitle(String category) {
   switch (category) {
+    case allTabLabel:
+      return 'Wspólne wiadomości — oznaczaj własnymi etykietami';
     case familyCategoryChannel:
       return 'Rozmowy z całą rodziną';
     case 'Szkoła':
@@ -135,6 +151,9 @@ String categoryChannelSubtitle(String category) {
 }
 
 String threadListTitle(MessageThread thread) {
+  if (isParentsInboxChannel(thread)) {
+    return allTabLabel;
+  }
   if (isFamilyChannel(thread)) {
     return familyCategoryChannel;
   }
