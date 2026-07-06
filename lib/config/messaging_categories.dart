@@ -43,7 +43,9 @@ bool isScheduleChannel(MessageThread thread) {
 }
 
 bool isAllTabThread(MessageThread thread) {
-  return !isFamilyChannel(thread) && !isScheduleChannel(thread);
+  return !isFamilyChannel(thread) &&
+      !isScheduleChannel(thread) &&
+      !isCategoryChannel(thread);
 }
 
 bool isCategoryChannel(MessageThread thread) {

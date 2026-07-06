@@ -48,9 +48,9 @@ class MessagingScreen extends StatefulWidget {
 class MessagingScreenState extends State<MessagingScreen> {
   String _selectedCategory = allTabLabel;
   final TextEditingController _searchController = TextEditingController();
-  String? _activeThreadId;
+  String? _inlineThreadId;
+  bool _inlineThreadAllowsPrivateTags = false;
   bool _returnToPreviousTab = false;
-  bool _activeThreadAllowsPrivateTags = false;
 
   @override
   void initState() {
@@ -100,7 +100,7 @@ class MessagingScreenState extends State<MessagingScreen> {
       markBrowserHistoryForward();
       setState(() {
         _selectedCategory = category;
-        _activeThreadId = null;
+        _inlineThreadId = null;
         _returnToPreviousTab = returnToPreviousTab;
       });
     });
@@ -115,25 +115,25 @@ class MessagingScreenState extends State<MessagingScreen> {
     });
   }
 
-  void _showThread(
+  void _openInlineThread(
     String threadId, {
     bool returnToPreviousTab = false,
     bool allowPrivateTags = false,
   }) {
-    markBrowserHistoryForward();
     setState(() {
-      _activeThreadId = threadId;
+      _selectedCategory = allTabLabel;
+      _inlineThreadId = threadId;
+      _inlineThreadAllowsPrivateTags = allowPrivateTags;
       _returnToPreviousTab = returnToPreviousTab;
-      _activeThreadAllowsPrivateTags = allowPrivateTags;
     });
   }
 
-  void _closeThread() {
+  void _closeInlineThread() {
     final shouldReturn = _returnToPreviousTab;
     setState(() {
-      _activeThreadId = null;
+      _inlineThreadId = null;
+      _inlineThreadAllowsPrivateTags = false;
       _returnToPreviousTab = false;
-      _activeThreadAllowsPrivateTags = false;
     });
     if (shouldReturn) {
       widget.onReturnTab?.call();
@@ -167,10 +167,19 @@ class MessagingScreenState extends State<MessagingScreen> {
       return;
     }
 
-    _showThread(
+    if (isFamilyChannel(thread)) {
+      _scheduleOpenCategory(familyCategoryChannel, returnToPreviousTab: returnToPreviousTab);
+      return;
+    }
+    if (isScheduleChannel(thread)) {
+      _scheduleOpenCategory(scheduleCategoryChannel, returnToPreviousTab: returnToPreviousTab);
+      return;
+    }
+
+    _openInlineThread(
       thread.id,
       returnToPreviousTab: returnToPreviousTab,
-      allowPrivateTags: isAllTabThread(thread),
+      allowPrivateTags: true,
     );
   }
 
@@ -184,8 +193,8 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   /// Handles in-tab back navigation. Returns true when consumed.
   bool handleBack() {
-    if (_activeThreadId != null) {
-      _closeThread();
+    if (_inlineThreadId != null) {
+      _closeInlineThread();
       return true;
     }
     if (_selectedCategory != allTabLabel) {
@@ -203,7 +212,7 @@ class MessagingScreenState extends State<MessagingScreen> {
   }
 
   bool get _hasInternalBackState =>
-      _activeThreadId != null || _selectedCategory != allTabLabel;
+      _inlineThreadId != null || _selectedCategory != allTabLabel;
 
   bool get hasInternalNavigation => _hasInternalBackState;
 
@@ -223,14 +232,6 @@ class MessagingScreenState extends State<MessagingScreen> {
   }
 
   Widget _buildContent(BuildContext context) {
-    if (_activeThreadId != null) {
-      return ThreadScreen(
-        threadId: _activeThreadId!,
-        allowPrivateTags: _activeThreadAllowsPrivateTags,
-        onBack: _closeThread,
-      );
-    }
-
     final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
     final childFamilyOnly = widget.familyOnly || user?.role == UserRole.child;
@@ -265,9 +266,18 @@ class MessagingScreenState extends State<MessagingScreen> {
         )
         .toList();
     final showInlineChat = _selectedCategory != allTabLabel;
+    final inlineThread = _inlineThreadId == null
+        ? null
+        : messaging.getThreadById(_inlineThreadId!);
+    final showAllTabInlineThread =
+        !showInlineChat && _inlineThreadId != null && inlineThread != null;
 
     return ParentTabScaffold(
-      title: showInlineChat ? _selectedCategory : 'Wiadomości',
+      title: showInlineChat
+          ? _selectedCategory
+          : showAllTabInlineThread
+              ? inlineThread.subject
+              : 'Wiadomości',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
@@ -296,10 +306,19 @@ class MessagingScreenState extends State<MessagingScreen> {
                       category: cat,
                       selected: _selectedCategory == cat,
                       onTap: () {
+                        if (cat == allTabLabel && _inlineThreadId != null) {
+                          _closeInlineThread();
+                          return;
+                        }
                         if (cat != _selectedCategory && cat != allTabLabel) {
                           markBrowserHistoryForward();
                         }
-                        setState(() => _selectedCategory = cat);
+                        setState(() {
+                          _selectedCategory = cat;
+                          if (cat != allTabLabel) {
+                            _inlineThreadId = null;
+                          }
+                        });
                       },
                     ),
                   )
@@ -347,6 +366,14 @@ class MessagingScreenState extends State<MessagingScreen> {
                 category: _selectedCategory,
               ),
             )
+          else if (showAllTabInlineThread)
+            Expanded(
+              child: _InlineCategoryChatPanel(
+                key: ValueKey(_inlineThreadId),
+                threadId: _inlineThreadId,
+                allowPrivateTags: _inlineThreadAllowsPrivateTags,
+              ),
+            )
           else
             Expanded(
               child: RefreshIndicator(
@@ -386,7 +413,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                                   thread,
                                   messaging.tagsByMessageId,
                                 ),
-                                onTap: () => _showThread(
+                                onTap: () => _openInlineThread(
                                   thread.id,
                                   allowPrivateTags: true,
                                 ),
@@ -419,7 +446,7 @@ class MessagingScreenState extends State<MessagingScreen> {
       ),
     );
 
-    _showThread(thread.id);
+    _openInlineThread(thread.id, allowPrivateTags: true);
   }
 }
 
@@ -462,14 +489,21 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _InlineCategoryChatPanel extends StatefulWidget {
-  final String category;
+  final String? category;
+  final String? threadId;
   final bool showChildQuickReplies;
+  final bool allowPrivateTags;
 
   const _InlineCategoryChatPanel({
     super.key,
-    required this.category,
+    this.category,
+    this.threadId,
     this.showChildQuickReplies = false,
-  });
+    this.allowPrivateTags = false,
+  }) : assert(
+          (category != null) ^ (threadId != null),
+          'Provide either category or threadId',
+        );
 
   @override
   State<_InlineCategoryChatPanel> createState() =>
@@ -547,8 +581,13 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       );
     }
 
-    var thread = messaging.getCategoryChannel(widget.category);
-    thread ??= await messaging.openCategoryChannel(widget.category);
+    MessageThread? thread;
+    if (widget.threadId != null) {
+      thread = messaging.getThreadById(widget.threadId!);
+    } else {
+      thread = messaging.getCategoryChannel(widget.category!);
+      thread ??= await messaging.openCategoryChannel(widget.category!);
+    }
 
     if (!mounted) {
       return;
@@ -565,7 +604,8 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       await messaging.markThreadRead(thread.id, viewerUserId: userId);
     }
 
-    if (isSwapScheduleThread(widget.category)) {
+    final category = widget.category ?? thread.category;
+    if (isSwapScheduleThread(category)) {
       unawaited(context.read<CalendarProvider>().load(silent: true));
     }
 
@@ -671,7 +711,9 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            'Nie udało się otworzyć rozmowy „${widget.category}”.',
+            widget.threadId != null
+                ? 'Nie znaleziono wątku.'
+                : 'Nie udało się otworzyć rozmowy „${widget.category}”.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
@@ -679,18 +721,24 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       );
     }
 
+    final panelCategory = widget.category ?? thread.category;
+    final panelSubtitle = widget.threadId != null
+        ? thread.subject
+        : categoryChannelSubtitle(panelCategory);
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(
-            categoryChannelSubtitle(widget.category),
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondary,
+        if (widget.threadId == null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              panelSubtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
             ),
           ),
-        ),
         Expanded(
           child: ColoredBox(
             color: imessageChatBackground,
@@ -708,7 +756,9 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Brak wiadomości w „${widget.category}”',
+                            widget.threadId != null
+                                ? 'Brak wiadomości w tym wątku'
+                                : 'Brak wiadomości w „$panelCategory”',
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary,
@@ -729,9 +779,10 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
                 : _ThreadMessagesList(
                     messages: thread.messages,
                     threadId: thread.id,
-                    threadCategory: widget.category,
+                    threadCategory: panelCategory,
                     viewerUserId: user?.id,
                     aiShieldEnabled: aiShield,
+                    allowPrivateTags: widget.allowPrivateTags,
                     scrollController: _scrollController,
                   ),
           ),
@@ -996,43 +1047,16 @@ class _ThreadTile extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: thread.categoryColor.withValues(
-                                alpha: 0.08,
-                              ),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              thread.category,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: thread.categoryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                      if (lastMsg != null)
+                        Text(
+                          '${lastMsg.senderName}: ${lastMsg.content}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
                           ),
-                          const SizedBox(width: 8),
-                          if (lastMsg != null)
-                            Expanded(
-                              child: Text(
-                                '${lastMsg.senderName}: ${lastMsg.content}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+                        ),
                       if (userTags.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Wrap(
