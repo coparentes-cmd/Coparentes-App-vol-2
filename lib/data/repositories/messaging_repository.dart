@@ -150,6 +150,14 @@ class MessagingRepository {
       return _getOrCreateParentsInboxThread();
     }
 
+    final cached = _getCachedThreads();
+    final existing = category == familyCategoryChannel
+        ? findFamilyChannel(cached)
+        : findCategoryChannel(cached, category);
+    if (existing != null && !_isLocalThreadId(existing.id)) {
+      return existing;
+    }
+
     try {
       final payload = await _apiClient.postJson('/threads/channel', {
         'category': category,
@@ -163,13 +171,66 @@ class MessagingRepository {
       }
 
       final cached = _getCachedThreads();
-      final existing = findCategoryChannel(cached, category);
-      if (existing != null) {
-        return existing;
+      final offlineExisting = category == familyCategoryChannel
+          ? findFamilyChannel(cached)
+          : findCategoryChannel(cached, category);
+      if (offlineExisting != null && !_isLocalThreadId(offlineExisting.id)) {
+        return offlineExisting;
       }
 
       return createThread(subject: category, category: category);
     }
+  }
+
+  MessageThread? _findCachedThreadById(String threadId) {
+    for (final thread in _getCachedThreads()) {
+      if (thread.id == threadId) {
+        return thread;
+      }
+    }
+    return null;
+  }
+
+  String? _inferChannelCategory(MessageThread thread) {
+    if (isParentsInboxChannel(thread)) {
+      return allTabLabel;
+    }
+    if (isFamilyChannel(thread)) {
+      return familyCategoryChannel;
+    }
+    if (isScheduleChannel(thread)) {
+      return scheduleCategoryChannel;
+    }
+    if (thread.subject == thread.category &&
+        messagingCategoryChannels.contains(thread.category)) {
+      return thread.category == 'Finansowe' ? 'Finanse' : thread.category;
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> _createThreadViaApi({
+    required String subject,
+    required String category,
+    Object? childId,
+  }) {
+    if (subject == category) {
+      if (category == allTabLabel || category == familyCategoryChannel) {
+        return _apiClient.postJson('/threads/channel', {
+          'category': category,
+        });
+      }
+      if (messagingCategoryChannels.contains(category)) {
+        return _apiClient.postJson('/threads/channel', {
+          'category': category,
+        });
+      }
+    }
+
+    return _apiClient.postJson('/threads', {
+      'subject': subject,
+      'category': category,
+      'childId': childId,
+    });
   }
 
   bool _isLocalThreadId(String threadId) => threadId.startsWith('local_');
@@ -188,14 +249,14 @@ class MessagingRepository {
       return mapped;
     }
 
-    final cached = findCategoryChannel(_getCachedThreads(), allTabLabel);
-    if (cached != null && !_isLocalThreadId(cached.id)) {
-      return cached.id;
-    }
-
-    final thread = await _getOrCreateParentsInboxThread();
-    if (!_isLocalThreadId(thread.id)) {
-      return thread.id;
+    final localThread = _findCachedThreadById(threadId);
+    final category =
+        localThread != null ? _inferChannelCategory(localThread) : null;
+    if (category != null) {
+      final thread = await getOrCreateCategoryThread(category);
+      if (!_isLocalThreadId(thread.id)) {
+        return thread.id;
+      }
     }
 
     throw ApiException(404, 'thread_not_ready');
@@ -391,17 +452,11 @@ class MessagingRepository {
         switch (type) {
           case 'messaging.createThread':
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
-            final subject = payload['subject'] as String;
-            final category = payload['category'] as String;
-            final response = category == allTabLabel && subject == allTabLabel
-                ? await _apiClient.postJson('/threads/channel', {
-                    'category': allTabLabel,
-                  })
-                : await _apiClient.postJson('/threads', {
-                    'subject': subject,
-                    'category': category,
-                    'childId': payload['childId'],
-                  });
+            final response = await _createThreadViaApi(
+              subject: payload['subject'] as String,
+              category: payload['category'] as String,
+              childId: payload['childId'],
+            );
             final createdThread = messageThreadFromJson(response);
             final clientThreadId = payload['clientThreadId'] as String;
             localThreadIdMap[clientThreadId] = createdThread.id;

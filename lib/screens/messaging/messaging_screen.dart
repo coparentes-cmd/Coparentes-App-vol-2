@@ -609,13 +609,19 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
   }
 
   Future<void> _sendQuickReply(String content) async {
-    if (_threadId == null || _sending) {
+    if (_sending) {
+      return;
+    }
+
+    final messaging = context.read<MessagingProvider>();
+    final threadId = await _resolveActiveThreadId(messaging);
+    if (threadId == null) {
       return;
     }
 
     setState(() => _sending = true);
-    final sent = await context.read<MessagingProvider>().sendMessage(
-          threadId: _threadId!,
+    final sent = await messaging.sendMessage(
+          threadId: threadId,
           content: content,
           tone: MessageTone.neutral,
         );

@@ -1271,9 +1271,11 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   Future<MessageThread?> openCategoryChannel(String category) async {
-    final existing = category == allTabLabel
-        ? findCategoryChannel(_threads, allTabLabel)
-        : findCategoryThreadFallback(_threads, category);
+    final existing = switch (category) {
+      allTabLabel => findCategoryChannel(_threads, allTabLabel),
+      familyCategoryChannel => findFamilyChannel(_threads),
+      _ => findCategoryThreadFallback(_threads, category),
+    };
     if (existing != null && !existing.id.startsWith('local_')) {
       return existing;
     }
