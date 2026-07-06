@@ -2156,7 +2156,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                     onPressed: () =>
                         _pickAndParseReceipt(ReceiptImageSource.gallery),
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Wybierz z galerii'),
+                    label: const Text('Dodaj załącznik'),
                   ),
                 ),
                 const SizedBox(height: 8),
