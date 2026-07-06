@@ -8,6 +8,7 @@ import '../../providers/app_provider.dart';
 import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
+import '../../utils/app_browser_back.dart';
 import '../../widgets/common_widgets.dart';
 import '../calendar/calendar_screen.dart';
 import '../messaging/messaging_screen.dart';
@@ -80,6 +81,8 @@ class _ChildTodoList {
 
 class _ChildDashboardState extends State<ChildDashboard> {
   int _selectedIndex = 0;
+  int _previousTabIndex = 0;
+  final GlobalKey<MessagingScreenState> _messagingKey = GlobalKey();
   int _mood = 3;
   final List<_ChildTodoList> _lists = [];
   String? _activeListId;
@@ -102,10 +105,50 @@ class _ChildDashboardState extends State<ChildDashboard> {
   List<_ChildListItem> get _listItems => _activeList?.items ?? const [];
 
   @override
+  void initState() {
+    super.initState();
+    registerBrowserBackHandler(_onBrowserBack);
+  }
+
+  @override
   void dispose() {
+    unregisterBrowserBackHandler(_onBrowserBack);
     _listItemController.dispose();
     _listItemFocus.dispose();
     super.dispose();
+  }
+
+  bool _handleDashboardBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return true;
+    }
+
+    if (_selectedIndex == 2) {
+      if (_messagingKey.currentState?.handleBack() ?? false) {
+        return true;
+      }
+    }
+
+    if (_selectedIndex != 0) {
+      setState(() => _selectedIndex = _previousTabIndex);
+      return true;
+    }
+
+    return false;
+  }
+
+  bool _onBrowserBack() => _handleDashboardBack();
+
+  void _navigateToTab(int index) {
+    if (index != _selectedIndex) {
+      _previousTabIndex = _selectedIndex;
+      if (index != 0) {
+        markBrowserHistoryForward();
+      }
+    }
+    setState(() => _selectedIndex = index);
   }
 
   @override
@@ -113,7 +156,14 @@ class _ChildDashboardState extends State<ChildDashboard> {
     final user = context.watch<AppProvider>().currentUser;
     final firstName = user?.name.split(' ').first ?? 'Zosiu';
 
-    return Scaffold(
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleDashboardBack();
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       body: SafeArea(
         child: IndexedStack(
@@ -121,14 +171,18 @@ class _ChildDashboardState extends State<ChildDashboard> {
           children: [
             _buildTodayTab(context, firstName),
             const CalendarScreen(),
-            const MessagingScreen(familyOnly: true),
+            MessagingScreen(
+              key: _messagingKey,
+              familyOnly: true,
+              isTabActive: _selectedIndex == 2,
+            ),
             _buildListTab(),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
+        onTap: _navigateToTab,
         backgroundColor: Colors.white,
         selectedItemColor: AppTheme.childColor,
         unselectedItemColor: AppTheme.textHint,
@@ -154,6 +208,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
             label: 'Lista',
           ),
         ],
+      ),
       ),
     );
   }

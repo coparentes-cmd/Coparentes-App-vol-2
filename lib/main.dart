@@ -32,9 +32,11 @@ import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
 import 'widgets/pin_lock_overlay.dart';
+import 'utils/app_browser_back.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  installAppBrowserBackHandling();
   await initializeDateFormatting('pl_PL', null);
   final preferences = await SharedPreferences.getInstance();
   final offlineStore = OfflineStore(preferences: preferences);

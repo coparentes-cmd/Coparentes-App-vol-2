@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../utils/layout_utils.dart';
 
@@ -546,6 +547,39 @@ class EmptyState extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Binds Enter to an accept action when this scope has focus.
+class EnterAcceptScope extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onAccept;
+  final bool enabled;
+  final bool autofocus;
+
+  const EnterAcceptScope({
+    super.key,
+    required this.child,
+    this.onAccept,
+    this.enabled = true,
+    this.autofocus = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled || onAccept == null) {
+      return child;
+    }
+
+    return CallbackShortcuts(
+      bindings: {
+        SingleActivator(LogicalKeyboardKey.enter): onAccept!,
+      },
+      child: Focus(
+        autofocus: autofocus,
+        child: child,
       ),
     );
   }

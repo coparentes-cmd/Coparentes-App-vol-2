@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../utils/layout_utils.dart';
+import '../../utils/app_browser_back.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import '../messaging/messaging_screen.dart';
@@ -40,6 +41,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
   void _navigateToTab(int index) {
     if (index != _selectedIndex) {
       _previousTabIndex = _selectedIndex;
+      if (index != 0) {
+        markBrowserHistoryForward();
+      }
     }
     setState(() => _selectedIndex = index);
     if (index == 1) {
@@ -51,6 +55,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   void _openCalendarOnDay(DateTime day) {
+    markBrowserHistoryForward();
     setState(() {
       _calendarFocusDay = DateTime(day.year, day.month, day.day);
       _calendarFocusRequestId += 1;
@@ -60,6 +65,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
   void _openChatThread(String threadId) {
     _previousTabIndex = _selectedIndex;
+    markBrowserHistoryForward();
     setState(() {
       _pendingOpenThreadId = threadId;
       _openThreadRequestId += 1;
@@ -70,6 +76,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
   void _openFinanceExpense(String expenseId) {
     _previousTabIndex = _selectedIndex;
+    markBrowserHistoryForward();
     setState(() {
       _pendingOpenExpenseId = expenseId;
       _openExpenseRequestId += 1;
@@ -92,6 +99,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   bool _handleDashboardBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return true;
+    }
+
     if (_selectedIndex == 1) {
       if (_messagingKey.currentState?.handleBack() ?? false) {
         return true;
@@ -106,8 +119,21 @@ class _ParentDashboardState extends State<ParentDashboard> {
     return false;
   }
 
-  bool get _canExitApp => _selectedIndex == 0 &&
-      !(_messagingKey.currentState?.hasInternalNavigation ?? false);
+  bool _onBrowserBack() => _handleDashboardBack();
+
+  bool get _canExitApp => _selectedIndex == 0;
+
+  @override
+  void initState() {
+    super.initState();
+    registerBrowserBackHandler(_onBrowserBack);
+  }
+
+  @override
+  void dispose() {
+    unregisterBrowserBackHandler(_onBrowserBack);
+    super.dispose();
+  }
 
   void _refreshFinanceNow() {
     final app = context.read<AppProvider>();
@@ -142,6 +168,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
           ),
           MessagingScreen(
             key: _messagingKey,
+            isTabActive: _selectedIndex == 1,
             openThreadId: _pendingOpenThreadId,
             openThreadRequestId: _openThreadRequestId,
             onReturnTab: _returnFromChatThread,
@@ -352,7 +379,6 @@ class _DashboardHome extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   BrandLogo(
-                    width: compact ? 96 : 112,
                     height: compact ? 28 : 34,
                     onDarkBackground: true,
                   ),

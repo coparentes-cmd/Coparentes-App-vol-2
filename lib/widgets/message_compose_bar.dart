@@ -160,7 +160,7 @@ class _MessageComposeBarState extends State<MessageComposeBar>
               ),
             ),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
                 icon: Icon(
@@ -189,7 +189,8 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                       TextField(
                         controller: widget.controller,
                         maxLines: 5,
-                        minLines: 1,
+                        minLines: _showCyclingPlaceholder ? 2 : 1,
+                        textAlignVertical: TextAlignVertical.top,
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) {
                           if (_canSend) {
@@ -224,14 +225,14 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                                 vertical: 10,
                               ),
                               child: Align(
-                                alignment: Alignment.centerLeft,
+                                alignment: Alignment.topLeft,
                                 child: FadeTransition(
                                   opacity: _fadeAnim,
                                   child: Text(
                                     _currentPlaceholder,
                                     style: const TextStyle(
-                                      fontSize: 16,
-                                      height: 1.35,
+                                      fontSize: 15,
+                                      height: 1.3,
                                       color: AppTheme.textHint,
                                     ),
                                     maxLines: 2,

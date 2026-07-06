@@ -71,40 +71,44 @@ class BrandLogo extends StatelessWidget {
     final spacing = height * 0.14;
     final fontSize = (height * 0.52).clamp(14.0, 34.0);
 
+    final logo = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Image.asset(
+          'assets/branding/coparentes-logo.png',
+          width: markSize,
+          height: markSize,
+          fit: fit,
+          errorBuilder: (_, __, ___) => Icon(
+            Icons.family_restroom,
+            size: markSize * 0.82,
+            color: textColor,
+          ),
+        ),
+        SizedBox(width: spacing),
+        Text(
+          'Coparentes',
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: textColor,
+            letterSpacing: -0.8,
+            height: 1,
+          ),
+        ),
+      ],
+    );
+
     return SizedBox(
       width: width,
       height: height,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/branding/coparentes-logo.png',
-            width: markSize,
-            height: markSize,
-            fit: fit,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.family_restroom,
-              size: markSize * 0.82,
-              color: textColor,
-            ),
-          ),
-          SizedBox(width: spacing),
-          Flexible(
-            child: Text(
-              'Coparentes',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w800,
-                color: textColor,
-                letterSpacing: -0.8,
-                height: 1,
-              ),
-            ),
-          ),
-        ],
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: logo,
       ),
     );
   }

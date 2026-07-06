@@ -171,3 +171,73 @@ bool canRespondToExceptionMessage({
   }
   return exception.status == CustodyExceptionStatus.pending;
 }
+
+bool messageHasActionableResponse({
+  required Message message,
+  required String? threadCategory,
+  required String? viewerUserId,
+  required List<SwapRequest> swaps,
+  required CustodySchedule? schedule,
+  required List<CustodyException> exceptions,
+}) {
+  if (!isSwapScheduleThread(threadCategory)) {
+    return false;
+  }
+
+  final swap = findPendingSwapForMessage(
+    messageContent: message.content,
+    messageSenderId: message.senderId,
+    swaps: swaps,
+  );
+  if (swap != null &&
+      canRespondToSwapMessage(swap: swap, viewerUserId: viewerUserId)) {
+    return true;
+  }
+
+  final pendingSchedule = findPendingScheduleForMessage(
+    messageContent: message.content,
+    messageSenderId: message.senderId,
+    schedule: schedule,
+  );
+  if (pendingSchedule != null &&
+      canRespondToScheduleMessage(
+        schedule: pendingSchedule,
+        viewerUserId: viewerUserId,
+      )) {
+    return true;
+  }
+
+  final exception = findPendingExceptionForMessage(
+    messageContent: message.content,
+    messageSenderId: message.senderId,
+    exceptions: exceptions,
+  );
+  return exception != null &&
+      canRespondToExceptionMessage(
+        exception: exception,
+        viewerUserId: viewerUserId,
+      );
+}
+
+int? lastActionableMessageIndex({
+  required List<Message> messages,
+  required String? threadCategory,
+  required String? viewerUserId,
+  required List<SwapRequest> swaps,
+  required CustodySchedule? schedule,
+  required List<CustodyException> exceptions,
+}) {
+  for (var index = messages.length - 1; index >= 0; index--) {
+    if (messageHasActionableResponse(
+      message: messages[index],
+      threadCategory: threadCategory,
+      viewerUserId: viewerUserId,
+      swaps: swaps,
+      schedule: schedule,
+      exceptions: exceptions,
+    )) {
+      return index;
+    }
+  }
+  return null;
+}

@@ -143,13 +143,6 @@ class _CalendarScreenState extends State<CalendarScreen>
                 prominent: true,
                 onPressed: () => _addEvent(context),
               ),
-              ParentHeaderActionButton(
-                label: 'Zamiana',
-                icon: Icons.swap_horiz,
-                backgroundColor: AppTheme.purpleColor,
-                prominent: true,
-                onPressed: () => _requestSwap(context),
-              ),
             ],
       tabBar: TabBar(
         controller: _tabController,
@@ -229,6 +222,8 @@ class _CalendarScreenState extends State<CalendarScreen>
             schedule: calendar.custodySchedule!,
             showsPreview: calendar.showsPendingSchedulePreview,
             canRespond: calendar.canRespondToPendingSchedule(userId),
+            keyboardAcceptAutofocus:
+                calendar.canRespondToPendingSchedule(userId),
             onAccept: () => _respondToSchedule(context, approve: true),
             onReject: () => _respondToSchedule(context, approve: false),
           ),
@@ -542,33 +537,60 @@ class _CalendarScreenState extends State<CalendarScreen>
       );
     }
 
+    var assignedKeyboardAccept = false;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (schedule?.status == CustodyScheduleStatus.pendingApproval)
-          _ScheduleRequestCard(
-            schedule: schedule!,
-            canRespond: calendar.canRespondToPendingSchedule(userId),
-            onAccept: () => _respondToSchedule(context, approve: true),
-            onReject: () => _respondToSchedule(context, approve: false),
+        if (schedule?.status == CustodyScheduleStatus.pendingApproval) ...[
+          Builder(
+            builder: (context) {
+              final canRespond = calendar.canRespondToPendingSchedule(userId);
+              final autofocus = canRespond && !assignedKeyboardAccept;
+              if (autofocus) {
+                assignedKeyboardAccept = true;
+              }
+              return _ScheduleRequestCard(
+                schedule: schedule!,
+                canRespond: canRespond,
+                keyboardAcceptAutofocus: autofocus,
+                onAccept: () => _respondToSchedule(context, approve: true),
+                onReject: () => _respondToSchedule(context, approve: false),
+              );
+            },
           ),
+        ],
         ...pendingExceptions.map(
-          (exception) => _ExceptionRequestCard(
-            exception: exception,
-            canRespond: calendar.canRespondToException(exception, userId),
-            onAccept: () => _respondToException(context, exception, true),
-            onReject: () => _respondToException(context, exception, false),
-          ),
+          (exception) {
+            final canRespond =
+                calendar.canRespondToException(exception, userId);
+            final autofocus = canRespond && !assignedKeyboardAccept;
+            if (autofocus) {
+              assignedKeyboardAccept = true;
+            }
+            return _ExceptionRequestCard(
+              exception: exception,
+              canRespond: canRespond,
+              keyboardAcceptAutofocus: autofocus,
+              onAccept: () => _respondToException(context, exception, true),
+              onReject: () => _respondToException(context, exception, false),
+            );
+          },
         ),
         ...swaps.map(
           (swap) {
             final isMyRequest = swap.requesterId == userId;
             final canRespond =
                 swap.status == SwapStatus.pending && !isMyRequest;
+            final autofocus = canRespond && !assignedKeyboardAccept;
+            if (autofocus) {
+              assignedKeyboardAccept = true;
+            }
             return _SwapCard(
               swap: swap,
               isMyRequest: isMyRequest,
               canRespond: canRespond,
+              keyboardAcceptAutofocus: autofocus,
               onAccept: () async {
                 try {
                   await calendar.respondToSwap(
@@ -664,20 +686,6 @@ class _CalendarScreenState extends State<CalendarScreen>
           event.startDate.day,
         ),
         event: event,
-      ),
-    );
-  }
-
-  void _requestSwap(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _SwapRequestSheet(
-        selectedDay: _selectedDay,
-        onSubmitted: () => _refreshSwapMessaging(context),
       ),
     );
   }
@@ -977,6 +985,7 @@ class _SwapCard extends StatelessWidget {
   final SwapRequest swap;
   final bool isMyRequest;
   final bool canRespond;
+  final bool keyboardAcceptAutofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -984,6 +993,7 @@ class _SwapCard extends StatelessWidget {
     required this.swap,
     required this.isMyRequest,
     required this.canRespond,
+    this.keyboardAcceptAutofocus = false,
     required this.onAccept,
     required this.onReject,
   });
@@ -1071,38 +1081,42 @@ class _SwapCard extends StatelessWidget {
             ),
             if (canRespond) ...[
               const SizedBox(width: 12),
-              SizedBox(
-                width: 108,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ElevatedButton(
-                      onPressed: onAccept,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.successColor,
-                        minimumSize: const Size.fromHeight(40),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+              EnterAcceptScope(
+                onAccept: onAccept,
+                autofocus: keyboardAcceptAutofocus,
+                child: SizedBox(
+                  width: 108,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ElevatedButton(
+                        onPressed: onAccept,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.successColor,
+                          minimumSize: const Size.fromHeight(40),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: const Text(
+                          'Akceptuj',
+                          style: TextStyle(fontSize: 13),
+                        ),
                       ),
-                      child: const Text(
-                        'Akceptuj',
-                        style: TextStyle(fontSize: 13),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: onReject,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.errorColor,
+                          side: const BorderSide(color: AppTheme.errorColor),
+                          minimumSize: const Size.fromHeight(40),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: const Text(
+                          'Odrzuć',
+                          style: TextStyle(fontSize: 13),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: onReject,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.errorColor,
-                        side: const BorderSide(color: AppTheme.errorColor),
-                        minimumSize: const Size.fromHeight(40),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                      child: const Text(
-                        'Odrzuć',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -2011,6 +2025,7 @@ class _PendingScheduleBanner extends StatelessWidget {
   final CustodySchedule schedule;
   final bool showsPreview;
   final bool canRespond;
+  final bool keyboardAcceptAutofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -2018,6 +2033,7 @@ class _PendingScheduleBanner extends StatelessWidget {
     required this.schedule,
     required this.showsPreview,
     required this.canRespond,
+    this.keyboardAcceptAutofocus = false,
     required this.onAccept,
     required this.onReject,
   });
@@ -2064,25 +2080,29 @@ class _PendingScheduleBanner extends StatelessWidget {
               ],
               if (canRespond) ...[
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: onReject,
-                        child: const Text('Odrzuć'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: onAccept,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.successColor,
+                EnterAcceptScope(
+                  onAccept: onAccept,
+                  autofocus: keyboardAcceptAutofocus,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: onReject,
+                          child: const Text('Odrzuć'),
                         ),
-                        child: const Text('Akceptuj'),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: onAccept,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.successColor,
+                          ),
+                          child: const Text('Akceptuj'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -2096,12 +2116,14 @@ class _PendingScheduleBanner extends StatelessWidget {
 class _ScheduleRequestCard extends StatelessWidget {
   final CustodySchedule schedule;
   final bool canRespond;
+  final bool keyboardAcceptAutofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
   const _ScheduleRequestCard({
     required this.schedule,
     required this.canRespond,
+    this.keyboardAcceptAutofocus = false,
     required this.onAccept,
     required this.onReject,
   });
@@ -2150,29 +2172,33 @@ class _ScheduleRequestCard extends StatelessWidget {
               ),
             ),
             if (canRespond)
-              SizedBox(
-                width: 108,
-                child: Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: onAccept,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.successColor,
-                        minimumSize: const Size.fromHeight(40),
+              EnterAcceptScope(
+                onAccept: onAccept,
+                autofocus: keyboardAcceptAutofocus,
+                child: SizedBox(
+                  width: 108,
+                  child: Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: onAccept,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.successColor,
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
                       ),
-                      child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: onReject,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.errorColor,
-                        side: const BorderSide(color: AppTheme.errorColor),
-                        minimumSize: const Size.fromHeight(40),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: onReject,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.errorColor,
+                          side: const BorderSide(color: AppTheme.errorColor),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
                       ),
-                      child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -2185,12 +2211,14 @@ class _ScheduleRequestCard extends StatelessWidget {
 class _ExceptionRequestCard extends StatelessWidget {
   final CustodyException exception;
   final bool canRespond;
+  final bool keyboardAcceptAutofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
   const _ExceptionRequestCard({
     required this.exception,
     required this.canRespond,
+    this.keyboardAcceptAutofocus = false,
     required this.onAccept,
     required this.onReject,
   });
@@ -2238,29 +2266,33 @@ class _ExceptionRequestCard extends StatelessWidget {
               ),
             ),
             if (canRespond)
-              SizedBox(
-                width: 108,
-                child: Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: onAccept,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.successColor,
-                        minimumSize: const Size.fromHeight(40),
+              EnterAcceptScope(
+                onAccept: onAccept,
+                autofocus: keyboardAcceptAutofocus,
+                child: SizedBox(
+                  width: 108,
+                  child: Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: onAccept,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.successColor,
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
                       ),
-                      child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: onReject,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.errorColor,
-                        side: const BorderSide(color: AppTheme.errorColor),
-                        minimumSize: const Size.fromHeight(40),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: onReject,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.errorColor,
+                          side: const BorderSide(color: AppTheme.errorColor),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                        child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
                       ),
-                      child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],

@@ -14,6 +14,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import '../../utils/file_download.dart';
 import '../../utils/messaging_helpers.dart';
+import '../../utils/app_browser_back.dart';
 import '../../utils/swap_message_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/message_compose_bar.dart';
@@ -24,6 +25,7 @@ class MessagingScreen extends StatefulWidget {
   final int openThreadRequestId;
   final VoidCallback? onReturnTab;
   final bool familyOnly;
+  final bool isTabActive;
 
   const MessagingScreen({
     super.key,
@@ -31,6 +33,7 @@ class MessagingScreen extends StatefulWidget {
     this.openThreadRequestId = 0,
     this.onReturnTab,
     this.familyOnly = false,
+    this.isTabActive = true,
   });
 
   @override
@@ -77,6 +80,7 @@ class MessagingScreenState extends State<MessagingScreen> {
   }
 
   void _showThread(String threadId, {bool returnToPreviousTab = false}) {
+    markBrowserHistoryForward();
     setState(() {
       _activeThreadId = threadId;
       _returnToPreviousTab = returnToPreviousTab;
@@ -155,9 +159,9 @@ class MessagingScreenState extends State<MessagingScreen> {
     final content = _buildContent(context);
 
     return PopScope(
-      canPop: !_hasInternalBackState,
+      canPop: !widget.isTabActive || !_hasInternalBackState,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
+        if (!didPop && widget.isTabActive) {
           handleBack();
         }
       },
@@ -251,7 +255,12 @@ class MessagingScreenState extends State<MessagingScreen> {
                     (cat) => _CategoryChip(
                       category: cat,
                       selected: _selectedCategory == cat,
-                      onTap: () => setState(() => _selectedCategory = cat),
+                      onTap: () {
+                        if (cat != _selectedCategory && cat != 'Wszystkie') {
+                          markBrowserHistoryForward();
+                        }
+                        setState(() => _selectedCategory = cat);
+                      },
                     ),
                   )
                   .toList(),
@@ -1521,6 +1530,16 @@ class _ThreadMessagesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final calendar = context.watch<CalendarProvider>();
+    final lastActionableIndex = lastActionableMessageIndex(
+      messages: messages,
+      threadCategory: threadCategory,
+      viewerUserId: viewerUserId,
+      swaps: calendar.swapRequests,
+      schedule: calendar.custodySchedule,
+      exceptions: calendar.custodyExceptions,
+    );
+
     return ListView.builder(
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
@@ -1537,6 +1556,7 @@ class _ThreadMessagesList extends StatelessWidget {
           isMe: isMe,
           aiShieldEnabled: aiShieldEnabled,
           group: group,
+          keyboardAcceptAutofocus: index == lastActionableIndex,
         );
       },
     );
@@ -1550,6 +1570,7 @@ class _MessageBubble extends StatefulWidget {
   final bool isMe;
   final bool aiShieldEnabled;
   final MessageGroupInfo group;
+  final bool keyboardAcceptAutofocus;
 
   const _MessageBubble({
     required this.message,
@@ -1558,6 +1579,7 @@ class _MessageBubble extends StatefulWidget {
     required this.isMe,
     required this.aiShieldEnabled,
     required this.group,
+    this.keyboardAcceptAutofocus = false,
   });
 
   @override
@@ -1804,6 +1826,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
               swap: swap,
               alignEnd: widget.isMe,
               isLoading: _respondingToSwap,
+              autofocus: widget.keyboardAcceptAutofocus,
               onAccept: () => _respondToSwap(swap, SwapStatus.accepted),
               onReject: () => _respondToSwap(swap, SwapStatus.rejected),
             ),
@@ -1813,6 +1836,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
             _ScheduleMessageActions(
               alignEnd: widget.isMe,
               isLoading: _respondingToSchedule,
+              autofocus: widget.keyboardAcceptAutofocus,
               onAccept: () => _respondToSchedule(schedule, approve: true),
               onReject: () => _respondToSchedule(schedule, approve: false),
             ),
@@ -1822,6 +1846,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
             _ScheduleMessageActions(
               alignEnd: widget.isMe,
               isLoading: _respondingToException,
+              autofocus: widget.keyboardAcceptAutofocus,
               onAccept: () => _respondToException(exception, approve: true),
               onReject: () => _respondToException(exception, approve: false),
             ),
@@ -2236,59 +2261,66 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
 class _ScheduleMessageActions extends StatelessWidget {
   final bool alignEnd;
   final bool isLoading;
+  final bool autofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
   const _ScheduleMessageActions({
     required this.alignEnd,
     required this.isLoading,
+    this.autofocus = false,
     required this.onAccept,
     required this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          OutlinedButton(
-            onPressed: isLoading ? null : onReject,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-              side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.45)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    return EnterAcceptScope(
+      onAccept: onAccept,
+      enabled: !isLoading,
+      autofocus: autofocus,
+      child: Align(
+        alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton(
+              onPressed: isLoading ? null : onReject,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.errorColor,
+                side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.45)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              child: const Text('Odrzuć'),
             ),
-            child: const Text('Odrzuć'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: isLoading ? null : onAccept,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.successColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              elevation: 0,
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: isLoading ? null : onAccept,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.successColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                elevation: 0,
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Akceptuj'),
             ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Akceptuj'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2298,6 +2330,7 @@ class _SwapMessageActions extends StatelessWidget {
   final SwapRequest swap;
   final bool alignEnd;
   final bool isLoading;
+  final bool autofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -2305,53 +2338,59 @@ class _SwapMessageActions extends StatelessWidget {
     required this.swap,
     required this.alignEnd,
     required this.isLoading,
+    this.autofocus = false,
     required this.onAccept,
     required this.onReject,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          OutlinedButton(
-            onPressed: isLoading ? null : onReject,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-              side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.45)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    return EnterAcceptScope(
+      onAccept: onAccept,
+      enabled: !isLoading,
+      autofocus: autofocus,
+      child: Align(
+        alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton(
+              onPressed: isLoading ? null : onReject,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.errorColor,
+                side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.45)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              child: const Text('Odrzuć'),
             ),
-            child: const Text('Odrzuć'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: isLoading ? null : onAccept,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.successColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              elevation: 0,
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: isLoading ? null : onAccept,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.successColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                elevation: 0,
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Akceptuj'),
             ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Akceptuj'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
