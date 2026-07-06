@@ -587,37 +587,6 @@ class FinanceScreenState extends State<FinanceScreen>
 
     return Column(
       children: [
-        if (!isReadOnly)
-          Container(
-            width: double.infinity,
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _addExpense(
-                      context,
-                      ocrMode: true,
-                      autoLaunchSource: ReceiptImageSource.camera,
-                    ),
-                    icon: const Icon(Icons.camera_alt, size: 18),
-                    label: const Text('Zrób zdjęcie paragonu'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.outlined(
-                  tooltip: 'Wybierz z galerii',
-                  onPressed: () => _addExpense(
-                    context,
-                    ocrMode: true,
-                    autoLaunchSource: ReceiptImageSource.gallery,
-                  ),
-                  icon: const Icon(Icons.photo_library_outlined),
-                ),
-              ],
-            ),
-          ),
         Container(
           color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
