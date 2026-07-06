@@ -1,5 +1,4 @@
 import '../config/messaging_categories.dart';
-import '../config/messaging_categories.dart';
 import '../models/models.dart';
 import 'calendar_date_utils.dart';
 

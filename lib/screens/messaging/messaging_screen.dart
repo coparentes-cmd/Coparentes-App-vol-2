@@ -1908,6 +1908,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
               ),
             ),
           ),
+            ),
           ),
           if (widget.allowPrivateTags && messageTags.isNotEmpty) ...[
             const SizedBox(height: 4),

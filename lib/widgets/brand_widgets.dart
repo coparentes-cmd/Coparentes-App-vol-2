@@ -104,11 +104,12 @@ class BrandLogo extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height,
-      alignment: Alignment.centerLeft,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
+      child: Align(
         alignment: Alignment.centerLeft,
-        child: logo,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: logo,
+        ),
       ),
     );
   }
