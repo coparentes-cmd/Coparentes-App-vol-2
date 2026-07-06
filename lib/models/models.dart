@@ -164,6 +164,8 @@ class MessageThread {
     switch (category) {
       case 'Rodzina':
         return Icons.family_restroom;
+      case 'Wszystkie':
+        return Icons.forum_outlined;
       case 'Szkoła':
         return Icons.school;
       case 'Zdrowie':
@@ -182,6 +184,8 @@ class MessageThread {
     switch (category) {
       case 'Rodzina':
         return const Color(0xFF00897B);
+      case 'Wszystkie':
+        return const Color(0xFF546E7A);
       case 'Szkoła':
         return const Color(0xFF1565C0);
       case 'Zdrowie':

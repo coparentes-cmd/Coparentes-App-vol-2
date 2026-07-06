@@ -146,6 +146,10 @@ class MessagingRepository {
   }
 
   Future<MessageThread> getOrCreateCategoryThread(String category) async {
+    if (category == allTabLabel) {
+      return _getOrCreateParentsInboxThread();
+    }
+
     try {
       final payload = await _apiClient.postJson('/threads/channel', {
         'category': category,
@@ -165,6 +169,41 @@ class MessagingRepository {
       }
 
       return createThread(subject: category, category: category);
+    }
+  }
+
+  Future<MessageThread> _getOrCreateParentsInboxThread() async {
+    final cached = _getCachedThreads();
+    final existing = findCategoryChannel(cached, allTabLabel);
+    if (existing != null) {
+      return existing;
+    }
+
+    try {
+      final payload = await _apiClient.postJson('/threads/channel', {
+        'category': allTabLabel,
+      });
+      final thread = messageThreadFromJson(payload);
+      await _upsertThread(thread);
+      return thread;
+    } catch (error) {
+      if (!_apiClient.isNetworkError(error)) {
+        try {
+          return await createThread(
+            subject: allTabLabel,
+            category: allTabLabel,
+          );
+        } catch (_) {
+          rethrow;
+        }
+      }
+
+      final offlineExisting = findCategoryChannel(_getCachedThreads(), allTabLabel);
+      if (offlineExisting != null) {
+        return offlineExisting;
+      }
+
+      return createThread(subject: allTabLabel, category: allTabLabel);
     }
   }
 
