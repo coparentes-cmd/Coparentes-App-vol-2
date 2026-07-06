@@ -16,11 +16,13 @@ import '../../widgets/custody_schedule_wizard.dart';
 class CalendarScreen extends StatefulWidget {
   final DateTime? focusDay;
   final int focusRequestId;
+  final VoidCallback? onScheduleRejected;
 
   const CalendarScreen({
     super.key,
     this.focusDay,
     this.focusRequestId = 0,
+    this.onScheduleRejected,
   });
 
   @override
@@ -355,6 +357,10 @@ class _CalendarScreenState extends State<CalendarScreen>
       }
       if (!context.mounted) return;
       await _refreshSwapMessaging(context);
+      if (!approve) {
+        widget.onScheduleRejected?.call();
+      }
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

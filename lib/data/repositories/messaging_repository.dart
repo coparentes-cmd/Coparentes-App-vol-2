@@ -4,6 +4,16 @@ import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../serializers/api_serializers.dart';
 
+class MessagingLoadResult {
+  final List<MessageThread> threads;
+  final Map<String, Set<String>> tagsByMessageId;
+
+  const MessagingLoadResult({
+    required this.threads,
+    required this.tagsByMessageId,
+  });
+}
+
 class MessagingRepository {
   final AppApiClient _apiClient;
   final OfflineStore _offlineStore;
@@ -14,7 +24,7 @@ class MessagingRepository {
   })  : _apiClient = apiClient,
         _offlineStore = offlineStore;
 
-  Future<List<MessageThread>> getThreads() async {
+  Future<MessagingLoadResult> getThreads() async {
     if (_offlineStore.getPendingActions().isNotEmpty) {
       await syncPendingActions();
     }
@@ -28,14 +38,64 @@ class MessagingRepository {
             ),
           )
           .toList();
+      final tags = messageTagsToMap(
+        messageTagsFromJsonList(
+          payload['messageTags'] as List<dynamic>? ?? const [],
+        ),
+      );
       await _saveThreads(threads);
-      return threads;
+      await _saveMessageTags(tags);
+      return MessagingLoadResult(
+        threads: threads,
+        tagsByMessageId: tags,
+      );
     } catch (error) {
       final cached = _getCachedThreads();
       if (cached.isNotEmpty) {
-        return cached;
+        return MessagingLoadResult(
+          threads: cached,
+          tagsByMessageId: _getCachedMessageTags(),
+        );
       }
       rethrow;
+    }
+  }
+
+  Future<Map<String, Set<String>>> setMessageTags({
+    required String messageId,
+    required List<String> tags,
+  }) async {
+    final normalized = tags
+        .map((tag) => tag.trim().toLowerCase())
+        .where((tag) => tag.isNotEmpty)
+        .toSet()
+        .toList();
+
+    try {
+      final payload = await _apiClient.putJson(
+        '/threads/messages/$messageId/tags',
+        {'tags': normalized},
+      );
+      final updated = messageTagsToMap(
+        messageTagsFromJsonList(
+          payload['messageTags'] as List<dynamic>? ?? const [],
+        ),
+      );
+      await _saveMessageTags(updated);
+      return updated;
+    } catch (error) {
+      if (!_apiClient.isNetworkError(error)) {
+        rethrow;
+      }
+
+      final cached = Map<String, Set<String>>.from(_getCachedMessageTags());
+      if (normalized.isEmpty) {
+        cached.remove(messageId);
+      } else {
+        cached[messageId] = normalized.toSet();
+      }
+      await _saveMessageTags(cached);
+      return cached;
     }
   }
 
@@ -314,6 +374,34 @@ class MessagingRepository {
 
   Future<void> _saveThreads(List<MessageThread> threads) {
     return _offlineStore.saveThreads(threads.map(messageThreadToJson).toList());
+  }
+
+  Future<void> _saveMessageTags(Map<String, Set<String>> tags) {
+    final payload = tags.entries
+        .expand(
+          (entry) => entry.value.map(
+            (tag) => {
+              'messageId': entry.key,
+              'tag': tag,
+            },
+          ),
+        )
+        .toList();
+    return _offlineStore.saveMessageTags(payload);
+  }
+
+  Map<String, Set<String>> _getCachedMessageTags() {
+    final raw = _offlineStore.getMessageTags();
+    final result = <String, Set<String>>{};
+    for (final item in raw) {
+      final messageId = item['messageId'] as String?;
+      final tag = item['tag'] as String?;
+      if (messageId == null || tag == null) {
+        continue;
+      }
+      result.putIfAbsent(messageId, () => <String>{}).add(tag.toLowerCase());
+    }
+    return result;
   }
 
   Future<void> _upsertThread(MessageThread thread) async {

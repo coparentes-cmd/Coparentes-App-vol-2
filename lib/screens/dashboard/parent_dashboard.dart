@@ -6,6 +6,7 @@ import '../../providers/app_provider.dart';
 import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
+import '../../config/messaging_categories.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../utils/layout_utils.dart';
 import '../../utils/app_browser_back.dart';
@@ -33,6 +34,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
   int _calendarFocusRequestId = 0;
   String? _pendingOpenThreadId;
   int _openThreadRequestId = 0;
+  String? _pendingOpenCategory;
+  int _openCategoryRequestId = 0;
   String? _pendingOpenExpenseId;
   int _openExpenseRequestId = 0;
   final GlobalKey<MessagingScreenState> _messagingKey = GlobalKey();
@@ -69,6 +72,19 @@ class _ParentDashboardState extends State<ParentDashboard> {
     setState(() {
       _pendingOpenThreadId = threadId;
       _openThreadRequestId += 1;
+      _pendingOpenCategory = null;
+      _selectedIndex = 1;
+    });
+    context.read<OfflineSyncProvider>().pollMessagingNow();
+  }
+
+  void _openChatCategory(String category) {
+    _previousTabIndex = _selectedIndex;
+    markBrowserHistoryForward();
+    setState(() {
+      _pendingOpenCategory = category;
+      _openCategoryRequestId += 1;
+      _pendingOpenThreadId = null;
       _selectedIndex = 1;
     });
     context.read<OfflineSyncProvider>().pollMessagingNow();
@@ -95,6 +111,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
     setState(() {
       _selectedIndex = _previousTabIndex;
       _pendingOpenThreadId = null;
+      _pendingOpenCategory = null;
     });
   }
 
@@ -171,11 +188,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
             isTabActive: _selectedIndex == 1,
             openThreadId: _pendingOpenThreadId,
             openThreadRequestId: _openThreadRequestId,
+            openCategory: _pendingOpenCategory,
+            openCategoryRequestId: _openCategoryRequestId,
             onReturnTab: _returnFromChatThread,
           ),
           CalendarScreen(
             focusDay: _calendarFocusDay,
             focusRequestId: _calendarFocusRequestId,
+            onScheduleRejected: () =>
+                _openChatCategory(scheduleCategoryChannel),
           ),
           FinanceScreen(
             key: _financeScreenKey,

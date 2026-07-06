@@ -1,3 +1,5 @@
+import '../config/messaging_categories.dart';
+import '../config/messaging_categories.dart';
 import '../models/models.dart';
 import 'calendar_date_utils.dart';
 
@@ -5,7 +7,7 @@ const swapRequestMessageHeader = 'Wniosek o zamianę dnia opieki';
 const scheduleProposalMessageHeader = 'Propozycja grafiku opieki';
 const exceptionRequestMessageHeader = 'Wniosek o zmianę opiekuna';
 
-bool isSwapScheduleThread(String? category) => category == 'Zmiana grafiku';
+bool isSwapScheduleThread(String? category) => category == scheduleCategoryChannel;
 
 bool isSwapRequestMessage(String content) {
   return content.trim().startsWith(swapRequestMessageHeader);

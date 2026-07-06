@@ -15,6 +15,7 @@ import '../../widgets/parent_tab_scaffold.dart';
 import '../../utils/file_download.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../utils/app_browser_back.dart';
+import '../../utils/message_tag_search.dart';
 import '../../utils/swap_message_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/message_compose_bar.dart';
@@ -23,6 +24,8 @@ import '../../widgets/message_status_indicator.dart';
 class MessagingScreen extends StatefulWidget {
   final String? openThreadId;
   final int openThreadRequestId;
+  final String? openCategory;
+  final int openCategoryRequestId;
   final VoidCallback? onReturnTab;
   final bool familyOnly;
   final bool isTabActive;
@@ -31,6 +34,8 @@ class MessagingScreen extends StatefulWidget {
     super.key,
     this.openThreadId,
     this.openThreadRequestId = 0,
+    this.openCategory,
+    this.openCategoryRequestId = 0,
     this.onReturnTab,
     this.familyOnly = false,
     this.isTabActive = true,
@@ -41,14 +46,16 @@ class MessagingScreen extends StatefulWidget {
 }
 
 class MessagingScreenState extends State<MessagingScreen> {
-  String _selectedCategory = 'Wszystkie';
-  String _searchQuery = '';
+  String _selectedCategory = allTabLabel;
+  final TextEditingController _searchController = TextEditingController();
   String? _activeThreadId;
   bool _returnToPreviousTab = false;
+  bool _activeThreadAllowsPrivateTags = false;
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -58,7 +65,15 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     if (widget.openThreadId != null) {
       _scheduleOpenThread(widget.openThreadId!, returnToPreviousTab: true);
+    } else if (widget.openCategory != null) {
+      _scheduleOpenCategory(widget.openCategory!, returnToPreviousTab: true);
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -67,7 +82,28 @@ class MessagingScreenState extends State<MessagingScreen> {
     if (widget.openThreadRequestId != oldWidget.openThreadRequestId &&
         widget.openThreadId != null) {
       _scheduleOpenThread(widget.openThreadId!, returnToPreviousTab: true);
+    } else if (widget.openCategoryRequestId !=
+            oldWidget.openCategoryRequestId &&
+        widget.openCategory != null) {
+      _scheduleOpenCategory(widget.openCategory!, returnToPreviousTab: true);
     }
+  }
+
+  void _scheduleOpenCategory(
+    String category, {
+    bool returnToPreviousTab = false,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      markBrowserHistoryForward();
+      setState(() {
+        _selectedCategory = category;
+        _activeThreadId = null;
+        _returnToPreviousTab = returnToPreviousTab;
+      });
+    });
   }
 
   void _scheduleOpenThread(
@@ -79,11 +115,16 @@ class MessagingScreenState extends State<MessagingScreen> {
     });
   }
 
-  void _showThread(String threadId, {bool returnToPreviousTab = false}) {
+  void _showThread(
+    String threadId, {
+    bool returnToPreviousTab = false,
+    bool allowPrivateTags = false,
+  }) {
     markBrowserHistoryForward();
     setState(() {
       _activeThreadId = threadId;
       _returnToPreviousTab = returnToPreviousTab;
+      _activeThreadAllowsPrivateTags = allowPrivateTags;
     });
   }
 
@@ -92,6 +133,7 @@ class MessagingScreenState extends State<MessagingScreen> {
     setState(() {
       _activeThreadId = null;
       _returnToPreviousTab = false;
+      _activeThreadAllowsPrivateTags = false;
     });
     if (shouldReturn) {
       widget.onReturnTab?.call();
@@ -125,7 +167,11 @@ class MessagingScreenState extends State<MessagingScreen> {
       return;
     }
 
-    _showThread(thread.id, returnToPreviousTab: returnToPreviousTab);
+    _showThread(
+      thread.id,
+      returnToPreviousTab: returnToPreviousTab,
+      allowPrivateTags: isAllTabThread(thread),
+    );
   }
 
   void _loadThreads(BuildContext context) {
@@ -142,15 +188,22 @@ class MessagingScreenState extends State<MessagingScreen> {
       _closeThread();
       return true;
     }
-    if (_selectedCategory != 'Wszystkie') {
-      setState(() => _selectedCategory = 'Wszystkie');
+    if (_selectedCategory != allTabLabel) {
+      final shouldReturn = _returnToPreviousTab;
+      setState(() {
+        _selectedCategory = allTabLabel;
+        _returnToPreviousTab = false;
+      });
+      if (shouldReturn) {
+        widget.onReturnTab?.call();
+      }
       return true;
     }
     return false;
   }
 
   bool get _hasInternalBackState =>
-      _activeThreadId != null || _selectedCategory != 'Wszystkie';
+      _activeThreadId != null || _selectedCategory != allTabLabel;
 
   bool get hasInternalNavigation => _hasInternalBackState;
 
@@ -173,6 +226,7 @@ class MessagingScreenState extends State<MessagingScreen> {
     if (_activeThreadId != null) {
       return ThreadScreen(
         threadId: _activeThreadId!,
+        allowPrivateTags: _activeThreadAllowsPrivateTags,
         onBack: _closeThread,
       );
     }
@@ -200,23 +254,17 @@ class MessagingScreenState extends State<MessagingScreen> {
     }
 
     final isReadOnly = user?.role == UserRole.observer;
-    final customThreads = messaging.threads.where((thread) {
-      if (isCategoryChannel(thread) || isFamilyChannel(thread)) {
-        return false;
-      }
-      if (thread.category == 'Inne') {
-        return false;
-      }
-      final query = _searchQuery.trim().toLowerCase();
-      if (query.isEmpty) {
-        return true;
-      }
-      return thread.subject.toLowerCase().contains(query) ||
-          thread.messages.any(
-            (message) => message.content.toLowerCase().contains(query),
-          );
-    }).toList();
-    final showInlineChat = _selectedCategory != 'Wszystkie';
+    final searchQuery = parseMessageSearchQuery(_searchController.text);
+    final allTabThreads = messaging.allTabThreads
+        .where(
+          (thread) => threadMatchesAllTabSearch(
+            thread: thread,
+            query: searchQuery,
+            tagsByMessageId: messaging.tagsByMessageId,
+          ),
+        )
+        .toList();
+    final showInlineChat = _selectedCategory != allTabLabel;
 
     return ParentTabScaffold(
       title: showInlineChat ? _selectedCategory : 'Wiadomości',
@@ -226,11 +274,6 @@ class MessagingScreenState extends State<MessagingScreen> {
           tooltip: 'Odśwież wiadomości',
           onPressed: () => _loadThreads(context),
         ),
-        if (!showInlineChat)
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => _showSearch(context),
-          ),
         if (!isReadOnly)
           ParentHeaderActionButton(
             label: 'Nowy wątek',
@@ -247,16 +290,13 @@ class MessagingScreenState extends State<MessagingScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
-                'Wszystkie',
-                ...messagingCategoryChannels,
-              ]
+              children: messagingNavChips
                   .map(
                     (cat) => _CategoryChip(
                       category: cat,
                       selected: _selectedCategory == cat,
                       onTap: () {
-                        if (cat != _selectedCategory && cat != 'Wszystkie') {
+                        if (cat != _selectedCategory && cat != allTabLabel) {
                           markBrowserHistoryForward();
                         }
                         setState(() => _selectedCategory = cat);
@@ -266,6 +306,40 @@ class MessagingScreenState extends State<MessagingScreen> {
                   .toList(),
             ),
           ),
+          if (!showInlineChat) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Szukaj lub tag:paragon',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        ),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.dividerColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.dividerColor),
+                  ),
+                ),
+              ),
+            ),
+          ],
           if (showInlineChat)
             Expanded(
               child: _InlineCategoryChatPanel(
@@ -279,82 +353,48 @@ class MessagingScreenState extends State<MessagingScreen> {
                 onRefresh: () async => _loadThreads(context),
                 child: messaging.isLoading && messaging.threads.isEmpty
                     ? const Center(child: CircularProgressIndicator())
-                    : ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 24),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                            child: Text(
-                              'Rozmowy tematyczne',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textSecondary.withValues(
-                                  alpha: 0.9,
-                                ),
+                    : allTabThreads.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.25,
                               ),
-                            ),
-                          ),
-                          ...messagingCategoryChannels.map(
-                            (category) => _CategoryChannelTile(
-                              category: category,
-                              thread: messaging.getCategoryChannel(category),
-                              viewerUserId: user?.id,
-                              onTap: () => setState(
-                                () => _selectedCategory = category,
+                              EmptyState(
+                                icon: searchQuery.isEmpty
+                                    ? Icons.inbox_outlined
+                                    : Icons.search_off,
+                                title: searchQuery.isEmpty
+                                    ? 'Brak wiadomości'
+                                    : 'Brak wyników',
+                                subtitle: searchQuery.isEmpty
+                                    ? 'Wszystkie rozmowy rodziców pojawią się tutaj.'
+                                    : 'Spróbuj innej frazy lub tagu, np. tag:szkoła',
                               ),
-                            ),
-                          ),
-                          if (customThreads.isNotEmpty) ...[
-                            ...customThreads.map(
-                              (thread) => _ThreadTile(
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount: allTabThreads.length,
+                            itemBuilder: (context, index) {
+                              final thread = allTabThreads[index];
+                              return _ThreadTile(
                                 thread: thread,
                                 viewerUserId: user?.id,
-                                onTap: () => _showThread(thread.id),
-                              ),
-                            ),
-                          ] else if (_searchQuery.trim().isNotEmpty) ...[
-                            const SizedBox(height: 24),
-                            const EmptyState(
-                              icon: Icons.search_off,
-                              title: 'Brak wyników',
-                              subtitle: 'Spróbuj innej frazy wyszukiwania',
-                            ),
-                          ],
-                        ],
-                      ),
+                                userTags: collectThreadUserTags(
+                                  thread,
+                                  messaging.tagsByMessageId,
+                                ),
+                                onTap: () => _showThread(
+                                  thread.id,
+                                  allowPrivateTags: true,
+                                ),
+                              );
+                            },
+                          ),
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  void _showSearch(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Search threads'),
-        content: TextField(
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Search by subject or message content',
-          ),
-          onChanged: (value) => _searchQuery = value,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {});
-              Navigator.pop(context);
-            },
-            child: const Text('Apply'),
-          ),
         ],
       ),
     );
@@ -881,11 +921,13 @@ class _CategoryChannelTile extends StatelessWidget {
 class _ThreadTile extends StatelessWidget {
   final MessageThread thread;
   final String? viewerUserId;
+  final Set<String> userTags;
   final VoidCallback onTap;
 
   const _ThreadTile({
     required this.thread,
-    this.viewerUserId,
+    required this.viewerUserId,
+    this.userTags = const {},
     required this.onTap,
   });
 
@@ -934,7 +976,7 @@ class _ThreadTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              thread.subject,
+                              threadListTitle(thread),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: _hasUnread
@@ -991,6 +1033,36 @@ class _ThreadTile extends StatelessWidget {
                             ),
                         ],
                       ),
+                      if (userTags.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: userTags
+                              .map(
+                                (tag) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.purpleColor
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.purpleColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1038,11 +1110,13 @@ class _ThreadTile extends StatelessWidget {
 class ThreadScreen extends StatefulWidget {
   final String threadId;
   final VoidCallback? onBack;
+  final bool allowPrivateTags;
 
   const ThreadScreen({
     super.key,
     required this.threadId,
     this.onBack,
+    this.allowPrivateTags = false,
   });
 
   @override
@@ -1275,6 +1349,7 @@ class _ThreadScreenState extends State<ThreadScreen> {
                   viewerUserId: user?.id,
                   aiShieldEnabled: aiShield,
                   scrollController: _scrollController,
+                  allowPrivateTags: widget.allowPrivateTags,
                 ),
               ),
             ),
@@ -1517,6 +1592,7 @@ class _ThreadMessagesList extends StatelessWidget {
   final String? threadCategory;
   final String? viewerUserId;
   final bool aiShieldEnabled;
+  final bool allowPrivateTags;
   final ScrollController? scrollController;
 
   const _ThreadMessagesList({
@@ -1525,6 +1601,7 @@ class _ThreadMessagesList extends StatelessWidget {
     this.threadCategory,
     required this.viewerUserId,
     required this.aiShieldEnabled,
+    this.allowPrivateTags = false,
     this.scrollController,
   });
 
@@ -1556,6 +1633,7 @@ class _ThreadMessagesList extends StatelessWidget {
           isMe: isMe,
           aiShieldEnabled: aiShieldEnabled,
           group: group,
+          allowPrivateTags: allowPrivateTags,
           keyboardAcceptAutofocus: index == lastActionableIndex,
         );
       },
@@ -1569,6 +1647,7 @@ class _MessageBubble extends StatefulWidget {
   final String? threadCategory;
   final bool isMe;
   final bool aiShieldEnabled;
+  final bool allowPrivateTags;
   final MessageGroupInfo group;
   final bool keyboardAcceptAutofocus;
 
@@ -1578,6 +1657,7 @@ class _MessageBubble extends StatefulWidget {
     this.threadCategory,
     required this.isMe,
     required this.aiShieldEnabled,
+    this.allowPrivateTags = false,
     required this.group,
     this.keyboardAcceptAutofocus = false,
   });
@@ -1642,6 +1722,11 @@ class _MessageBubbleState extends State<_MessageBubble> {
           exception: exception,
           viewerUserId: viewerUserId,
         );
+    final messageTags = widget.allowPrivateTags
+        ? context.watch<MessagingProvider>().tagsForMessage(widget.message.id)
+        : const <String>{};
+    final isReadOnly =
+        context.watch<AppProvider>().currentUser?.role == UserRole.observer;
 
     return Padding(
       padding: EdgeInsets.only(top: widget.group.topSpacing),
@@ -1664,8 +1749,12 @@ class _MessageBubbleState extends State<_MessageBubble> {
             ),
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-            child: IntrinsicWidth(
-              child: Container(
+            child: GestureDetector(
+              onLongPress: widget.allowPrivateTags && !isReadOnly
+                  ? () => _editMessageTags(context, messageTags)
+                  : null,
+              child: IntrinsicWidth(
+                child: Container(
               padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
               decoration: BoxDecoration(
                 color: bubbleStyle.backgroundColor,
@@ -1820,6 +1909,40 @@ class _MessageBubbleState extends State<_MessageBubble> {
             ),
           ),
           ),
+          if (widget.allowPrivateTags && messageTags.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: EdgeInsets.only(left: widget.isMe ? 0 : 6, right: 6),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment:
+                    widget.isMe ? WrapAlignment.end : WrapAlignment.start,
+                children: messageTags
+                    .map(
+                      (tag) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.purpleColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.purpleColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ],
           if (showSwapActions) ...[
             const SizedBox(height: 6),
             _SwapMessageActions(
@@ -1958,6 +2081,45 @@ class _MessageBubbleState extends State<_MessageBubble> {
       if (mounted) {
         setState(() => _respondingToException = false);
       }
+    }
+  }
+
+  Future<void> _editMessageTags(
+    BuildContext context,
+    Set<String> currentTags,
+  ) async {
+    final updated = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _MessageTagEditorSheet(
+        initialTags: currentTags.toList(),
+        suggestions: context.read<MessagingProvider>().allUserTags.toList()
+          ..sort(),
+      ),
+    );
+
+    if (!mounted || updated == null) {
+      return;
+    }
+
+    try {
+      await context.read<MessagingProvider>().setMessageTags(
+            messageId: widget.message.id,
+            tags: updated,
+          );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się zapisać tagów.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
@@ -2119,7 +2281,6 @@ class _NewThreadSheet extends StatefulWidget {
 
 class _NewThreadSheetState extends State<_NewThreadSheet> {
   final _subjectController = TextEditingController();
-  String _selectedCategory = 'Szkoła';
   String? _selectedChildId;
 
   @override
@@ -2145,7 +2306,7 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Własny temat',
+            'Nowy wątek',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -2154,8 +2315,8 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Dla konkretnych spraw (np. „Angielski – zmiana terminu”). '
-            'Ogólne rozmowy o szkole czy zdrowiu prowadź w kanałach tematycznych.',
+            'Wątek pojawi się w zakładce Wszystkie. Możesz oznaczać wiadomości '
+            'prywatnymi tagami tylko dla siebie.',
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.textSecondary,
@@ -2168,30 +2329,6 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
               labelText: 'Temat wątku',
               hintText: 'np. Angielski – zmiana terminu',
             ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Kategoria',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: messagingParentCategoryChannels
-                .map(
-                  (cat) => ChoiceChip(
-                    label: Text(cat),
-                    selected: _selectedCategory == cat,
-                    onSelected: (_) => setState(() => _selectedCategory = cat),
-                    selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
-                    checkmarkColor: AppTheme.primaryTeal,
-                  ),
-                )
-                .toList(),
           ),
           if (children.length > 1) ...[
             const SizedBox(height: 16),
@@ -2224,13 +2361,14 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
 
   void _createThread() {
     final subject = _subjectController.text.trim();
-    if (subject.isEmpty) return;
-    if (messagingParentCategoryChannels.contains(subject) ||
-        subject == familyCategoryChannel) {
+    if (subject.isEmpty) {
+      return;
+    }
+    if (messagingNavChips.contains(subject)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Ten temat jest już kanałem tematycznym — użyj go na liście powyżej.',
+            'Ten temat jest zarezerwowany dla osobnej zakładki czatu.',
           ),
         ),
       );
@@ -2246,7 +2384,7 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
     context.read<MessagingProvider>()
         .createThread(
           subject: subject,
-          category: _selectedCategory,
+          category: 'Ogólne',
           childId: childId,
         )
         .then((thread) {
@@ -2255,6 +2393,133 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
       }
       Navigator.pop(context, thread);
     });
+  }
+}
+
+class _MessageTagEditorSheet extends StatefulWidget {
+  final List<String> initialTags;
+  final List<String> suggestions;
+
+  const _MessageTagEditorSheet({
+    required this.initialTags,
+    required this.suggestions,
+  });
+
+  @override
+  State<_MessageTagEditorSheet> createState() => _MessageTagEditorSheetState();
+}
+
+class _MessageTagEditorSheetState extends State<_MessageTagEditorSheet> {
+  late final TextEditingController _controller;
+  late List<String> _tags;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _tags = [...widget.initialTags];
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _addTag(String raw) {
+    final tag = raw.trim().toLowerCase();
+    if (tag.isEmpty || _tags.contains(tag)) {
+      return;
+    }
+    setState(() => _tags = [..._tags, tag]);
+    _controller.clear();
+  }
+
+  void _removeTag(String tag) {
+    setState(() => _tags = _tags.where((item) => item != tag).toList());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestions = widget.suggestions
+        .where((tag) => !_tags.contains(tag))
+        .take(8)
+        .toList();
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Prywatne tagi',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Widoczne tylko dla Ciebie. Użyj ich w wyszukiwarce, np. tag:paragon.',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _tags
+                .map(
+                  (tag) => InputChip(
+                    label: Text(tag),
+                    onDeleted: () => _removeTag(tag),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: 'Nowy tag',
+              hintText: 'np. paragon',
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () => _addTag(_controller.text),
+              ),
+            ),
+            onSubmitted: _addTag,
+          ),
+          if (suggestions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: suggestions
+                  .map(
+                    (tag) => ActionChip(
+                      label: Text(tag),
+                      onPressed: () => _addTag(tag),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, _tags),
+            child: const Text('Zapisz tagi'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

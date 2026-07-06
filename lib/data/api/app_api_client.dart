@@ -80,6 +80,20 @@ class AppApiClient {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> putJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _httpClient
+        .put(
+          Uri.parse('$baseUrl$path'),
+          headers: _headers(),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
+    return _decode(response);
+  }
+
   Future<void> postEmpty(String path) async {
     final response = await _httpClient
         .post(

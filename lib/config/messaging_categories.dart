@@ -1,15 +1,28 @@
 import '../models/models.dart';
 
 const String familyCategoryChannel = 'Rodzina';
+const String scheduleCategoryChannel = 'Zmiana grafiku';
+const String allTabLabel = 'Wszystkie';
 
-const List<String> messagingParentCategoryChannels = [
+const List<String> legacyThematicChannels = [
   'Szkoła',
   'Zdrowie',
   'Finanse',
-  'Zmiana grafiku',
 ];
 
-/// All category chips shown to parents (family channel first).
+const List<String> messagingParentCategoryChannels = [
+  ...legacyThematicChannels,
+  scheduleCategoryChannel,
+];
+
+/// Chips shown in parent messaging UI.
+const List<String> messagingNavChips = [
+  allTabLabel,
+  familyCategoryChannel,
+  scheduleCategoryChannel,
+];
+
+/// Legacy list kept for channel detection helpers.
 const List<String> messagingCategoryChannels = [
   familyCategoryChannel,
   ...messagingParentCategoryChannels,
@@ -21,14 +34,25 @@ bool isFamilyChannel(MessageThread thread) {
           thread.subject == familyCategoryChannel);
 }
 
+bool isScheduleChannel(MessageThread thread) {
+  final category =
+      thread.category == 'Finansowe' ? 'Finanse' : thread.category;
+  final subject = thread.subject == 'Finansowe' ? 'Finanse' : thread.subject;
+  return category == scheduleCategoryChannel ||
+      subject == scheduleCategoryChannel;
+}
+
+bool isAllTabThread(MessageThread thread) {
+  return !isFamilyChannel(thread) && !isScheduleChannel(thread);
+}
+
 bool isCategoryChannel(MessageThread thread) {
-  if (isFamilyChannel(thread)) {
+  if (isFamilyChannel(thread) || isScheduleChannel(thread)) {
     return false;
   }
   final category = thread.category == 'Finansowe' ? 'Finanse' : thread.category;
   final subject = thread.subject == 'Finansowe' ? 'Finanse' : thread.subject;
-  return messagingParentCategoryChannels.contains(category) &&
-      subject == category;
+  return legacyThematicChannels.contains(category) && subject == category;
 }
 
 MessageThread? findFamilyChannel(List<MessageThread> threads) {
@@ -54,7 +78,6 @@ MessageThread? findCategoryChannel(
     }
   }
 
-  // Legacy channel name before rename Finansowe → Finanse.
   if (category == 'Finanse') {
     for (final thread in threads) {
       if (thread.category == 'Finansowe' && thread.subject == 'Finansowe') {
@@ -104,9 +127,16 @@ String categoryChannelSubtitle(String category) {
     case 'Finanse':
     case 'Finansowe':
       return 'Wydatki, rozliczenia';
-    case 'Zmiana grafiku':
+    case scheduleCategoryChannel:
       return 'Opieka, wymiany terminów';
     default:
       return 'Sprawy rodzinne';
   }
+}
+
+String threadListTitle(MessageThread thread) {
+  if (isCategoryChannel(thread)) {
+    return thread.category == 'Finansowe' ? 'Finanse' : thread.category;
+  }
+  return thread.subject;
 }

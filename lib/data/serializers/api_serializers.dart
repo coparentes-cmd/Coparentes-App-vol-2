@@ -249,6 +249,34 @@ Map<String, dynamic> messageToJson(Message message) {
   };
 }
 
+MessageUserTag messageUserTagFromJson(Map<String, dynamic> json) {
+  return MessageUserTag(
+    messageId: json['messageId'] as String,
+    threadId: json['threadId'] as String,
+    tag: (json['tag'] as String).toLowerCase(),
+  );
+}
+
+Map<String, Set<String>> messageTagsToMap(
+  List<MessageUserTag> tags,
+) {
+  final result = <String, Set<String>>{};
+  for (final item in tags) {
+    result.putIfAbsent(item.messageId, () => <String>{}).add(item.tag);
+  }
+  return result;
+}
+
+List<MessageUserTag> messageTagsFromJsonList(List<dynamic> raw) {
+  return raw
+      .map(
+        (item) => messageUserTagFromJson(
+          Map<String, dynamic>.from(item as Map),
+        ),
+      )
+      .toList();
+}
+
 ExportJob exportJobFromJson(Map<String, dynamic> json) {
   return ExportJob(
     id: json['id'] as String,

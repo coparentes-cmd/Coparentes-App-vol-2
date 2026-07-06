@@ -125,6 +125,18 @@ class ChildProfile {
 
 // ─── Messaging ───────────────────────────────────────────────────────────────
 
+class MessageUserTag {
+  final String messageId;
+  final String threadId;
+  final String tag;
+
+  const MessageUserTag({
+    required this.messageId,
+    required this.threadId,
+    required this.tag,
+  });
+}
+
 class MessageThread {
   final String id;
   final String subject;

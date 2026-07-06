@@ -990,6 +990,7 @@ class MessagingProvider extends ChangeNotifier {
       : _repository = repository;
 
   final List<MessageThread> _threads = [];
+  final Map<String, Set<String>> _tagsByMessageId = {};
   bool _isLoading = false;
   String? _error;
   bool _snapshotSeeded = false;
@@ -997,12 +998,40 @@ class MessagingProvider extends ChangeNotifier {
   String? _pendingNewMessageAlert;
 
   List<MessageThread> get threads => _threads;
+  Map<String, Set<String>> get tagsByMessageId => _tagsByMessageId;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get pendingNewMessageAlert => _pendingNewMessageAlert;
 
   void clearPendingNotification() {
     _pendingNewMessageAlert = null;
+  }
+
+  Set<String> tagsForMessage(String messageId) =>
+      _tagsByMessageId[messageId] ?? const {};
+
+  Set<String> get allUserTags => {
+        for (final tags in _tagsByMessageId.values) ...tags,
+      };
+
+  List<MessageThread> get allTabThreads {
+    final items = _threads.where(isAllTabThread).toList()
+      ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+    return items;
+  }
+
+  Future<void> setMessageTags({
+    required String messageId,
+    required List<String> tags,
+  }) async {
+    final updated = await _repository.setMessageTags(
+      messageId: messageId,
+      tags: tags,
+    );
+    _tagsByMessageId
+      ..clear()
+      ..addAll(updated);
+    notifyListeners();
   }
 
   Future<void> loadThreads({
@@ -1017,28 +1046,31 @@ class MessagingProvider extends ChangeNotifier {
     }
 
     try {
-      final threads = await _repository.getThreads();
+      final result = await _repository.getThreads();
 
       if (!_snapshotSeeded) {
-        syncKnownMessageIds(threads, _knownMessageIds);
+        syncKnownMessageIds(result.threads, _knownMessageIds);
         _snapshotSeeded = true;
       } else if (notifyEnabled && viewerUserId != null) {
         final incoming = findNewIncomingMessage(
-          threads,
+          result.threads,
           viewerUserId,
           _knownMessageIds,
         );
         if (incoming != null) {
           _pendingNewMessageAlert = formatMessageNotification(incoming);
         }
-        syncKnownMessageIds(threads, _knownMessageIds);
+        syncKnownMessageIds(result.threads, _knownMessageIds);
       } else {
-        syncKnownMessageIds(threads, _knownMessageIds);
+        syncKnownMessageIds(result.threads, _knownMessageIds);
       }
 
       _threads
         ..clear()
-        ..addAll(threads);
+        ..addAll(result.threads);
+      _tagsByMessageId
+        ..clear()
+        ..addAll(result.tagsByMessageId);
     } catch (error) {
       if (!silent) {
         _error = 'Nie udało się pobrać wiadomości.';

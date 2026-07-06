@@ -13,6 +13,7 @@ class OfflineStore extends ChangeNotifier {
   static const _pendingActionsKey = 'coparentes_pending_actions_v1';
   static const _exportDownloadPrefix = 'coparentes_cached_export_download_';
   static const _messagingThreadIdMapKey = 'coparentes_messaging_thread_id_map_v1';
+  static const _messageTagsKey = 'coparentes_cached_message_tags_v1';
   static const _financeExpenseIdMapKey = 'coparentes_finance_expense_id_map_v1';
 
   final SharedPreferences _preferences;
@@ -40,6 +41,15 @@ class OfflineStore extends ChangeNotifier {
 
   Future<void> saveThreads(List<Map<String, dynamic>> threads) async {
     await _preferences.setString(_threadsKey, jsonEncode(threads));
+    notifyListeners();
+  }
+
+  List<Map<String, dynamic>> getMessageTags() => _decodeList(
+        _preferences.getString(_messageTagsKey),
+      );
+
+  Future<void> saveMessageTags(List<Map<String, dynamic>> tags) async {
+    await _preferences.setString(_messageTagsKey, jsonEncode(tags));
     notifyListeners();
   }
 
