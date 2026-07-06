@@ -170,11 +170,17 @@ class MessagingScreenState extends State<MessagingScreen> {
     }
 
     if (isFamilyChannel(thread)) {
-      _scheduleOpenCategory(familyCategoryChannel, returnToPreviousTab: returnToPreviousTab);
+      _scheduleOpenCategory(
+        familyCategoryChannel,
+        returnToPreviousTab: returnToPreviousTab,
+      );
       return;
     }
     if (isScheduleChannel(thread)) {
-      _scheduleOpenCategory(scheduleCategoryChannel, returnToPreviousTab: returnToPreviousTab);
+      _scheduleOpenCategory(
+        scheduleCategoryChannel,
+        returnToPreviousTab: returnToPreviousTab,
+      );
       return;
     }
 
@@ -233,25 +239,6 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
-  void _toggleSearchTag(String tag) {
-    final query = parseMessageSearchQuery(_searchController.text);
-    final tags = List<String>.from(query.tags);
-    final normalized = normalizeMessageTag(tag);
-    if (tags.contains(normalized)) {
-      tags.remove(normalized);
-    } else {
-      tags.add(normalized);
-    }
-
-    final parts = <String>[];
-    if (query.text.isNotEmpty) {
-      parts.add(query.text);
-    }
-    parts.addAll(tags.map((item) => 'tag:$item'));
-    _searchController.text = parts.join(' ');
-    setState(() {});
-  }
-
   Widget _buildContent(BuildContext context) {
     final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
@@ -299,7 +286,7 @@ class MessagingScreenState extends State<MessagingScreen> {
       title: showInlineChat
           ? _selectedCategory
           : showAllTabInlineThread
-              ? inlineThread.subject
+              ? threadListTitle(inlineThread!)
               : 'Wiadomości',
       actions: [
         IconButton(
@@ -307,7 +294,7 @@ class MessagingScreenState extends State<MessagingScreen> {
           tooltip: 'Odśwież wiadomości',
           onPressed: () => _loadThreads(context),
         ),
-        if (!isReadOnly)
+        if (!isReadOnly && !showInlineChat)
           ParentHeaderActionButton(
             label: 'Nowy wątek',
             icon: Icons.edit_note,
@@ -348,7 +335,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                   .toList(),
             ),
           ),
-          if (!showInlineChat) ...[
+          if (!showInlineChat && !showAllTabInlineThread) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
@@ -380,11 +367,6 @@ class MessagingScreenState extends State<MessagingScreen> {
                   ),
                 ),
               ),
-            ),
-            MessageTagFilterBar(
-              activeTags: searchQuery.tags.toSet(),
-              userTags: messaging.allUserTags,
-              onTagTap: _toggleSearchTag,
             ),
           ],
           if (showInlineChat)
@@ -859,144 +841,6 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
           ),
       ],
     );
-  }
-}
-
-class _CategoryChannelTile extends StatelessWidget {
-  final String category;
-  final MessageThread? thread;
-  final String? viewerUserId;
-  final VoidCallback onTap;
-
-  const _CategoryChannelTile({
-    required this.category,
-    required this.thread,
-    required this.viewerUserId,
-    required this.onTap,
-  });
-
-  bool get _hasUnread {
-    if (thread == null || viewerUserId == null) {
-      return thread?.hasUnread ?? false;
-    }
-    return threadHasUnreadForViewer(thread!, viewerUserId!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final previewThread = thread ??
-        MessageThread(
-          id: 'preview_$category',
-          subject: category,
-          category: category,
-          messages: const [],
-          lastActivity: DateTime.now(),
-        );
-    final lastMsg = thread?.messages.isNotEmpty == true
-        ? thread!.messages.last
-        : null;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: previewThread.categoryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    previewThread.categoryIcon,
-                    color: previewThread.categoryColor,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              category,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: _hasUnread
-                                    ? FontWeight.w700
-                                    : FontWeight.w600,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                          ),
-                          if (thread != null)
-                            Text(
-                              _formatTime(thread!.lastActivity),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textHint,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        lastMsg != null
-                            ? '${lastMsg.senderName}: ${lastMsg.content}'
-                            : categoryChannelSubtitle(category),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: lastMsg != null
-                              ? AppTheme.textSecondary
-                              : AppTheme.textHint,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right,
-                  color: AppTheme.textHint.withValues(alpha: 0.8),
-                ),
-                if (_hasUnread) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryTeal,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    return '${diff.inDays}d';
   }
 }
 
@@ -2418,11 +2262,11 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
     if (subject.isEmpty) {
       return;
     }
-    if (messagingNavChips.contains(subject)) {
+    if (messagingCategoryChannels.contains(subject)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Ten temat jest zarezerwowany dla osobnej zakładki czatu.',
+            'Ten temat jest zarezerwowany dla kanału systemowego.',
           ),
         ),
       );

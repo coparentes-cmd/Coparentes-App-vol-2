@@ -15,17 +15,17 @@ const List<String> messagingParentCategoryChannels = [
   scheduleCategoryChannel,
 ];
 
+/// Reserved channel names — cannot be used as custom thread subjects.
+const List<String> messagingCategoryChannels = [
+  familyCategoryChannel,
+  ...messagingParentCategoryChannels,
+];
+
 /// Chips shown in parent messaging UI.
 const List<String> messagingNavChips = [
   allTabLabel,
   familyCategoryChannel,
   scheduleCategoryChannel,
-];
-
-/// Legacy list kept for channel detection helpers.
-const List<String> messagingCategoryChannels = [
-  familyCategoryChannel,
-  ...messagingParentCategoryChannels,
 ];
 
 bool isFamilyChannel(MessageThread thread) {
@@ -43,9 +43,7 @@ bool isScheduleChannel(MessageThread thread) {
 }
 
 bool isAllTabThread(MessageThread thread) {
-  return !isFamilyChannel(thread) &&
-      !isScheduleChannel(thread) &&
-      !isCategoryChannel(thread);
+  return !isFamilyChannel(thread) && !isScheduleChannel(thread);
 }
 
 bool isCategoryChannel(MessageThread thread) {
@@ -137,6 +135,12 @@ String categoryChannelSubtitle(String category) {
 }
 
 String threadListTitle(MessageThread thread) {
+  if (isFamilyChannel(thread)) {
+    return familyCategoryChannel;
+  }
+  if (isScheduleChannel(thread)) {
+    return scheduleCategoryChannel;
+  }
   if (isCategoryChannel(thread)) {
     return thread.category == 'Finansowe' ? 'Finanse' : thread.category;
   }
