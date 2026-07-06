@@ -1,4 +1,5 @@
 import '../../config/messaging_categories.dart';
+import '../../config/message_tags.dart';
 import '../../models/models.dart';
 import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
@@ -66,7 +67,7 @@ class MessagingRepository {
     required List<String> tags,
   }) async {
     final normalized = tags
-        .map((tag) => tag.trim().toLowerCase())
+        .map(normalizeMessageTag)
         .where((tag) => tag.isNotEmpty)
         .toSet()
         .toList();

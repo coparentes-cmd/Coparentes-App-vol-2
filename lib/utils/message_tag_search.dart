@@ -1,3 +1,4 @@
+import '../config/message_tags.dart';
 import '../models/models.dart';
 
 class MessageSearchQuery {
@@ -21,7 +22,7 @@ MessageSearchQuery parseMessageSearchQuery(String raw) {
       continue;
     }
     if (part.toLowerCase().startsWith('tag:')) {
-      final tag = part.substring(4).trim().toLowerCase();
+      final tag = normalizeMessageTag(part.substring(4));
       if (tag.isNotEmpty) {
         tags.add(tag);
       }

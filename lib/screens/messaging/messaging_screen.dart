@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/message_tags.dart';
 import '../../config/messaging_categories.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
@@ -20,6 +21,7 @@ import '../../utils/swap_message_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/message_compose_bar.dart';
 import '../../widgets/message_status_indicator.dart';
+import '../../widgets/message_tag_widgets.dart';
 
 class MessagingScreen extends StatefulWidget {
   final String? openThreadId;
@@ -231,6 +233,25 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
+  void _toggleSearchTag(String tag) {
+    final query = parseMessageSearchQuery(_searchController.text);
+    final tags = List<String>.from(query.tags);
+    final normalized = normalizeMessageTag(tag);
+    if (tags.contains(normalized)) {
+      tags.remove(normalized);
+    } else {
+      tags.add(normalized);
+    }
+
+    final parts = <String>[];
+    if (query.text.isNotEmpty) {
+      parts.add(query.text);
+    }
+    parts.addAll(tags.map((item) => 'tag:$item'));
+    _searchController.text = parts.join(' ');
+    setState(() {});
+  }
+
   Widget _buildContent(BuildContext context) {
     final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
@@ -250,6 +271,8 @@ class MessagingScreenState extends State<MessagingScreen> {
           key: const ValueKey(familyCategoryChannel),
           category: familyCategoryChannel,
           showChildQuickReplies: user?.role == UserRole.child,
+          allowPrivateTags:
+              user?.role != UserRole.child && user?.role != UserRole.observer,
         ),
       );
     }
@@ -331,7 +354,7 @@ class MessagingScreenState extends State<MessagingScreen> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Szukaj lub tag:paragon',
+                  hintText: 'Szukaj lub tag:szkoła',
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
@@ -358,12 +381,18 @@ class MessagingScreenState extends State<MessagingScreen> {
                 ),
               ),
             ),
+            MessageTagFilterBar(
+              activeTags: searchQuery.tags.toSet(),
+              userTags: messaging.allUserTags,
+              onTagTap: _toggleSearchTag,
+            ),
           ],
           if (showInlineChat)
             Expanded(
               child: _InlineCategoryChatPanel(
                 key: ValueKey(_selectedCategory),
                 category: _selectedCategory,
+                allowPrivateTags: !isReadOnly,
               ),
             )
           else if (showAllTabInlineThread)
@@ -409,10 +438,12 @@ class MessagingScreenState extends State<MessagingScreen> {
                               return _ThreadTile(
                                 thread: thread,
                                 viewerUserId: user?.id,
-                                userTags: collectThreadUserTags(
-                                  thread,
-                                  messaging.tagsByMessageId,
-                                ),
+                                userTags: sortedMessageTags(
+                                  collectThreadUserTags(
+                                    thread,
+                                    messaging.tagsByMessageId,
+                                  ),
+                                ).toSet(),
                                 onTap: () => _openInlineThread(
                                   thread.id,
                                   allowPrivateTags: true,
@@ -1064,24 +1095,9 @@ class _ThreadTile extends StatelessWidget {
                           runSpacing: 4,
                           children: userTags
                               .map(
-                                (tag) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.purpleColor
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    tag,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: AppTheme.purpleColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                (tag) => MessageTagChip(
+                                  tag: tag,
+                                  compact: true,
                                 ),
                               )
                               .toList(),
@@ -1913,6 +1929,31 @@ class _MessageBubbleState extends State<_MessageBubble> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      if (widget.allowPrivateTags && !isReadOnly)
+                        Tooltip(
+                          message: 'Etykiety',
+                          child: InkWell(
+                            onTap: () =>
+                                _editMessageTags(context, messageTags),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: Icon(
+                                messageTags.isEmpty
+                                    ? Icons.label_outline
+                                    : Icons.label,
+                                size: 14,
+                                color: messageTags.isEmpty
+                                    ? bubbleStyle.secondaryTextColor
+                                    : messageTagColor(
+                                        messageTags.first,
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (widget.allowPrivateTags && !isReadOnly)
+                        const SizedBox(width: 4),
                       Tooltip(
                         message: widget.isMe
                             ? messageReceiptLabel(
@@ -1945,23 +1986,12 @@ class _MessageBubbleState extends State<_MessageBubble> {
                     widget.isMe ? WrapAlignment.end : WrapAlignment.start,
                 children: messageTags
                     .map(
-                      (tag) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.purpleColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          tag,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppTheme.purpleColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                      (tag) => MessageTagChip(
+                        tag: tag,
+                        compact: true,
+                        onTap: isReadOnly
+                            ? null
+                            : () => _editMessageTags(context, messageTags),
                       ),
                     )
                     .toList(),
@@ -2119,10 +2149,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _MessageTagEditorSheet(
+      builder: (_) => MessageTagEditorSheet(
         initialTags: currentTags.toList(),
-        suggestions: context.read<MessagingProvider>().allUserTags.toList()
-          ..sort(),
+        customSuggestions: context.read<MessagingProvider>().allUserTags.toList(),
       ),
     );
 
@@ -2341,7 +2370,7 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
           const SizedBox(height: 8),
           const Text(
             'Wątek pojawi się w zakładce Wszystkie. Możesz oznaczać wiadomości '
-            'prywatnymi tagami tylko dla siebie.',
+            'prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.textSecondary,
@@ -2418,133 +2447,6 @@ class _NewThreadSheetState extends State<_NewThreadSheet> {
       }
       Navigator.pop(context, thread);
     });
-  }
-}
-
-class _MessageTagEditorSheet extends StatefulWidget {
-  final List<String> initialTags;
-  final List<String> suggestions;
-
-  const _MessageTagEditorSheet({
-    required this.initialTags,
-    required this.suggestions,
-  });
-
-  @override
-  State<_MessageTagEditorSheet> createState() => _MessageTagEditorSheetState();
-}
-
-class _MessageTagEditorSheetState extends State<_MessageTagEditorSheet> {
-  late final TextEditingController _controller;
-  late List<String> _tags;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-    _tags = [...widget.initialTags];
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _addTag(String raw) {
-    final tag = raw.trim().toLowerCase();
-    if (tag.isEmpty || _tags.contains(tag)) {
-      return;
-    }
-    setState(() => _tags = [..._tags, tag]);
-    _controller.clear();
-  }
-
-  void _removeTag(String tag) {
-    setState(() => _tags = _tags.where((item) => item != tag).toList());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final suggestions = widget.suggestions
-        .where((tag) => !_tags.contains(tag))
-        .take(8)
-        .toList();
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Prywatne tagi',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Widoczne tylko dla Ciebie. Użyj ich w wyszukiwarce, np. tag:paragon.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _tags
-                .map(
-                  (tag) => InputChip(
-                    label: Text(tag),
-                    onDeleted: () => _removeTag(tag),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _controller,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              labelText: 'Nowy tag',
-              hintText: 'np. paragon',
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: () => _addTag(_controller.text),
-              ),
-            ),
-            onSubmitted: _addTag,
-          ),
-          if (suggestions.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: suggestions
-                  .map(
-                    (tag) => ActionChip(
-                      label: Text(tag),
-                      onPressed: () => _addTag(tag),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, _tags),
-            child: const Text('Zapisz tagi'),
-          ),
-        ],
-      ),
-    );
   }
 }
 
