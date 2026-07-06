@@ -1271,8 +1271,10 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   Future<MessageThread?> openCategoryChannel(String category) async {
-    final existing = findCategoryThreadFallback(_threads, category);
-    if (existing != null) {
+    final existing = category == allTabLabel
+        ? findCategoryChannel(_threads, allTabLabel)
+        : findCategoryThreadFallback(_threads, category);
+    if (existing != null && !existing.id.startsWith('local_')) {
       return existing;
     }
 
@@ -1327,7 +1329,11 @@ class MessagingProvider extends ChangeNotifier {
         tone: tone,
         attachments: attachments,
       );
-      final index = _threads.indexWhere((thread) => thread.id == threadId);
+      if (threadId != updatedThread.id) {
+        _threads.removeWhere((thread) => thread.id == threadId);
+      }
+      final index =
+          _threads.indexWhere((thread) => thread.id == updatedThread.id);
       if (index >= 0) {
         _threads[index] = updatedThread;
       } else {

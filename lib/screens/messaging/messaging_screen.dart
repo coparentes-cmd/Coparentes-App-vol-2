@@ -471,7 +471,9 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       thread = messaging.getThreadById(widget.threadId!);
     } else {
       thread = messaging.getCategoryChannel(widget.category!);
-      thread ??= await messaging.openCategoryChannel(widget.category!);
+      if (thread == null || thread.id.startsWith('local_')) {
+        thread = await messaging.openCategoryChannel(widget.category!);
+      }
     }
 
     if (!mounted) {
@@ -504,11 +506,42 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       return;
     }
     final appProvider = context.read<AppProvider>();
-    context.read<MessagingProvider>().loadThreads(
+    final messaging = context.read<MessagingProvider>();
+    messaging
+        .loadThreads(
           viewerUserId: appProvider.currentUser?.id,
           notifyEnabled: false,
           silent: true,
-        );
+        )
+        .then((_) {
+      if (!mounted || widget.category == null) {
+        return;
+      }
+      final current = messaging.getCategoryChannel(widget.category!);
+      if (current != null &&
+          current.id != _threadId &&
+          !current.id.startsWith('local_')) {
+        setState(() => _threadId = current.id);
+      }
+    });
+  }
+
+  Future<String?> _resolveActiveThreadId(MessagingProvider messaging) async {
+    if (widget.threadId != null) {
+      return widget.threadId;
+    }
+    if (widget.category == null) {
+      return _threadId;
+    }
+
+    var thread = messaging.getCategoryChannel(widget.category!);
+    if (thread == null || thread.id.startsWith('local_')) {
+      thread = await messaging.openCategoryChannel(widget.category!);
+    }
+    if (thread != null && thread.id != _threadId) {
+      _threadId = thread.id;
+    }
+    return thread?.id ?? _threadId;
   }
 
   void _scrollToBottom() {
@@ -526,17 +559,26 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
 
   Future<void> _sendMessage() async {
     final content = _controller.text.trim();
-    if ((content.isEmpty && _pendingAttachments.isEmpty) ||
-        _threadId == null ||
-        _sending) {
+    if ((content.isEmpty && _pendingAttachments.isEmpty) || _sending) {
+      return;
+    }
+
+    final messaging = context.read<MessagingProvider>();
+    final threadId = await _resolveActiveThreadId(messaging);
+    if (threadId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nie udało się otworzyć rozmowy.')),
+        );
+      }
       return;
     }
 
     setState(() => _sending = true);
     final attachments =
         _pendingAttachments.map((item) => item.toApiPayload()).toList();
-    final sent = await context.read<MessagingProvider>().sendMessage(
-          threadId: _threadId!,
+    final sent = await messaging.sendMessage(
+          threadId: threadId,
           content: content,
           tone: _analyzedTone,
           attachments: attachments,
@@ -548,11 +590,21 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     setState(() {
       _sending = false;
       if (sent != null) {
+        _threadId = sent.id;
         _controller.clear();
         _analyzedTone = MessageTone.neutral;
         _pendingAttachments.clear();
       }
     });
+    if (sent == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            messaging.error ?? 'Nie udało się wysłać wiadomości.',
+          ),
+        ),
+      );
+    }
     _scrollToBottom();
   }
 

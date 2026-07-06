@@ -172,10 +172,39 @@ class MessagingRepository {
     }
   }
 
+  bool _isLocalThreadId(String threadId) => threadId.startsWith('local_');
+
+  Future<String> _resolveThreadIdForSend(String threadId) async {
+    if (!_isLocalThreadId(threadId)) {
+      return threadId;
+    }
+
+    if (_offlineStore.getPendingActions().isNotEmpty) {
+      await syncPendingActions();
+    }
+
+    final mapped = _offlineStore.getMessagingThreadIdMap()[threadId];
+    if (mapped != null && !_isLocalThreadId(mapped)) {
+      return mapped;
+    }
+
+    final cached = findCategoryChannel(_getCachedThreads(), allTabLabel);
+    if (cached != null && !_isLocalThreadId(cached.id)) {
+      return cached.id;
+    }
+
+    final thread = await _getOrCreateParentsInboxThread();
+    if (!_isLocalThreadId(thread.id)) {
+      return thread.id;
+    }
+
+    throw ApiException(404, 'thread_not_ready');
+  }
+
   Future<MessageThread> _getOrCreateParentsInboxThread() async {
     final cached = _getCachedThreads();
     final existing = findCategoryChannel(cached, allTabLabel);
-    if (existing != null) {
+    if (existing != null && !_isLocalThreadId(existing.id)) {
       return existing;
     }
 
@@ -213,13 +242,28 @@ class MessagingRepository {
     required MessageTone tone,
     List<Map<String, dynamic>> attachments = const [],
   }) async {
+    final resolvedThreadId = await _resolveThreadIdForSend(threadId);
+
     try {
-      final payload = await _apiClient.postJson('/threads/$threadId/messages', {
-        'content': content,
-        'tone': messageToneToApi(tone),
-        if (attachments.isNotEmpty) 'attachments': attachments,
-      });
+      final payload = await _apiClient.postJson(
+        '/threads/$resolvedThreadId/messages',
+        {
+          'content': content,
+          'tone': messageToneToApi(tone),
+          if (attachments.isNotEmpty) 'attachments': attachments,
+        },
+      );
       final thread = messageThreadFromJson(payload);
+      if (_isLocalThreadId(threadId) && thread.id != threadId) {
+        final cachedThreads = _getCachedThreads()
+          ..removeWhere((item) => item.id == threadId);
+        await _saveThreads(cachedThreads);
+        final map = Map<String, String>.from(
+          _offlineStore.getMessagingThreadIdMap(),
+        );
+        map[threadId] = thread.id;
+        await _offlineStore.saveMessagingThreadIdMap(map);
+      }
       await _upsertThread(thread);
       return thread;
     } catch (error) {
@@ -229,10 +273,11 @@ class MessagingRepository {
 
       final now = DateTime.now();
       final cachedThreads = _getCachedThreads();
-      final threadIndex = cachedThreads.indexWhere((thread) => thread.id == threadId);
+      final threadIndex =
+          cachedThreads.indexWhere((thread) => thread.id == resolvedThreadId);
       final optimisticMessage = Message(
         id: 'local_msg_${now.microsecondsSinceEpoch}',
-        threadId: threadId,
+        threadId: resolvedThreadId,
         senderId: 'local_user',
         senderName: 'Ty',
         content: content,
@@ -269,7 +314,7 @@ class MessagingRepository {
         cachedThreads[threadIndex] = optimisticThread;
       } else {
         optimisticThread = MessageThread(
-          id: threadId,
+          id: resolvedThreadId,
           subject: 'Nowy wątek',
           category: 'Ogólne',
           childId: null,
@@ -285,7 +330,7 @@ class MessagingRepository {
         'type': 'messaging.sendMessage',
         'createdAt': now.toIso8601String(),
         'payload': {
-          'threadId': threadId,
+          'threadId': resolvedThreadId,
           'content': content,
           'tone': messageToneToApi(tone),
           if (attachments.isNotEmpty) 'attachments': attachments,
@@ -346,11 +391,17 @@ class MessagingRepository {
         switch (type) {
           case 'messaging.createThread':
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
-            final response = await _apiClient.postJson('/threads', {
-              'subject': payload['subject'],
-              'category': payload['category'],
-              'childId': payload['childId'],
-            });
+            final subject = payload['subject'] as String;
+            final category = payload['category'] as String;
+            final response = category == allTabLabel && subject == allTabLabel
+                ? await _apiClient.postJson('/threads/channel', {
+                    'category': allTabLabel,
+                  })
+                : await _apiClient.postJson('/threads', {
+                    'subject': subject,
+                    'category': category,
+                    'childId': payload['childId'],
+                  });
             final createdThread = messageThreadFromJson(response);
             final clientThreadId = payload['clientThreadId'] as String;
             localThreadIdMap[clientThreadId] = createdThread.id;
