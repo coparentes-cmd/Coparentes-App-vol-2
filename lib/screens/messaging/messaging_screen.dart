@@ -174,6 +174,9 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   void _loadThreads(BuildContext context) {
     final appProvider = context.read<AppProvider>();
+    if (appProvider.isDemoMode) {
+      return;
+    }
     context.read<MessagingProvider>().loadThreads(
           viewerUserId: appProvider.currentUser?.id,
           notifyEnabled: appProvider.notifyMessages,
@@ -459,7 +462,7 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     final messaging = context.read<MessagingProvider>();
     final appProvider = context.read<AppProvider>();
 
-    if (messaging.threads.isEmpty) {
+    if (!appProvider.isDemoMode && messaging.threads.isEmpty) {
       await messaging.loadThreads(
         viewerUserId: appProvider.currentUser?.id,
         notifyEnabled: false,
@@ -471,7 +474,8 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       thread = messaging.getThreadById(widget.threadId!);
     } else {
       thread = messaging.getCategoryChannel(widget.category!);
-      if (thread == null || thread.id.startsWith('local_')) {
+      if (!appProvider.isDemoMode &&
+          (thread == null || thread.id.startsWith('local_'))) {
         thread = await messaging.openCategoryChannel(widget.category!);
       }
     }
@@ -506,6 +510,9 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       return;
     }
     final appProvider = context.read<AppProvider>();
+    if (appProvider.isDemoMode) {
+      return;
+    }
     final messaging = context.read<MessagingProvider>();
     messaging
         .loadThreads(
@@ -534,14 +541,16 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
       return _threadId;
     }
 
+    final isDemo = context.read<AppProvider>().isDemoMode;
     var thread = messaging.getCategoryChannel(widget.category!);
-    if (thread == null || thread.id.startsWith('local_')) {
+    if (!isDemo && (thread == null || thread.id.startsWith('local_'))) {
       thread = await messaging.openCategoryChannel(widget.category!);
     }
-    if (thread != null && thread.id != _threadId) {
+    if (thread != null) {
       _threadId = thread.id;
+      return thread.id;
     }
-    return thread?.id ?? _threadId;
+    return null;
   }
 
   void _scrollToBottom() {
@@ -564,6 +573,7 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     }
 
     final messaging = context.read<MessagingProvider>();
+    final appProvider = context.read<AppProvider>();
     final threadId = await _resolveActiveThreadId(messaging);
     if (threadId == null) {
       if (mounted) {
@@ -579,9 +589,12 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
         _pendingAttachments.map((item) => item.toApiPayload()).toList();
     final sent = await messaging.sendMessage(
           threadId: threadId,
+          channelCategory: widget.category,
           content: content,
           tone: _analyzedTone,
           attachments: attachments,
+          localOnly: appProvider.isDemoMode,
+          demoSender: appProvider.currentUser,
         );
     if (!mounted) {
       return;
@@ -614,6 +627,7 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     }
 
     final messaging = context.read<MessagingProvider>();
+    final appProvider = context.read<AppProvider>();
     final threadId = await _resolveActiveThreadId(messaging);
     if (threadId == null) {
       return;
@@ -622,8 +636,11 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     setState(() => _sending = true);
     final sent = await messaging.sendMessage(
           threadId: threadId,
+          channelCategory: widget.category,
           content: content,
           tone: MessageTone.neutral,
+          localOnly: appProvider.isDemoMode,
+          demoSender: appProvider.currentUser,
         );
     if (!mounted) {
       return;

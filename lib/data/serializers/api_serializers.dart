@@ -200,7 +200,7 @@ Message messageFromJson(Map<String, dynamic> json) {
     threadId: json['threadId'] as String,
     senderId: json['senderId'] as String,
     senderName: json['senderName'] as String,
-    content: json['content'] as String,
+    content: json['content'] as String? ?? '',
     aiSuggestedContent: json['aiSuggestedContent'] as String?,
     tone: messageToneFromApi(json['tone'] as String? ?? 'neutral'),
     attachments: (json['attachments'] as List<dynamic>? ?? [])
@@ -217,7 +217,7 @@ Message messageFromJson(Map<String, dynamic> json) {
     sentAt: DateTime.parse(json['sentAt'] as String),
     isDelivered: json['isDelivered'] as bool? ?? true,
     isRead: json['isRead'] as bool? ?? false,
-    hash: json['hash'] as String,
+    hash: json['hash'] as String? ?? '',
     isShielded: json['isShielded'] as bool? ?? false,
   );
 }

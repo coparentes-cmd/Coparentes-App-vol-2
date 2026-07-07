@@ -996,6 +996,11 @@ class MessagingProvider extends ChangeNotifier {
   bool _snapshotSeeded = false;
   final Map<String, Set<String>> _knownMessageIds = {};
   String? _pendingNewMessageAlert;
+  DateTime? _suppressRemoteLoadUntil;
+
+  void suppressRemoteLoad([Duration duration = const Duration(seconds: 4)]) {
+    _suppressRemoteLoadUntil = DateTime.now().add(duration);
+  }
 
   List<MessageThread> get threads => _threads;
   Map<String, Set<String>> get tagsByMessageId => _tagsByMessageId;
@@ -1039,6 +1044,11 @@ class MessagingProvider extends ChangeNotifier {
     bool notifyEnabled = false,
     bool silent = false,
   }) async {
+    if (_suppressRemoteLoadUntil != null &&
+        DateTime.now().isBefore(_suppressRemoteLoadUntil!)) {
+      return;
+    }
+
     if (!silent) {
       _isLoading = true;
       _error = null;
@@ -1144,6 +1154,15 @@ class MessagingProvider extends ChangeNotifier {
     final now = DateTime.now();
     _threads.addAll([
       MessageThread(
+        id: 'thread_demo_all',
+        subject: 'Wszystkie',
+        category: 'Wszystkie',
+        childId: null,
+        lastActivity: now.subtract(const Duration(minutes: 30)),
+        hasUnread: false,
+        messages: const [],
+      ),
+      MessageThread(
         id: 'thread_demo_family',
         subject: 'Rodzina',
         category: 'Rodzina',
@@ -1166,6 +1185,15 @@ class MessagingProvider extends ChangeNotifier {
             hash: 'sha256_msg_demo_family_001',
           ),
         ],
+      ),
+      MessageThread(
+        id: 'thread_demo_schedule',
+        subject: 'Zmiana grafiku',
+        category: 'Zmiana grafiku',
+        childId: null,
+        lastActivity: now.subtract(const Duration(hours: 3)),
+        hasUnread: false,
+        messages: const [],
       ),
       MessageThread(
         id: 'thread_demo_001',
@@ -1323,13 +1351,33 @@ class MessagingProvider extends ChangeNotifier {
     required String content,
     required MessageTone tone,
     List<Map<String, dynamic>> attachments = const [],
+    String? channelCategory,
+    bool localOnly = false,
+    AppUser? demoSender,
   }) async {
+    if (localOnly) {
+      final sender = demoSender;
+      if (sender == null) {
+        _error = 'Nie udało się wysłać wiadomości.';
+        notifyListeners();
+        return null;
+      }
+      return _appendLocalDemoMessage(
+        threadId: threadId,
+        channelCategory: channelCategory,
+        content: content,
+        tone: tone,
+        sender: sender,
+      );
+    }
+
     try {
       final updatedThread = await _repository.sendMessage(
         threadId: threadId,
         content: content,
         tone: tone,
         attachments: attachments,
+        channelCategory: channelCategory,
       );
       if (threadId != updatedThread.id) {
         _threads.removeWhere((thread) => thread.id == threadId);
@@ -1349,15 +1397,91 @@ class MessagingProvider extends ChangeNotifier {
           (lastMessage.id.startsWith('local_msg_') || !lastMessage.isDelivered)) {
         _error =
             'Wiadomość zapisana tylko na tym urządzeniu. Użyj „Synchronizuj” u góry ekranu.';
+      } else {
+        _error = null;
       }
 
+      suppressRemoteLoad();
       notifyListeners();
       return updatedThread;
     } catch (error) {
+      _error = _mapSendMessageError(error);
+      notifyListeners();
+      return null;
+    }
+  }
+
+  String _mapSendMessageError(Object error) {
+    if (error is ApiException) {
+      switch (error.message) {
+        case 'missing_token':
+        case 'invalid_session':
+        case 'invalid_token':
+          return 'Sesja wygasła. Zaloguj się ponownie.';
+        case 'forbidden':
+          return 'Brak uprawnień do wysłania wiadomości w tym kanale.';
+        case 'thread_not_ready':
+        case 'thread_not_found':
+          return 'Nie udało się połączyć z rozmową. Odśwież wiadomości.';
+        default:
+          break;
+      }
+    }
+    return 'Nie udało się wysłać wiadomości.';
+  }
+
+  MessageThread? _appendLocalDemoMessage({
+    required String threadId,
+    required String content,
+    required MessageTone tone,
+    required AppUser sender,
+    String? channelCategory,
+  }) {
+    final now = DateTime.now();
+    var resolvedThreadId = threadId;
+    if (channelCategory != null) {
+      final channel = getCategoryChannel(channelCategory);
+      if (channel != null) {
+        resolvedThreadId = channel.id;
+      }
+    }
+
+    final message = Message(
+      id: 'msg_demo_${now.microsecondsSinceEpoch}',
+      threadId: resolvedThreadId,
+      senderId: sender.id,
+      senderName: sender.name.split(' ').first,
+      content: content,
+      tone: tone,
+      attachments: const [],
+      sentAt: now,
+      isDelivered: true,
+      isRead: true,
+      hash: 'sha256_demo_${now.microsecondsSinceEpoch}',
+    );
+
+    final index = _threads.indexWhere((thread) => thread.id == resolvedThreadId);
+    if (index < 0) {
       _error = 'Nie udało się wysłać wiadomości.';
       notifyListeners();
       return null;
     }
+
+    final thread = _threads[index];
+    final updatedThread = MessageThread(
+      id: thread.id,
+      subject: thread.subject,
+      category: thread.category,
+      childId: thread.childId,
+      audience: thread.audience,
+      lastActivity: now,
+      hasUnread: thread.hasUnread,
+      messages: [...thread.messages, message],
+    );
+    _threads[index] = updatedThread;
+    _error = null;
+    notifyListeners();
+    return updatedThread;
   }
 
   Future<Map<String, dynamic>?> downloadMessageAttachment({

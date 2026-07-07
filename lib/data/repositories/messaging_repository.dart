@@ -51,6 +51,9 @@ class MessagingRepository {
         tagsByMessageId: tags,
       );
     } catch (error) {
+      if (!_apiClient.isNetworkError(error)) {
+        rethrow;
+      }
       final cached = _getCachedThreads();
       if (cached.isNotEmpty) {
         return MessagingLoadResult(
@@ -235,7 +238,21 @@ class MessagingRepository {
 
   bool _isLocalThreadId(String threadId) => threadId.startsWith('local_');
 
-  Future<String> _resolveThreadIdForSend(String threadId) async {
+  Future<String> _resolveThreadIdForSend(
+    String threadId, {
+    String? channelCategory,
+  }) async {
+    if (channelCategory != null) {
+      try {
+        final channelThread = await getOrCreateCategoryThread(channelCategory);
+        if (!_isLocalThreadId(channelThread.id)) {
+          return channelThread.id;
+        }
+      } catch (_) {
+        // Fall back to thread-id based resolution below.
+      }
+    }
+
     if (!_isLocalThreadId(threadId)) {
       return threadId;
     }
@@ -262,39 +279,34 @@ class MessagingRepository {
     throw ApiException(404, 'thread_not_ready');
   }
 
-  Future<MessageThread> _getOrCreateParentsInboxThread() async {
-    final cached = _getCachedThreads();
-    final existing = findCategoryChannel(cached, allTabLabel);
-    if (existing != null && !_isLocalThreadId(existing.id)) {
-      return existing;
+  Future<MessageThread> _deliverMessageToThread({
+    required String resolvedThreadId,
+    required String originalThreadId,
+    required String content,
+    required MessageTone tone,
+    required List<Map<String, dynamic>> attachments,
+  }) async {
+    final payload = await _apiClient.postJson(
+      '/threads/$resolvedThreadId/messages',
+      {
+        'content': content,
+        'tone': messageToneToApi(tone),
+        if (attachments.isNotEmpty) 'attachments': attachments,
+      },
+    );
+    final thread = messageThreadFromJson(payload);
+    if (_isLocalThreadId(originalThreadId) && thread.id != originalThreadId) {
+      final cachedThreads = _getCachedThreads()
+        ..removeWhere((item) => item.id == originalThreadId);
+      await _saveThreads(cachedThreads);
+      final map = Map<String, String>.from(
+        _offlineStore.getMessagingThreadIdMap(),
+      );
+      map[originalThreadId] = thread.id;
+      await _offlineStore.saveMessagingThreadIdMap(map);
     }
-
-    try {
-      final payload = await _apiClient.postJson('/threads/channel', {
-        'category': allTabLabel,
-      });
-      final thread = messageThreadFromJson(payload);
-      await _upsertThread(thread);
-      return thread;
-    } catch (error) {
-      if (!_apiClient.isNetworkError(error)) {
-        try {
-          return await createThread(
-            subject: allTabLabel,
-            category: allTabLabel,
-          );
-        } catch (_) {
-          rethrow;
-        }
-      }
-
-      final offlineExisting = findCategoryChannel(_getCachedThreads(), allTabLabel);
-      if (offlineExisting != null) {
-        return offlineExisting;
-      }
-
-      return createThread(subject: allTabLabel, category: allTabLabel);
-    }
+    await _upsertThread(thread);
+    return thread;
   }
 
   Future<MessageThread> sendMessage({
@@ -302,31 +314,39 @@ class MessagingRepository {
     required String content,
     required MessageTone tone,
     List<Map<String, dynamic>> attachments = const [],
+    String? channelCategory,
   }) async {
-    final resolvedThreadId = await _resolveThreadIdForSend(threadId);
+    final resolvedThreadId = await _resolveThreadIdForSend(
+      threadId,
+      channelCategory: channelCategory,
+    );
 
     try {
-      final payload = await _apiClient.postJson(
-        '/threads/$resolvedThreadId/messages',
-        {
-          'content': content,
-          'tone': messageToneToApi(tone),
-          if (attachments.isNotEmpty) 'attachments': attachments,
-        },
+      return await _deliverMessageToThread(
+        resolvedThreadId: resolvedThreadId,
+        originalThreadId: threadId,
+        content: content,
+        tone: tone,
+        attachments: attachments,
       );
-      final thread = messageThreadFromJson(payload);
-      if (_isLocalThreadId(threadId) && thread.id != threadId) {
-        final cachedThreads = _getCachedThreads()
-          ..removeWhere((item) => item.id == threadId);
-        await _saveThreads(cachedThreads);
-        final map = Map<String, String>.from(
-          _offlineStore.getMessagingThreadIdMap(),
-        );
-        map[threadId] = thread.id;
-        await _offlineStore.saveMessagingThreadIdMap(map);
+    } on ApiException catch (error) {
+      if (channelCategory == null ||
+          (error.statusCode != 403 && error.statusCode != 404)) {
+        rethrow;
       }
-      await _upsertThread(thread);
-      return thread;
+
+      final channelThread = await getOrCreateCategoryThread(channelCategory);
+      if (_isLocalThreadId(channelThread.id)) {
+        rethrow;
+      }
+
+      return await _deliverMessageToThread(
+        resolvedThreadId: channelThread.id,
+        originalThreadId: threadId,
+        content: content,
+        tone: tone,
+        attachments: attachments,
+      );
     } catch (error) {
       if (!_apiClient.isNetworkError(error)) {
         rethrow;
@@ -376,8 +396,8 @@ class MessagingRepository {
       } else {
         optimisticThread = MessageThread(
           id: resolvedThreadId,
-          subject: 'Nowy wątek',
-          category: 'Ogólne',
+          subject: channelCategory ?? 'Nowy wątek',
+          category: channelCategory ?? 'Ogólne',
           childId: null,
           lastActivity: now,
           hasUnread: false,
@@ -399,6 +419,41 @@ class MessagingRepository {
       });
 
       return optimisticThread;
+    }
+  }
+
+  Future<MessageThread> _getOrCreateParentsInboxThread() async {
+    final cached = _getCachedThreads();
+    final existing = findCategoryChannel(cached, allTabLabel);
+    if (existing != null && !_isLocalThreadId(existing.id)) {
+      return existing;
+    }
+
+    try {
+      final payload = await _apiClient.postJson('/threads/channel', {
+        'category': allTabLabel,
+      });
+      final thread = messageThreadFromJson(payload);
+      await _upsertThread(thread);
+      return thread;
+    } catch (error) {
+      if (!_apiClient.isNetworkError(error)) {
+        try {
+          return await createThread(
+            subject: allTabLabel,
+            category: allTabLabel,
+          );
+        } catch (_) {
+          rethrow;
+        }
+      }
+
+      final offlineExisting = findCategoryChannel(_getCachedThreads(), allTabLabel);
+      if (offlineExisting != null) {
+        return offlineExisting;
+      }
+
+      return createThread(subject: allTabLabel, category: allTabLabel);
     }
   }
 

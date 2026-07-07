@@ -147,6 +147,9 @@ class CoparentesApp extends StatelessWidget {
             offlineStore: offlineStore,
             refreshMessaging: () async {
               final appProvider = context.read<AppProvider>();
+              if (appProvider.isDemoMode) {
+                return;
+              }
               await context.read<MessagingProvider>().loadThreads(
                     viewerUserId: appProvider.currentUser?.id,
                     notifyEnabled: appProvider.notifyMessages,
