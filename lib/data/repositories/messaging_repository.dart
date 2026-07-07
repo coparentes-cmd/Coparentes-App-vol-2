@@ -153,20 +153,12 @@ class MessagingRepository {
       return _getOrCreateParentsInboxThread();
     }
 
-    final cached = _getCachedThreads();
-    final existing = category == familyCategoryChannel
-        ? findFamilyChannel(cached)
-        : findCategoryChannel(cached, category);
-    if (existing != null && !_isLocalThreadId(existing.id)) {
-      return existing;
-    }
-
     try {
       final payload = await _apiClient.postJson('/threads/channel', {
         'category': category,
       });
       final thread = messageThreadFromJson(payload);
-      await _upsertThread(thread);
+      await _replaceChannelThreadInCache(thread);
       return thread;
     } catch (error) {
       if (!_apiClient.isNetworkError(error)) {
@@ -183,6 +175,25 @@ class MessagingRepository {
 
       return createThread(subject: category, category: category);
     }
+  }
+
+  Future<void> _replaceChannelThreadInCache(MessageThread thread) async {
+    final cachedThreads = _getCachedThreads()
+      ..removeWhere(
+        (item) =>
+            item.id == thread.id ||
+            (item.category == thread.category &&
+                item.subject == thread.subject),
+      );
+    cachedThreads.insert(0, thread);
+    cachedThreads.sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+    await _saveThreads(cachedThreads);
+  }
+
+  Future<void> _removeThreadFromCache(String threadId) async {
+    final cachedThreads = _getCachedThreads()
+      ..removeWhere((item) => item.id == threadId);
+    await _saveThreads(cachedThreads);
   }
 
   MessageThread? _findCachedThreadById(String threadId) {
@@ -243,13 +254,9 @@ class MessagingRepository {
     String? channelCategory,
   }) async {
     if (channelCategory != null) {
-      try {
-        final channelThread = await getOrCreateCategoryThread(channelCategory);
-        if (!_isLocalThreadId(channelThread.id)) {
-          return channelThread.id;
-        }
-      } catch (_) {
-        // Fall back to thread-id based resolution below.
+      final channelThread = await getOrCreateCategoryThread(channelCategory);
+      if (!_isLocalThreadId(channelThread.id)) {
+        return channelThread.id;
       }
     }
 
@@ -334,6 +341,8 @@ class MessagingRepository {
           (error.statusCode != 403 && error.statusCode != 404)) {
         rethrow;
       }
+
+      await _removeThreadFromCache(resolvedThreadId);
 
       final channelThread = await getOrCreateCategoryThread(channelCategory);
       if (_isLocalThreadId(channelThread.id)) {
@@ -423,33 +432,32 @@ class MessagingRepository {
   }
 
   Future<MessageThread> _getOrCreateParentsInboxThread() async {
-    final cached = _getCachedThreads();
-    final existing = findCategoryChannel(cached, allTabLabel);
-    if (existing != null && !_isLocalThreadId(existing.id)) {
-      return existing;
-    }
-
     try {
       final payload = await _apiClient.postJson('/threads/channel', {
         'category': allTabLabel,
       });
       final thread = messageThreadFromJson(payload);
-      await _upsertThread(thread);
+      await _replaceChannelThreadInCache(thread);
       return thread;
     } catch (error) {
       if (!_apiClient.isNetworkError(error)) {
         try {
-          return await createThread(
+          final thread = await createThread(
             subject: allTabLabel,
             category: allTabLabel,
           );
+          if (!_isLocalThreadId(thread.id)) {
+            await _replaceChannelThreadInCache(thread);
+          }
+          return thread;
         } catch (_) {
           rethrow;
         }
       }
 
-      final offlineExisting = findCategoryChannel(_getCachedThreads(), allTabLabel);
-      if (offlineExisting != null) {
+      final cached = _getCachedThreads();
+      final offlineExisting = findCategoryChannel(cached, allTabLabel);
+      if (offlineExisting != null && !_isLocalThreadId(offlineExisting.id)) {
         return offlineExisting;
       }
 

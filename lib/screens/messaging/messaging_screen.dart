@@ -472,12 +472,10 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     MessageThread? thread;
     if (widget.threadId != null) {
       thread = messaging.getThreadById(widget.threadId!);
-    } else {
+    } else if (appProvider.isDemoMode) {
       thread = messaging.getCategoryChannel(widget.category!);
-      if (!appProvider.isDemoMode &&
-          (thread == null || thread.id.startsWith('local_'))) {
-        thread = await messaging.openCategoryChannel(widget.category!);
-      }
+    } else {
+      thread = await messaging.openCategoryChannel(widget.category!);
     }
 
     if (!mounted) {
@@ -542,10 +540,16 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
     }
 
     final isDemo = context.read<AppProvider>().isDemoMode;
-    var thread = messaging.getCategoryChannel(widget.category!);
-    if (!isDemo && (thread == null || thread.id.startsWith('local_'))) {
-      thread = await messaging.openCategoryChannel(widget.category!);
+    if (isDemo) {
+      final thread = messaging.getCategoryChannel(widget.category!);
+      if (thread != null) {
+        _threadId = thread.id;
+        return thread.id;
+      }
+      return null;
     }
+
+    final thread = await messaging.openCategoryChannel(widget.category!);
     if (thread != null) {
       _threadId = thread.id;
       return thread.id;

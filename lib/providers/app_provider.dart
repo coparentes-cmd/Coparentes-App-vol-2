@@ -1299,18 +1299,13 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   Future<MessageThread?> openCategoryChannel(String category) async {
-    final existing = switch (category) {
-      allTabLabel => findCategoryChannel(_threads, allTabLabel),
-      familyCategoryChannel => findFamilyChannel(_threads),
-      _ => findCategoryThreadFallback(_threads, category),
-    };
-    if (existing != null && !existing.id.startsWith('local_')) {
-      return existing;
-    }
-
     try {
       final thread = await _repository.getOrCreateCategoryThread(category);
-      final index = _threads.indexWhere((item) => item.id == thread.id);
+      final index = _threads.indexWhere(
+        (item) =>
+            item.id == thread.id ||
+            (item.category == thread.category && item.subject == thread.subject),
+      );
       if (index >= 0) {
         _threads[index] = thread;
       } else {
@@ -1318,7 +1313,7 @@ class MessagingProvider extends ChangeNotifier {
       }
       notifyListeners();
       return thread;
-    } catch (_) {
+    } catch (error) {
       _error = 'Nie udało się otworzyć rozmowy tematycznej.';
       notifyListeners();
       return null;
@@ -1420,6 +1415,8 @@ class MessagingProvider extends ChangeNotifier {
           return 'Sesja wygasła. Zaloguj się ponownie.';
         case 'forbidden':
           return 'Brak uprawnień do wysłania wiadomości w tym kanale.';
+        case 'internal_server_error':
+          return 'Błąd serwera podczas wysyłania. Spróbuj ponownie za chwilę.';
         case 'thread_not_ready':
         case 'thread_not_found':
           return 'Nie udało się połączyć z rozmową. Odśwież wiadomości.';
