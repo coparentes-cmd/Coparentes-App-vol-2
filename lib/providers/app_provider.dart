@@ -1417,6 +1417,8 @@ class MessagingProvider extends ChangeNotifier {
           return 'Brak uprawnień do wysłania wiadomości w tym kanale.';
         case 'internal_server_error':
           return 'Błąd serwera podczas wysyłania. Spróbuj ponownie za chwilę.';
+        case 'encryption_not_configured':
+          return 'Serwer nie ma skonfigurowanego szyfrowania wiadomości. Skontaktuj się z administratorem.';
         case 'thread_not_ready':
         case 'thread_not_found':
           return 'Nie udało się połączyć z rozmową. Odśwież wiadomości.';
