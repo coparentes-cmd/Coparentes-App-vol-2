@@ -48,7 +48,7 @@ bool isParentsInboxChannel(MessageThread thread) {
 }
 
 bool isAllTabThread(MessageThread thread) {
-  return isParentsInboxChannel(thread);
+  return !isFamilyChannel(thread) && !isScheduleChannel(thread);
 }
 
 bool isCategoryChannel(MessageThread thread) {

@@ -51,6 +51,9 @@ class MessagingScreen extends StatefulWidget {
 class MessagingScreenState extends State<MessagingScreen> {
   String _selectedCategory = allTabLabel;
   final TextEditingController _searchController = TextEditingController();
+  String? _inlineThreadId;
+  String? _allTabActiveThreadId;
+  bool _inlineThreadAllowsPrivateTags = false;
   bool _returnToPreviousTab = false;
 
   @override
@@ -101,9 +104,65 @@ class MessagingScreenState extends State<MessagingScreen> {
       markBrowserHistoryForward();
       setState(() {
         _selectedCategory = category;
+        _inlineThreadId = null;
         _returnToPreviousTab = returnToPreviousTab;
       });
     });
+  }
+
+  void _openInlineThread(
+    String threadId, {
+    bool returnToPreviousTab = false,
+    bool allowPrivateTags = false,
+  }) {
+    markBrowserHistoryForward();
+    setState(() {
+      _selectedCategory = allTabLabel;
+      _inlineThreadId = threadId;
+      _allTabActiveThreadId = threadId;
+      _inlineThreadAllowsPrivateTags = allowPrivateTags;
+      _returnToPreviousTab = returnToPreviousTab;
+    });
+  }
+
+  void _selectAllTabThread(String threadId) {
+    setState(() {
+      _allTabActiveThreadId = threadId;
+      _inlineThreadId = null;
+      _inlineThreadAllowsPrivateTags = false;
+    });
+  }
+
+  void _ensureAllTabActiveThread(List<MessageThread> threads) {
+    if (threads.isEmpty) {
+      if (_allTabActiveThreadId != null) {
+        setState(() => _allTabActiveThreadId = null);
+      }
+      return;
+    }
+
+    final activeStillVisible =
+        threads.any((thread) => thread.id == _allTabActiveThreadId);
+    if (!activeStillVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() => _allTabActiveThreadId = threads.first.id);
+      });
+    }
+  }
+
+  void _closeInlineThread() {
+    final shouldReturn = _returnToPreviousTab;
+    setState(() {
+      _inlineThreadId = null;
+      _inlineThreadAllowsPrivateTags = false;
+      _returnToPreviousTab = false;
+    });
+    if (shouldReturn) {
+      widget.onReturnTab?.call();
+    }
   }
 
   void _scheduleOpenThread(
@@ -112,19 +171,6 @@ class MessagingScreenState extends State<MessagingScreen> {
   }) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_openThreadById(threadId, returnToPreviousTab: returnToPreviousTab));
-    });
-  }
-
-  void _scheduleOpenAllTab({bool returnToPreviousTab = false}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      markBrowserHistoryForward();
-      setState(() {
-        _selectedCategory = allTabLabel;
-        _returnToPreviousTab = returnToPreviousTab;
-      });
     });
   }
 
@@ -170,7 +216,11 @@ class MessagingScreenState extends State<MessagingScreen> {
       return;
     }
 
-    _scheduleOpenAllTab(returnToPreviousTab: returnToPreviousTab);
+    _openInlineThread(
+      thread.id,
+      returnToPreviousTab: returnToPreviousTab,
+      allowPrivateTags: true,
+    );
   }
 
   void _loadThreads(BuildContext context) {
@@ -186,6 +236,10 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   /// Handles in-tab back navigation. Returns true when consumed.
   bool handleBack() {
+    if (_inlineThreadId != null) {
+      _closeInlineThread();
+      return true;
+    }
     if (_selectedCategory != allTabLabel) {
       final shouldReturn = _returnToPreviousTab;
       setState(() {
@@ -200,7 +254,8 @@ class MessagingScreenState extends State<MessagingScreen> {
     return false;
   }
 
-  bool get _hasInternalBackState => _selectedCategory != allTabLabel;
+  bool get _hasInternalBackState =>
+      _inlineThreadId != null || _selectedCategory != allTabLabel;
 
   bool get hasInternalNavigation => _hasInternalBackState;
 
@@ -220,6 +275,7 @@ class MessagingScreenState extends State<MessagingScreen> {
   }
 
   Widget _buildContent(BuildContext context) {
+    final messaging = context.watch<MessagingProvider>();
     final user = context.watch<AppProvider>().currentUser;
     final childFamilyOnly = widget.familyOnly || user?.role == UserRole.child;
 
@@ -244,16 +300,51 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     final isReadOnly = user?.role == UserRole.observer;
     final searchQuery = parseMessageSearchQuery(_searchController.text);
+    final allTabThreads = messaging.allTabThreads
+        .where(
+          (thread) => threadMatchesAllTabSearch(
+            thread: thread,
+            query: searchQuery,
+            tagsByMessageId: messaging.tagsByMessageId,
+          ),
+        )
+        .toList();
     final showInlineChat = _selectedCategory != allTabLabel;
+    final inlineThread = _inlineThreadId == null
+        ? null
+        : messaging.getThreadById(_inlineThreadId!);
+    final showAllTabInlineThread =
+        !showInlineChat && _inlineThreadId != null && inlineThread != null;
+    if (!showInlineChat && !showAllTabInlineThread) {
+      _ensureAllTabActiveThread(allTabThreads);
+    }
+    final activeAllTabThreadId = _allTabActiveThreadId;
+    final activeAllTabThread = activeAllTabThreadId == null
+        ? null
+        : messaging.getThreadById(activeAllTabThreadId);
 
     return ParentTabScaffold(
-      title: showInlineChat ? _selectedCategory : 'Wiadomości',
+      title: showInlineChat
+          ? _selectedCategory
+          : showAllTabInlineThread
+              ? threadListTitle(inlineThread!)
+              : activeAllTabThread != null
+                  ? threadListTitle(activeAllTabThread)
+                  : 'Wiadomości',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
           tooltip: 'Odśwież wiadomości',
           onPressed: () => _loadThreads(context),
         ),
+        if (!isReadOnly && !showInlineChat)
+          ParentHeaderActionButton(
+            label: 'Nowy wątek',
+            icon: Icons.edit_note,
+            backgroundColor: AppTheme.purpleColor,
+            prominent: true,
+            onPressed: () => _newThread(context),
+          ),
       ],
       body: Column(
         children: [
@@ -268,11 +359,19 @@ class MessagingScreenState extends State<MessagingScreen> {
                       category: cat,
                       selected: _selectedCategory == cat,
                       onTap: () {
+                        if (cat == allTabLabel && _inlineThreadId != null) {
+                          _closeInlineThread();
+                          return;
+                        }
                         if (cat != _selectedCategory && cat != allTabLabel) {
                           markBrowserHistoryForward();
                         }
                         setState(() {
                           _selectedCategory = cat;
+                          if (cat != allTabLabel) {
+                            _inlineThreadId = null;
+                            _allTabActiveThreadId = null;
+                          }
                         });
                       },
                     ),
@@ -280,7 +379,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                   .toList(),
             ),
           ),
-          if (!showInlineChat) ...[
+          if (!showInlineChat && !showAllTabInlineThread) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
@@ -322,18 +421,126 @@ class MessagingScreenState extends State<MessagingScreen> {
                 allowPrivateTags: !isReadOnly,
               ),
             )
-          else
+          else if (showAllTabInlineThread)
             Expanded(
               child: _InlineCategoryChatPanel(
-                key: const ValueKey(allTabLabel),
-                category: allTabLabel,
-                allowPrivateTags: !isReadOnly,
-                messageSearchQuery: searchQuery,
+                key: ValueKey(_inlineThreadId),
+                threadId: _inlineThreadId,
+                allowPrivateTags: _inlineThreadAllowsPrivateTags && !isReadOnly,
+              ),
+            )
+          else
+            Expanded(
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 168,
+                    child: RefreshIndicator(
+                      onRefresh: () async => _loadThreads(context),
+                      child: messaging.isLoading && messaging.threads.isEmpty
+                          ? const Center(child: CircularProgressIndicator())
+                          : allTabThreads.isEmpty
+                              ? ListView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    SizedBox(
+                                      height:
+                                          MediaQuery.of(context).size.height *
+                                              0.08,
+                                    ),
+                                    EmptyState(
+                                      icon: searchQuery.isEmpty
+                                          ? Icons.inbox_outlined
+                                          : Icons.search_off,
+                                      title: searchQuery.isEmpty
+                                          ? 'Brak wątków'
+                                          : 'Brak wyników',
+                                      subtitle: searchQuery.isEmpty
+                                          ? 'Utwórz nowy wątek, aby zacząć rozmowę.'
+                                          : 'Spróbuj innej frazy lub tagu, np. tag:paragon',
+                                    ),
+                                  ],
+                                )
+                              : ListView.builder(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  itemCount: allTabThreads.length,
+                                  itemBuilder: (context, index) {
+                                    final thread = allTabThreads[index];
+                                    final selected =
+                                        thread.id == activeAllTabThreadId;
+                                    return _ThreadTile(
+                                      thread: thread,
+                                      viewerUserId: user?.id,
+                                      selected: selected,
+                                      userTags: sortedMessageTags(
+                                        collectThreadUserTags(
+                                          thread,
+                                          messaging.tagsByMessageId,
+                                        ),
+                                      ).toSet(),
+                                      onTap: () =>
+                                          _selectAllTabThread(thread.id),
+                                    );
+                                  },
+                                ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: activeAllTabThreadId == null
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                isReadOnly
+                                    ? 'Brak wątków do wyświetlenia.'
+                                    : 'Wybierz wątek z listy albo utwórz nowy.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                          )
+                        : _InlineCategoryChatPanel(
+                            key: ValueKey(activeAllTabThreadId),
+                            threadId: activeAllTabThreadId,
+                            allowPrivateTags: !isReadOnly,
+                          ),
+                  ),
+                ],
               ),
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _newThread(BuildContext context) async {
+    final thread = await showModalBottomSheet<MessageThread>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const _NewThreadSheet(),
+    );
+
+    if (!context.mounted || thread == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Wątek „${thread.subject}” został utworzony'),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+
+    _openInlineThread(thread.id, allowPrivateTags: true);
   }
 }
 
@@ -372,6 +579,308 @@ class _CategoryChip extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ThreadTile extends StatelessWidget {
+  final MessageThread thread;
+  final String? viewerUserId;
+  final Set<String> userTags;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThreadTile({
+    required this.thread,
+    required this.viewerUserId,
+    this.userTags = const {},
+    this.selected = false,
+    required this.onTap,
+  });
+
+  bool get _hasUnread {
+    if (viewerUserId == null) {
+      return thread.hasUnread;
+    }
+    return threadHasUnreadForViewer(thread, viewerUserId!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lastMsg = thread.messages.isNotEmpty ? thread.messages.last : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
+        color: selected
+            ? AppTheme.primaryTeal.withValues(alpha: 0.08)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: thread.categoryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: selected
+                        ? Border.all(color: AppTheme.primaryTeal, width: 2)
+                        : null,
+                  ),
+                  child: Icon(
+                    thread.categoryIcon,
+                    color: thread.categoryColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              threadListTitle(thread),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: _hasUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            _formatThreadListTime(thread.lastActivity),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.textHint,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      if (lastMsg != null)
+                        Text(
+                          '${lastMsg.senderName}: ${lastMsg.content}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      if (userTags.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: userTags
+                              .map(
+                                (tag) => MessageTagChip(
+                                  tag: tag,
+                                  compact: true,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  children: [
+                    if (_hasUnread)
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primaryTeal,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${thread.messages.length}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textHint,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatThreadListTime(DateTime dt) {
+  final now = DateTime.now();
+  final diff = now.difference(dt);
+  if (diff.inMinutes < 60) {
+    return '${diff.inMinutes}m';
+  }
+  if (diff.inHours < 24) {
+    return '${diff.inHours}h';
+  }
+  return '${diff.inDays}d';
+}
+
+class _NewThreadSheet extends StatefulWidget {
+  const _NewThreadSheet();
+
+  @override
+  State<_NewThreadSheet> createState() => _NewThreadSheetState();
+}
+
+class _NewThreadSheetState extends State<_NewThreadSheet> {
+  final _subjectController = TextEditingController();
+  String? _selectedChildId;
+  bool _creating = false;
+
+  @override
+  void dispose() {
+    _subjectController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final children = workspace?.children ?? const [];
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Nowy wątek',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Wątek pojawi się w zakładce Wszystkie. Możesz oznaczać wiadomości '
+            'prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _subjectController,
+            enabled: !_creating,
+            decoration: const InputDecoration(
+              labelText: 'Temat wątku',
+              hintText: 'np. Angielski – zmiana terminu',
+            ),
+            onSubmitted: (_) => _createThread(),
+          ),
+          if (children.length > 1) ...[
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedChildId ?? children.first.id,
+              decoration: const InputDecoration(labelText: 'Dotyczy dziecka'),
+              items: children
+                  .map(
+                    (child) => DropdownMenuItem(
+                      value: child.id,
+                      child: Text(child.name),
+                    ),
+                  )
+                  .toList(),
+              onChanged:
+                  _creating ? null : (value) => setState(() => _selectedChildId = value),
+            ),
+          ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _creating ? null : _createThread,
+              child: _creating
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Utwórz wątek'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createThread() async {
+    final subject = _subjectController.text.trim();
+    if (subject.isEmpty || _creating) {
+      return;
+    }
+    if (messagingCategoryChannels.contains(subject)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ten temat jest zarezerwowany dla kanału systemowego.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final workspace = context.read<AppProvider>().currentWorkspace;
+    final children = workspace?.children ?? const [];
+    final childId = children.isEmpty
+        ? null
+        : (_selectedChildId ?? children.first.id);
+
+    setState(() => _creating = true);
+    final app = context.read<AppProvider>();
+    final thread = await context.read<MessagingProvider>().createThread(
+          subject: subject,
+          category: 'Ogólne',
+          childId: childId,
+          localOnly: app.isDemoMode,
+        );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _creating = false);
+
+    if (thread == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nie udało się utworzyć wątku.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    Navigator.pop(context, thread);
   }
 }
 

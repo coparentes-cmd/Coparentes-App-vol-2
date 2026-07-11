@@ -1350,7 +1350,24 @@ class MessagingProvider extends ChangeNotifier {
     required String subject,
     required String category,
     String? childId,
+    bool localOnly = false,
   }) async {
+    if (localOnly) {
+      final now = DateTime.now();
+      final thread = MessageThread(
+        id: 'thread_demo_${now.microsecondsSinceEpoch}',
+        subject: subject,
+        category: category,
+        childId: childId,
+        lastActivity: now,
+        hasUnread: false,
+        messages: const [],
+      );
+      _threads.insert(0, thread);
+      notifyListeners();
+      return thread;
+    }
+
     try {
       final thread = await _repository.createThread(
         subject: subject,
