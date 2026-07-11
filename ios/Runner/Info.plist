@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Aparat służy do skanowania paragonów.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeria służy do wyboru zdjęć paragonów i załączników.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Zapis eksportów i pobranych plików.</string>
 </dict>
 </plist>
