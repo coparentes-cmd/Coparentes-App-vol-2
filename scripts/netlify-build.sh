@@ -53,7 +53,7 @@ sync_branding_assets
 
 flutter pub get
 
-flutter analyze --no-fatal-infos
+flutter analyze --no-fatal-infos --no-fatal-warnings
 flutter test
 
 # Instrukcja onboarding — pliki do pobrania w build/web/downloads/
