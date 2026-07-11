@@ -1236,7 +1236,9 @@ class _InlineCategoryChatPanelState extends State<_InlineCategoryChatPanel> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
-    final aiCoach = context.watch<AppProvider>().aiCoachEnabled;
+    final isChild = user?.role == UserRole.child;
+    final aiCoach =
+        !isChild && context.watch<AppProvider>().aiCoachEnabled;
     final aiShield = context.watch<AppProvider>().aiShieldEnabled;
     final isReadOnly = user?.role == UserRole.observer;
     final thread = _threadId == null
@@ -1553,7 +1555,9 @@ class _ThreadScreenState extends State<ThreadScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
-    final aiCoach = context.watch<AppProvider>().aiCoachEnabled;
+    final isChild = user?.role == UserRole.child;
+    final aiCoach =
+        !isChild && context.watch<AppProvider>().aiCoachEnabled;
     final aiShield = context.watch<AppProvider>().aiShieldEnabled;
     final isReadOnly = user?.role == UserRole.observer;
     final thread = context.watch<MessagingProvider>().getThreadById(widget.threadId);

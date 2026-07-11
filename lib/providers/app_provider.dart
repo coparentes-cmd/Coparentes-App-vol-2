@@ -1331,6 +1331,11 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   Future<MessageThread?> openCategoryChannel(String category) async {
+    final cached = getCategoryChannel(category);
+    if (cached != null) {
+      return cached;
+    }
+
     try {
       final thread = await _repository.getOrCreateCategoryThread(category);
       final index = _threads.indexWhere(

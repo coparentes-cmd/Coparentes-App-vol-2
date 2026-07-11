@@ -9,7 +9,6 @@ import '../../providers/calendar_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/calendar_date_utils.dart';
 import '../../utils/app_browser_back.dart';
-import '../../widgets/common_widgets.dart';
 import '../calendar/calendar_screen.dart';
 import '../messaging/messaging_screen.dart';
 
@@ -323,15 +322,6 @@ class _ChildDashboardState extends State<ChildDashboard> {
                   const Text('🌟', style: TextStyle(fontSize: 40)),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // AI tip for child
-            AiContextualTip(
-              tips: AiTips.child,
-              intervalSeconds: 9,
-              dismissible: true,
             ),
 
             const SizedBox(height: 16),
