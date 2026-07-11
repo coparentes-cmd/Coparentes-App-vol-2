@@ -51,6 +51,40 @@ bool isAllTabThread(MessageThread thread) {
   return !isFamilyChannel(thread) && !isScheduleChannel(thread);
 }
 
+bool isCustomUserThread(MessageThread thread) {
+  if (!isAllTabThread(thread)) {
+    return false;
+  }
+  if (isParentsInboxChannel(thread) ||
+      isFamilyChannel(thread) ||
+      isScheduleChannel(thread) ||
+      isCategoryChannel(thread)) {
+    return false;
+  }
+  return true;
+}
+
+bool isSameManagedChannelThread(MessageThread a, MessageThread b) {
+  if (a.id == b.id) {
+    return true;
+  }
+  if (isParentsInboxChannel(a) && isParentsInboxChannel(b)) {
+    return true;
+  }
+  if (isFamilyChannel(a) && isFamilyChannel(b)) {
+    return true;
+  }
+  if (isScheduleChannel(a) && isScheduleChannel(b)) {
+    return true;
+  }
+  if (isCategoryChannel(a) && isCategoryChannel(b)) {
+    final categoryA = a.category == 'Finansowe' ? 'Finanse' : a.category;
+    final categoryB = b.category == 'Finansowe' ? 'Finanse' : b.category;
+    return categoryA == categoryB;
+  }
+  return false;
+}
+
 bool isCategoryChannel(MessageThread thread) {
   if (isFamilyChannel(thread) || isScheduleChannel(thread)) {
     return false;

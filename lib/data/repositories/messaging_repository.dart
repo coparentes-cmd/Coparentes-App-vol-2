@@ -180,10 +180,7 @@ class MessagingRepository {
   Future<void> _replaceChannelThreadInCache(MessageThread thread) async {
     final cachedThreads = _getCachedThreads()
       ..removeWhere(
-        (item) =>
-            item.id == thread.id ||
-            (item.category == thread.category &&
-                item.subject == thread.subject),
+        (item) => isSameManagedChannelThread(item, thread),
       );
     cachedThreads.insert(0, thread);
     cachedThreads.sort((a, b) => b.lastActivity.compareTo(a.lastActivity));

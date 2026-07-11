@@ -1026,6 +1026,12 @@ class MessagingProvider extends ChangeNotifier {
     return items;
   }
 
+  List<MessageThread> get customUserThreads {
+    final items = _threads.where(isCustomUserThread).toList()
+      ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+    return items;
+  }
+
   Future<void> setMessageTags({
     required String messageId,
     required List<String> tags,
@@ -1328,9 +1334,7 @@ class MessagingProvider extends ChangeNotifier {
     try {
       final thread = await _repository.getOrCreateCategoryThread(category);
       final index = _threads.indexWhere(
-        (item) =>
-            item.id == thread.id ||
-            (item.category == thread.category && item.subject == thread.subject),
+        (item) => isSameManagedChannelThread(item, thread),
       );
       if (index >= 0) {
         _threads[index] = thread;
@@ -1374,9 +1378,15 @@ class MessagingProvider extends ChangeNotifier {
         category: category,
         childId: childId,
       );
-      _threads.insert(0, thread);
+      final index = _threads.indexWhere((item) => item.id == thread.id);
+      if (index >= 0) {
+        _threads[index] = thread;
+      } else {
+        _threads.insert(0, thread);
+      }
       notifyListeners();
-      return thread;
+      await loadThreads(silent: true);
+      return getThreadById(thread.id) ?? thread;
     } catch (error) {
       _error = 'Nie udało się utworzyć wątku.';
       notifyListeners();

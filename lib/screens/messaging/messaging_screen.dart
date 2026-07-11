@@ -314,8 +314,14 @@ class MessagingScreenState extends State<MessagingScreen> {
           ),
         )
         .toList();
-    final customAllTabThreads = allTabThreads
-        .where((thread) => !isParentsInboxChannel(thread))
+    final customAllTabThreads = messaging.customUserThreads
+        .where(
+          (thread) => threadMatchesAllTabSearch(
+            thread: thread,
+            query: searchQuery,
+            tagsByMessageId: messaging.tagsByMessageId,
+          ),
+        )
         .toList();
     final showInlineChat = _selectedCategory != allTabLabel;
     final inlineThread = _inlineThreadId == null
@@ -445,7 +451,7 @@ class MessagingScreenState extends State<MessagingScreen> {
               child: Column(
                 children: [
                   SizedBox(
-                    height: 168,
+                    height: 220,
                     child: RefreshIndicator(
                       onRefresh: () async => _loadThreads(context),
                       child: messaging.isLoading && messaging.threads.isEmpty
@@ -527,7 +533,7 @@ class MessagingScreenState extends State<MessagingScreen> {
       ),
     );
 
-    _openInlineThread(thread.id, allowPrivateTags: true);
+    _selectAllTabThread(thread.id);
   }
 }
 
