@@ -133,11 +133,16 @@ class MessagingScreenState extends State<MessagingScreen> {
     });
   }
 
+  void _selectGeneralInbox() {
+    setState(() {
+      _allTabActiveThreadId = null;
+      _inlineThreadId = null;
+      _inlineThreadAllowsPrivateTags = false;
+    });
+  }
+
   void _ensureAllTabActiveThread(List<MessageThread> threads) {
-    if (threads.isEmpty) {
-      if (_allTabActiveThreadId != null) {
-        setState(() => _allTabActiveThreadId = null);
-      }
+    if (_allTabActiveThreadId == null) {
       return;
     }
 
@@ -148,7 +153,7 @@ class MessagingScreenState extends State<MessagingScreen> {
         if (!mounted) {
           return;
         }
-        setState(() => _allTabActiveThreadId = threads.first.id);
+        setState(() => _allTabActiveThreadId = null);
       });
     }
   }
@@ -309,6 +314,9 @@ class MessagingScreenState extends State<MessagingScreen> {
           ),
         )
         .toList();
+    final customAllTabThreads = allTabThreads
+        .where((thread) => !isParentsInboxChannel(thread))
+        .toList();
     final showInlineChat = _selectedCategory != allTabLabel;
     final inlineThread = _inlineThreadId == null
         ? null
@@ -330,7 +338,7 @@ class MessagingScreenState extends State<MessagingScreen> {
               ? threadListTitle(inlineThread!)
               : activeAllTabThread != null
                   ? threadListTitle(activeAllTabThread)
-                  : 'Wiadomości',
+                  : allTabLabel,
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
@@ -369,6 +377,9 @@ class MessagingScreenState extends State<MessagingScreen> {
                         setState(() {
                           _selectedCategory = cat;
                           if (cat != allTabLabel) {
+                            _inlineThreadId = null;
+                            _allTabActiveThreadId = null;
+                          } else {
                             _inlineThreadId = null;
                             _allTabActiveThreadId = null;
                           }
@@ -439,71 +450,47 @@ class MessagingScreenState extends State<MessagingScreen> {
                       onRefresh: () async => _loadThreads(context),
                       child: messaging.isLoading && messaging.threads.isEmpty
                           ? const Center(child: CircularProgressIndicator())
-                          : allTabThreads.isEmpty
-                              ? ListView(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  children: [
-                                    SizedBox(
-                                      height:
-                                          MediaQuery.of(context).size.height *
-                                              0.08,
+                          : ListView.builder(
+                              physics:
+                                  const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.only(bottom: 8),
+                              itemCount: customAllTabThreads.length + 1,
+                              itemBuilder: (context, index) {
+                                if (index == 0) {
+                                  return _GeneralInboxTile(
+                                    selected: activeAllTabThreadId == null,
+                                    onTap: _selectGeneralInbox,
+                                  );
+                                }
+
+                                final thread = customAllTabThreads[index - 1];
+                                final selected =
+                                    thread.id == activeAllTabThreadId;
+                                return _ThreadTile(
+                                  thread: thread,
+                                  viewerUserId: user?.id,
+                                  selected: selected,
+                                  userTags: sortedMessageTags(
+                                    collectThreadUserTags(
+                                      thread,
+                                      messaging.tagsByMessageId,
                                     ),
-                                    EmptyState(
-                                      icon: searchQuery.isEmpty
-                                          ? Icons.inbox_outlined
-                                          : Icons.search_off,
-                                      title: searchQuery.isEmpty
-                                          ? 'Brak wątków'
-                                          : 'Brak wyników',
-                                      subtitle: searchQuery.isEmpty
-                                          ? 'Utwórz nowy wątek, aby zacząć rozmowę.'
-                                          : 'Spróbuj innej frazy lub tagu, np. tag:paragon',
-                                    ),
-                                  ],
-                                )
-                              : ListView.builder(
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  itemCount: allTabThreads.length,
-                                  itemBuilder: (context, index) {
-                                    final thread = allTabThreads[index];
-                                    final selected =
-                                        thread.id == activeAllTabThreadId;
-                                    return _ThreadTile(
-                                      thread: thread,
-                                      viewerUserId: user?.id,
-                                      selected: selected,
-                                      userTags: sortedMessageTags(
-                                        collectThreadUserTags(
-                                          thread,
-                                          messaging.tagsByMessageId,
-                                        ),
-                                      ).toSet(),
-                                      onTap: () =>
-                                          _selectAllTabThread(thread.id),
-                                    );
-                                  },
-                                ),
+                                  ).toSet(),
+                                  onTap: () =>
+                                      _selectAllTabThread(thread.id),
+                                );
+                              },
+                            ),
                     ),
                   ),
                   const Divider(height: 1),
                   Expanded(
                     child: activeAllTabThreadId == null
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                isReadOnly
-                                    ? 'Brak wątków do wyświetlenia.'
-                                    : 'Wybierz wątek z listy albo utwórz nowy.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
+                        ? _InlineCategoryChatPanel(
+                            key: const ValueKey('all_tab_general_inbox'),
+                            category: allTabLabel,
+                            allowPrivateTags: !isReadOnly,
+                            messageSearchQuery: searchQuery,
                           )
                         : _InlineCategoryChatPanel(
                             key: ValueKey(activeAllTabThreadId),
@@ -575,6 +562,80 @@ class _CategoryChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
             color: selected ? AppTheme.primaryTeal : AppTheme.dividerColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GeneralInboxTile extends StatelessWidget {
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _GeneralInboxTile({
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Material(
+        color: selected
+            ? AppTheme.primaryTeal.withValues(alpha: 0.08)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryTeal.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: selected
+                        ? Border.all(color: AppTheme.primaryTeal, width: 2)
+                        : null,
+                  ),
+                  child: const Icon(
+                    Icons.forum_outlined,
+                    color: AppTheme.primaryTeal,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Wszystkie',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Wspólne wiadomości bez wyboru wątku',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
