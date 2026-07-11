@@ -6,8 +6,8 @@ Uruchom na **produkcji** po deploy backend security + frontend launch PR.
 
 - [ ] Railway: `npm run db:migrate` wykonane po deploy backendu (sesje unieważnione — użytkownicy logują się ponownie)
 - [ ] Railway env: `NODE_ENV=production`, `FRONTEND_URL`, `CORS_ORIGINS`, klucze szyfrowania, `INTEGRITY_SECRET`, Resend
-- [ ] Netlify: `COPARENTES_API_BASE_URL` + `COPARENTES_PUBLIC_URL=https://getcoparentes.app`
-- [ ] `curl https://coparentes-backend-production.up.railway.app/health` → OK
+- [ ] Netlify: `COPARENTES_API_BASE_URL=https://getcoparentes.app/api` (proxy w `netlify.toml`) + `COPARENTES_PUBLIC_URL=https://getcoparentes.app`
+- [ ] `curl https://getcoparentes.app/api/health` → OK (proxy Netlify → Railway)
 
 ## Rejestracja i auth
 

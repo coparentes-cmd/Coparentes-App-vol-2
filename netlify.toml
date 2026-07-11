@@ -18,6 +18,13 @@
   status = 301
   force = true
 
+# Same-origin API proxy — HttpOnly session cookie works in Safari (no third-party cookie).
+[[redirects]]
+  from = "/api/*"
+  to = "https://coparentes-backend-production.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
 # Pliki statyczne w /downloads/ — bez przekierowania na SPA
 [[redirects]]
   from = "/downloads/*"

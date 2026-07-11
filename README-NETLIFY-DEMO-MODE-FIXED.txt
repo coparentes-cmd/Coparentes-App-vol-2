@@ -4,8 +4,8 @@ Naprawa po nieudanym buildzie:
 - zachowany tryb demo dla wszystkich rol
 - zachowane pokazywanie kodu zaproszenia rodzica
 
-W Netlify ustaw (Railway backend — zweryfikowany /health OK):
-COPARENTES_API_BASE_URL=https://coparentes-backend-production.up.railway.app/api
+W Netlify ustaw (same-origin API — cookie sesji działa w Safari):
+COPARENTES_API_BASE_URL=https://getcoparentes.app/api
 COPARENTES_PUBLIC_URL=https://getcoparentes.app
 
 Lokalnie (debug build domyslnie laczy z localhost:3000):

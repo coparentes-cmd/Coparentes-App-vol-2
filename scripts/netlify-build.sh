@@ -20,7 +20,7 @@ case "$COPARENTES_API_BASE_URL" in
   */api) ;;
   *)
     echo "ERROR: COPARENTES_API_BASE_URL must end with /api"
-    echo "Example: https://coparentes-backend-production.up.railway.app/api"
+    echo "Example: https://getcoparentes.app/api"
     echo "Current value: $COPARENTES_API_BASE_URL"
     exit 1
     ;;

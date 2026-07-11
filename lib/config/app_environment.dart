@@ -31,6 +31,6 @@ class AppEnvironment {
       return 'http://localhost:3000/api';
     }
 
-    return 'https://coparentes-backend-production.up.railway.app/api';
+    return '$publicSiteUrl/api';
   }
 }
