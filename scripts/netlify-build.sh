@@ -53,6 +53,9 @@ sync_branding_assets
 
 flutter pub get
 
+flutter analyze --no-fatal-infos
+flutter test
+
 # Instrukcja onboarding — pliki do pobrania w build/web/downloads/
 mkdir -p web/downloads
 if [ -f docs/instrukcja-nowa-rodzina.md ]; then

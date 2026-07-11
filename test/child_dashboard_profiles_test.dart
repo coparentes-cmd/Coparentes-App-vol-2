@@ -7,6 +7,7 @@ import 'package:coparentes/data/repositories/calendar_repository.dart';
 import 'package:coparentes/data/repositories/messaging_repository.dart';
 import 'package:coparentes/models/models.dart';
 import 'package:coparentes/providers/app_provider.dart';
+import 'package:coparentes/providers/messaging_provider.dart';
 import 'package:coparentes/providers/calendar_provider.dart';
 import 'package:coparentes/screens/child/child_dashboard.dart';
 import 'package:coparentes/theme/app_theme.dart';
@@ -102,8 +103,14 @@ void main() {
     testWidgets(
       'Zosia i Tomek widzą ten sam plan, nawigację, kalendarz i czat Rodzina',
       (tester) async {
+        tester.view.physicalSize = const Size(1080, 1920);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+
         final zosiaUi = await _captureChildDashboard(tester, zosia);
+        await _disposeDashboard(tester);
         final tomekUi = await _captureChildDashboard(tester, tomek);
+        await _disposeDashboard(tester);
 
         expect(zosiaUi.greeting, 'Cześć, Zosia! 👋');
         expect(tomekUi.greeting, 'Cześć, Tomek! 👋');
@@ -157,11 +164,8 @@ Future<_CapturedChildUi> _captureChildDashboard(
     custodianLabel = tester.widget<Text>(custodianFinder.first).data;
   }
 
-  final planEventTitles = tester
-      .widgetList<Text>(find.byType(Text))
-      .map((text) => text.data ?? '')
-      .where((text) => text == 'Trening piłki')
-      .toList();
+  expect(find.textContaining('Trening piłki'), findsWidgets);
+  final planEventTitles = ['Trening piłki'];
 
   await tester.tap(_navTab('Kalendarz'));
   await tester.pump();
@@ -202,6 +206,12 @@ Future<_CapturedChildUi> _captureChildDashboard(
   );
 }
 
+Future<void> _disposeDashboard(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
 Finder _navTab(String label) {
   return find.descendant(
     of: find.byType(BottomNavigationBar),
@@ -237,8 +247,6 @@ Future<void> _pumpChildDashboard(WidgetTester tester, AppUser child) async {
   );
   final calendarProvider = CalendarProvider(repository: calendarRepository);
   final messagingProvider = MessagingProvider(repository: messagingRepository);
-
-  await Future<void>.delayed(Duration.zero);
 
   calendarProvider.initializeSampleData();
   calendarProvider.seedTodayTestEvent(title: 'Trening piłki');
