@@ -13,6 +13,7 @@ import '../data/repositories/auth_repository.dart';
 import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../config/messaging_categories.dart';
+import '../config/message_tags.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../models/models.dart';
 import '../utils/swap_message_utils.dart';
@@ -1028,15 +1029,40 @@ class MessagingProvider extends ChangeNotifier {
   Future<void> setMessageTags({
     required String messageId,
     required List<String> tags,
+    bool localOnly = false,
   }) async {
-    final updated = await _repository.setMessageTags(
-      messageId: messageId,
-      tags: tags,
-    );
-    _tagsByMessageId
-      ..clear()
-      ..addAll(updated);
+    final normalized = tags
+        .map(normalizeMessageTag)
+        .where((tag) => tag.isNotEmpty)
+        .toSet()
+        .toList();
+
+    suppressRemoteLoad();
+
+    if (normalized.isEmpty) {
+      _tagsByMessageId.remove(messageId);
+    } else {
+      _tagsByMessageId[messageId] = normalized.toSet();
+    }
     notifyListeners();
+
+    if (localOnly) {
+      return;
+    }
+
+    try {
+      final updated = await _repository.setMessageTags(
+        messageId: messageId,
+        tags: normalized,
+      );
+      _tagsByMessageId
+        ..clear()
+        ..addAll(updated);
+      notifyListeners();
+    } catch (error) {
+      await loadThreads(silent: true);
+      rethrow;
+    }
   }
 
   Future<void> loadThreads({

@@ -203,6 +203,35 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
             'na tej samej wiadomości. Szukaj: tag:paragon',
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
+          const SizedBox(height: 16),
+          const Text(
+            'Sugerowane',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: suggestedMessageTags
+                .map(
+                  (tag) => FilterChip(
+                    label: Text(messageTagDisplayLabel(tag)),
+                    selected: _tags.contains(tag),
+                    showCheckmark: true,
+                    checkmarkColor: messageTagColor(tag),
+                    selectedColor:
+                        messageTagColor(tag).withValues(alpha: 0.14),
+                    onSelected: (_) => _toggleTag(tag),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )
+                .toList(),
+          ),
           if (_tags.isNotEmpty) ...[
             const SizedBox(height: 16),
             const Text(

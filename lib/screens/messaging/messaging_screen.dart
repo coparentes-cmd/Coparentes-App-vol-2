@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/message_tags.dart';
 import '../../config/messaging_categories.dart';
+import '../../data/api/app_api_client.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/calendar_provider.dart';
@@ -318,7 +319,7 @@ class MessagingScreenState extends State<MessagingScreen> {
               child: _InlineCategoryChatPanel(
                 key: ValueKey(_selectedCategory),
                 category: _selectedCategory,
-                allowPrivateTags: false,
+                allowPrivateTags: !isReadOnly,
               ),
             )
           else
@@ -1862,14 +1863,18 @@ class _MessageBubbleState extends State<_MessageBubble> {
       await context.read<MessagingProvider>().setMessageTags(
             messageId: widget.message.id,
             tags: updated,
+            localOnly: context.read<AppProvider>().isDemoMode,
           );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
+      final message = error is ApiException && error.message == 'message_not_found'
+          ? 'Nie udało się zapisać etykiet — odśwież wiadomości i spróbuj ponownie.'
+          : 'Nie udało się zapisać etykiet.';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się zapisać tagów.'),
+        SnackBar(
+          content: Text(message),
           backgroundColor: AppTheme.errorColor,
         ),
       );
