@@ -6,6 +6,7 @@ Naprawa po nieudanym buildzie:
 
 W Netlify ustaw (Railway backend — zweryfikowany /health OK):
 COPARENTES_API_BASE_URL=https://coparentes-backend-production.up.railway.app/api
+COPARENTES_PUBLIC_URL=https://getcoparentes.app
 
 Lokalnie (debug build domyslnie laczy z localhost:3000):
 flutter run -d chrome --dart-define=COPARENTES_API_BASE_URL=http://localhost:3000/api

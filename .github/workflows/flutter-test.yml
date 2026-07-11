@@ -28,3 +28,6 @@ jobs:
 
       - name: Test
         run: flutter test
+
+      - name: Build web
+        run: flutter build web --release --no-wasm-dry-run --dart-define=COPARENTES_API_BASE_URL=https://coparentes-backend-production.up.railway.app/api --dart-define=COPARENTES_PUBLIC_URL=https://getcoparentes.app
