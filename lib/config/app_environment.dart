@@ -19,16 +19,25 @@ class AppEnvironment {
   ///
   /// Priority:
   /// 1. `--dart-define=COPARENTES_API_BASE_URL=...` (Netlify / CI)
-  /// 2. Debug builds → local backend
-  /// 3. Release builds → Railway production
+  /// 2. Web release → same-origin `/api` (Netlify proxy)
+  /// 3. Debug builds → local backend
   static String get apiBaseUrl {
     const configured = String.fromEnvironment('COPARENTES_API_BASE_URL');
     if (configured.isNotEmpty) {
+      if (kIsWeb &&
+          !kDebugMode &&
+          configured.contains('railway.app')) {
+        return '/api';
+      }
       return configured;
     }
 
     if (kDebugMode) {
       return 'http://localhost:3000/api';
+    }
+
+    if (kIsWeb) {
+      return '/api';
     }
 
     return '$publicSiteUrl/api';

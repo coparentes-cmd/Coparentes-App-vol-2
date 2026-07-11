@@ -57,15 +57,25 @@ class AuthRepository {
 
   bool get _usesCookieAuth => kIsWeb;
 
+  void _applyWebSessionToken(Map<String, dynamic> payload) {
+    if (!_usesCookieAuth) {
+      return;
+    }
+    final token = payload['token'] as String?;
+    _apiClient.setToken(
+      token != null && token.isNotEmpty ? token : null,
+    );
+  }
+
   Future<AuthSession?> restoreSession() async {
     final cachedPayload = _offlineStore.getSessionPayload();
 
     if (_usesCookieAuth) {
-      _apiClient.setToken(null);
       final trustedToken = await _readTrustedDeviceToken();
       _apiClient.setTrustedDeviceToken(trustedToken);
       try {
         final payload = await _apiClient.getJson('/auth/session');
+        _applyWebSessionToken(payload);
         await _offlineStore.saveSessionPayload(payload);
         return authSessionFromJson(payload);
       } on ApiException catch (error) {
@@ -76,11 +86,13 @@ class AuthRepository {
         }
 
         if (cachedPayload != null && kDebugMode) {
+          _applyWebSessionToken(cachedPayload);
           return _sessionFromCachedPayload(cachedPayload);
         }
         return null;
       } catch (_) {
         if (cachedPayload != null && kDebugMode) {
+          _applyWebSessionToken(cachedPayload);
           return _sessionFromCachedPayload(cachedPayload);
         }
         return null;
@@ -386,7 +398,7 @@ class AuthRepository {
   Future<AuthSession> _saveSession(Map<String, dynamic> payload) async {
     final session = authSessionFromJson(payload);
     if (_usesCookieAuth) {
-      _apiClient.setToken(null);
+      _applyWebSessionToken(payload);
     } else {
       _apiClient.setToken(session.token);
       await _writeToken(session.token);

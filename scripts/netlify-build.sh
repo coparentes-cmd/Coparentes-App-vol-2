@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -z "${COPARENTES_API_BASE_URL:-}" ]; then
-  echo "ERROR: Missing COPARENTES_API_BASE_URL environment variable."
-  echo "Set it in Netlify Site configuration -> Environment variables."
-  exit 1
+PUBLIC_URL="${COPARENTES_PUBLIC_URL:-https://getcoparentes.app}"
+
+# Production uses same-origin /api (Netlify proxy in netlify.toml).
+# Preview/branch builds still need a full HTTPS URL to Railway.
+if [ "${CONTEXT:-production}" = "production" ]; then
+  API_BASE_URL="/api"
+else
+  if [ -z "${COPARENTES_API_BASE_URL:-}" ]; then
+    echo "ERROR: Missing COPARENTES_API_BASE_URL for non-production deploy context."
+    echo "Set it in Netlify Site configuration -> Environment variables."
+    exit 1
+  fi
+  API_BASE_URL="$COPARENTES_API_BASE_URL"
 fi
 
-case "$COPARENTES_API_BASE_URL" in
-  https://*) ;;
+case "$API_BASE_URL" in
+  /api) ;;
+  https://*/api) ;;
   *)
-    echo "ERROR: COPARENTES_API_BASE_URL must use HTTPS in production."
-    echo "Current value: $COPARENTES_API_BASE_URL"
+    echo "ERROR: API base URL must be /api or https://.../api"
+    echo "Current value: $API_BASE_URL"
     exit 1
     ;;
 esac
 
-case "$COPARENTES_API_BASE_URL" in
-  */api) ;;
-  *)
-    echo "ERROR: COPARENTES_API_BASE_URL must end with /api"
-    echo "Example: https://getcoparentes.app/api"
-    echo "Current value: $COPARENTES_API_BASE_URL"
-    exit 1
-    ;;
-esac
+echo "Using API base URL: $API_BASE_URL (context=${CONTEXT:-production})"
 
 export FLUTTER_HOME="$HOME/flutter-sdk"
 export PATH="$FLUTTER_HOME/bin:$PATH"
@@ -70,7 +72,7 @@ PUBLIC_URL="${COPARENTES_PUBLIC_URL:-https://getcoparentes.app}"
 flutter build web \
   --release \
   --no-wasm-dry-run \
-  --dart-define=COPARENTES_API_BASE_URL="$COPARENTES_API_BASE_URL" \
+  --dart-define=COPARENTES_API_BASE_URL="$API_BASE_URL" \
   --dart-define=COPARENTES_PUBLIC_URL="$PUBLIC_URL"
 
 if [ ! -f build/web/index.html ]; then

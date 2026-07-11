@@ -110,12 +110,8 @@ class AppApiClient {
 
   Future<bool> pingHealth() async {
     try {
-      final healthBaseUrl = baseUrl.endsWith('/api')
-          ? baseUrl.substring(0, baseUrl.length - 4)
-          : baseUrl;
-
       final response = await _httpClient
-          .get(Uri.parse('$healthBaseUrl/health'))
+          .get(Uri.parse('$baseUrl/health'))
           .timeout(const Duration(seconds: 8));
 
       return response.statusCode >= 200 && response.statusCode < 300;
