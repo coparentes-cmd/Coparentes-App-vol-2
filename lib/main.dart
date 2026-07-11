@@ -40,6 +40,7 @@ Future<void> main() async {
   await initializeDateFormatting('pl_PL', null);
   final preferences = await SharedPreferences.getInstance();
   final offlineStore = OfflineStore(preferences: preferences);
+  await offlineStore.initialize();
   final pinLockStore = PinLockStore(preferences: preferences);
   final apiClient = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
   final messagingRepository = MessagingRepository(

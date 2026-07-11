@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'api_client_factory.dart';
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;
@@ -24,7 +26,7 @@ class AppApiClient {
   AppApiClient({
     required this.baseUrl,
     http.Client? httpClient,
-  }) : _httpClient = httpClient ?? http.Client();
+  }) : _httpClient = httpClient ?? createApiHttpClient();
 
   void setToken(String? token) {
     _token = token;

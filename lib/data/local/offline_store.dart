@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'secure_offline_codec.dart';
+
 class OfflineStore extends ChangeNotifier {
   static const _sessionPayloadKey = 'coparentes_cached_session_payload_v1';
   static const _threadsKey = 'coparentes_cached_threads_v1';
@@ -17,16 +19,26 @@ class OfflineStore extends ChangeNotifier {
   static const _financeExpenseIdMapKey = 'coparentes_finance_expense_id_map_v1';
 
   final SharedPreferences _preferences;
+  final SecureOfflineCodec _codec;
 
-  OfflineStore({required SharedPreferences preferences})
-      : _preferences = preferences;
+  OfflineStore({
+    required SharedPreferences preferences,
+    SecureOfflineCodec? codec,
+  })  : _preferences = preferences,
+        _codec = codec ?? SecureOfflineCodec();
 
-  Map<String, dynamic>? getSessionPayload() => _decodeMap(
-        _preferences.getString(_sessionPayloadKey),
-      );
+  Future<void> initialize() => _codec.initialize();
+
+  bool get _persistSensitiveData => !kIsWeb;
+
+  Map<String, dynamic>? getSessionPayload() =>
+      _decodeMap(_preferences.getString(_sessionPayloadKey));
 
   Future<void> saveSessionPayload(Map<String, dynamic> payload) async {
-    await _preferences.setString(_sessionPayloadKey, jsonEncode(payload));
+    await _preferences.setString(
+      _sessionPayloadKey,
+      jsonEncode(sanitizeSessionPayloadForCache(payload)),
+    );
     notifyListeners();
   }
 
@@ -35,42 +47,47 @@ class OfflineStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> getThreads() => _decodeList(
-        _preferences.getString(_threadsKey),
-      );
+  List<Map<String, dynamic>> getThreads() =>
+      _decodeList(_readSensitiveString(_threadsKey));
 
   Future<void> saveThreads(List<Map<String, dynamic>> threads) async {
-    await _preferences.setString(_threadsKey, jsonEncode(threads));
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(_threadsKey, jsonEncode(threads));
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> getMessageTags() => _decodeList(
-        _preferences.getString(_messageTagsKey),
-      );
+  List<Map<String, dynamic>> getMessageTags() =>
+      _decodeList(_readSensitiveString(_messageTagsKey));
 
   Future<void> saveMessageTags(List<Map<String, dynamic>> tags) async {
-    await _preferences.setString(_messageTagsKey, jsonEncode(tags));
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(_messageTagsKey, jsonEncode(tags));
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> getExports() => _decodeList(
-        _preferences.getString(_exportsKey),
-      );
+  List<Map<String, dynamic>> getExports() =>
+      _decodeList(_readSensitiveString(_exportsKey));
 
   Future<void> saveExports(List<Map<String, dynamic>> jobs) async {
-    await _preferences.setString(_exportsKey, jsonEncode(jobs));
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(_exportsKey, jsonEncode(jobs));
     notifyListeners();
   }
 
-  Map<String, dynamic>? getCalendarSnapshot() => _decodeMap(
-        _preferences.getString(_calendarStorageKey()),
-      );
+  Map<String, dynamic>? getCalendarSnapshot() =>
+      _decodeMap(_readSensitiveString(_calendarStorageKey()));
 
   Future<void> saveCalendarSnapshot(Map<String, dynamic> payload) async {
-    await _preferences.setString(
-      _calendarStorageKey(),
-      jsonEncode(payload),
-    );
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(_calendarStorageKey(), jsonEncode(payload));
     notifyListeners();
   }
 
@@ -94,33 +111,40 @@ class OfflineStore extends ChangeNotifier {
     return null;
   }
 
-  List<Map<String, dynamic>> getFinancesExpenses() => _decodeList(
-        _preferences.getString(_financesKey),
-      );
+  List<Map<String, dynamic>> getFinancesExpenses() =>
+      _decodeList(_readSensitiveString(_financesKey));
 
   Future<void> saveFinancesExpenses(List<Map<String, dynamic>> expenses) async {
-    await _preferences.setString(_financesKey, jsonEncode(expenses));
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(_financesKey, jsonEncode(expenses));
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> getDocuments() => _decodeList(
-        _preferences.getString(_documentsKey),
-      );
+  List<Map<String, dynamic>> getDocuments() =>
+      _decodeList(_readSensitiveString(_documentsKey));
 
   Future<void> saveDocuments(List<Map<String, dynamic>> documents) async {
-    await _preferences.setString(_documentsKey, jsonEncode(documents));
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(_documentsKey, jsonEncode(documents));
     notifyListeners();
   }
 
   Map<String, dynamic>? getExportDownload(String exportId) => _decodeMap(
-        _preferences.getString('$_exportDownloadPrefix$exportId'),
+        _readSensitiveString('$_exportDownloadPrefix$exportId'),
       );
 
   Future<void> saveExportDownload(
     String exportId,
     Map<String, dynamic> payload,
   ) async {
-    await _preferences.setString(
+    if (!_persistSensitiveData) {
+      return;
+    }
+    await _writeSensitiveString(
       '$_exportDownloadPrefix$exportId',
       jsonEncode(payload),
     );
@@ -191,8 +215,19 @@ class OfflineStore extends ChangeNotifier {
     await _preferences.remove(_documentsKey);
     await _preferences.remove(_pendingActionsKey);
     await _preferences.remove(_messagingThreadIdMapKey);
+    await _preferences.remove(_messageTagsKey);
     await _preferences.remove(_financeExpenseIdMapKey);
     notifyListeners();
+  }
+
+  String? _readSensitiveString(String key) {
+    final raw = _preferences.getString(key);
+    return _codec.decryptString(raw) ?? raw;
+  }
+
+  Future<void> _writeSensitiveString(String key, String plaintext) async {
+    final encoded = _codec.encryptString(plaintext) ?? plaintext;
+    await _preferences.setString(key, encoded);
   }
 
   List<Map<String, dynamic>> _decodeList(String? raw) {

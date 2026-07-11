@@ -10,6 +10,7 @@ import '../models/login_challenge.dart';
 import '../models/user_consent.dart';
 import '../serializers/api_serializers.dart';
 import '../serializers/document_serializers.dart';
+import '../local/secure_offline_codec.dart';
 
 class ChildJoinProfileOption {
   final String id;
@@ -54,23 +55,42 @@ class AuthRepository {
             ? null
             : (secureStorage ?? const FlutterSecureStorage());
 
+  bool get _usesCookieAuth => kIsWeb;
+
   Future<AuthSession?> restoreSession() async {
-    var token = await _readToken();
     final cachedPayload = _offlineStore.getSessionPayload();
 
-    if (token == null || token.isEmpty) {
-      if (cachedPayload == null) {
-        return null;
-      }
+    if (_usesCookieAuth) {
+      _apiClient.setToken(null);
+      final trustedToken = await _readTrustedDeviceToken();
+      _apiClient.setTrustedDeviceToken(trustedToken);
+      try {
+        final payload = await _apiClient.getJson('/auth/session');
+        await _offlineStore.saveSessionPayload(payload);
+        return authSessionFromJson(payload);
+      } on ApiException catch (error) {
+        if (error.statusCode == 401 || error.statusCode == 403) {
+          await clearToken();
+          await _offlineStore.clearSessionPayload();
+          return null;
+        }
 
-      final cachedToken = cachedPayload['token'] as String?;
-      if (cachedToken != null && cachedToken.isNotEmpty) {
-        _apiClient.setToken(cachedToken);
-        await _writeToken(cachedToken);
-        token = cachedToken;
-      } else {
+        if (cachedPayload != null && kDebugMode) {
+          return _sessionFromCachedPayload(cachedPayload);
+        }
+        return null;
+      } catch (_) {
+        if (cachedPayload != null && kDebugMode) {
+          return _sessionFromCachedPayload(cachedPayload);
+        }
         return null;
       }
+    }
+
+    var token = await _readToken();
+
+    if (token == null || token.isEmpty) {
+      return null;
     }
 
     _apiClient.setToken(token);
@@ -88,12 +108,12 @@ class AuthRepository {
       }
 
       if (cachedPayload != null && kDebugMode) {
-        return authSessionFromJson(cachedPayload);
+        return _sessionFromCachedPayload(cachedPayload);
       }
       return null;
     } catch (_) {
       if (cachedPayload != null && kDebugMode) {
-        return authSessionFromJson(cachedPayload);
+        return _sessionFromCachedPayload(cachedPayload);
       }
       return null;
     }
@@ -328,17 +348,15 @@ class AuthRepository {
       return token;
     }
 
-    return _preferences.getString(_tokenKey);
+    return null;
   }
 
   Future<void> _writeToken(String token) async {
-    if (_secureStorage != null) {
-      await _secureStorage!.write(key: _tokenKey, value: token);
-      await _preferences.remove(_tokenKey);
+    if (_secureStorage == null) {
       return;
     }
-
-    await _preferences.setString(_tokenKey, token);
+    await _secureStorage!.write(key: _tokenKey, value: token);
+    await _preferences.remove(_tokenKey);
   }
 
   Future<String?> _readTrustedDeviceToken() async {
@@ -367,9 +385,20 @@ class AuthRepository {
 
   Future<AuthSession> _saveSession(Map<String, dynamic> payload) async {
     final session = authSessionFromJson(payload);
-    _apiClient.setToken(session.token);
-    await _writeToken(session.token);
+    if (_usesCookieAuth) {
+      _apiClient.setToken(null);
+    } else {
+      _apiClient.setToken(session.token);
+      await _writeToken(session.token);
+    }
     await _offlineStore.saveSessionPayload(payload);
     return session;
+  }
+
+  AuthSession _sessionFromCachedPayload(Map<String, dynamic> cachedPayload) {
+    return authSessionFromJson({
+      ...cachedPayload,
+      'token': cachedPayload['token'] as String? ?? '',
+    });
   }
 }

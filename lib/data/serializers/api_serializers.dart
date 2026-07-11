@@ -305,7 +305,7 @@ Map<String, dynamic> exportJobToJson(ExportJob job) {
 
 AuthSession authSessionFromJson(Map<String, dynamic> json) {
   return AuthSession(
-    token: json['token'] as String,
+    token: json['token'] as String? ?? '',
     user: appUserFromJson(json['user'] as Map<String, dynamic>),
     workspace: workspaceFromJson(json['workspace'] as Map<String, dynamic>),
   );
