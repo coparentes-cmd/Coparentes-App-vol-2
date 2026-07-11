@@ -13,6 +13,7 @@ import '../../utils/app_browser_back.dart';
 import '../../utils/message_tag_search.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/message_tag_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import 'messaging_navigation.dart';
 import 'thread_screen.dart';
@@ -158,6 +159,25 @@ class MessagingScreenState extends State<MessagingScreen> {
     }
   }
 
+  void _toggleSearchTag(String tag) {
+    final query = parseMessageSearchQuery(_searchController.text);
+    final tags = List<String>.from(query.tags);
+    final normalized = normalizeMessageTag(tag);
+    if (tags.contains(normalized)) {
+      tags.remove(normalized);
+    } else {
+      tags.add(normalized);
+    }
+
+    final parts = <String>[];
+    if (query.text.isNotEmpty) {
+      parts.add(query.text);
+    }
+    parts.addAll(tags.map((item) => 'tag:$item'));
+    _searchController.text = parts.join(' ');
+    setState(() {});
+  }
+
   void _closeInlineThread() {
     final shouldReturn = _returnToPreviousTab;
     setState(() {
@@ -299,15 +319,6 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     final isReadOnly = user?.role == UserRole.observer;
     final searchQuery = parseMessageSearchQuery(_searchController.text);
-    final allTabThreads = messaging.allTabThreads
-        .where(
-          (thread) => threadMatchesAllTabSearch(
-            thread: thread,
-            query: searchQuery,
-            tagsByMessageId: messaging.tagsByMessageId,
-          ),
-        )
-        .toList();
     final customAllTabThreads = messaging.customUserThreads
         .where(
           (thread) => threadMatchesAllTabSearch(
@@ -324,7 +335,7 @@ class MessagingScreenState extends State<MessagingScreen> {
     final showAllTabInlineThread =
         !showInlineChat && _inlineThreadId != null && inlineThread != null;
     if (!showInlineChat && !showAllTabInlineThread) {
-      _ensureAllTabActiveThread(allTabThreads);
+      _ensureAllTabActiveThread(customAllTabThreads);
     }
     final activeAllTabThreadId = _allTabActiveThreadId;
     final activeAllTabThread = activeAllTabThreadId == null
@@ -423,6 +434,11 @@ class MessagingScreenState extends State<MessagingScreen> {
                 ),
               ),
             ),
+            MessageTagFilterBar(
+              activeTags: searchQuery.tags.toSet(),
+              userTags: messaging.allUserTags,
+              onTagTap: _toggleSearchTag,
+            ),
           ],
           if (showInlineChat)
             Expanded(
@@ -438,6 +454,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                 key: ValueKey(_inlineThreadId),
                 threadId: _inlineThreadId,
                 allowPrivateTags: _inlineThreadAllowsPrivateTags && !isReadOnly,
+                messageSearchQuery: searchQuery,
               ),
             )
           else
@@ -496,6 +513,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                             key: ValueKey(activeAllTabThreadId),
                             threadId: activeAllTabThreadId,
                             allowPrivateTags: !isReadOnly,
+                            messageSearchQuery: searchQuery,
                           ),
                   ),
                 ],

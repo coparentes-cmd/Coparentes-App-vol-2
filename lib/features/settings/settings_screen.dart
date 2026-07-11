@@ -6,6 +6,7 @@ import '../../../config/legal_config.dart';
 import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/open_url.dart';
 import '../../screens/auth/child_onboarding_sheet.dart';
 import '../../screens/settings/privacy_consents_section.dart';
 import 'widgets/edit_profile_sheet.dart';
@@ -19,6 +20,8 @@ import 'widgets/action_tile.dart';
 import 'widgets/switch_tile.dart';
 import 'widgets/setup_pin_sheet.dart';
 import 'widgets/change_pin_sheet.dart';
+
+const _showPreLaunchPlaceholderSections = false;
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -454,26 +457,28 @@ class SettingsScreen extends StatelessWidget {
                       isDark: isDark,
                       onTap: () => _showChangePinDialog(context, roleColor, ap),
                     ),
-                    SettingsDivider(),
-                    InfoTile(
-                      icon: Icons.history_outlined,
-                      label: 'Ostatnie logowanie',
-                      value: 'Dziś, ${_formatNow()}',
-                      isDark: isDark,
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.devices_outlined,
-                      label: 'Zaufane urządzenia',
-                      subtitle: '1 urządzenie zarejestrowane',
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'Zaufane urządzenia',
-                          'Zarządzaj urządzeniami z dostępem do konta. Ta funkcja będzie dostępna w pełnej wersji.',
-                          roleColor),
-                    ),
+                    if (_showPreLaunchPlaceholderSections) ...[
+                      SettingsDivider(),
+                      InfoTile(
+                        icon: Icons.history_outlined,
+                        label: 'Ostatnie logowanie',
+                        value: 'Dziś, ${_formatNow()}',
+                        isDark: isDark,
+                      ),
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.devices_outlined,
+                        label: 'Zaufane urządzenia',
+                        subtitle: '1 urządzenie zarejestrowane',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _showFeatureInfo(
+                            context,
+                            'Zaufane urządzenia',
+                            'Zarządzaj urządzeniami z dostępem do konta. Ta funkcja będzie dostępna w pełnej wersji.',
+                            roleColor),
+                      ),
+                    ],
                   ]),
 
                   const SizedBox(height: 20),
@@ -607,63 +612,63 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // ── Billing ───────────────────────────────────────────────
-                  SectionHeader(
-                      label: 'Subskrypcja i rozliczenia',
-                      icon: Icons.credit_card_outlined),
-                  SettingsCard(isDark: isDark, children: [
-                    InfoTile(
-                      icon: Icons.workspace_premium_outlined,
-                      label: 'Plan',
-                      value: 'Coparentes',
-                      isDark: isDark,
-                      valueColor: const Color(0xFF6A1B9A),
-                    ),
-                    SettingsDivider(),
-                    InfoTile(
-                      icon: Icons.calendar_month_outlined,
-                      label: 'Następne odnowienie',
-                      value: '15 maja 2025',
-                      isDark: isDark,
-                    ),
-                    SettingsDivider(),
-                    InfoTile(
-                      icon: Icons.payments_outlined,
-                      label: 'Kwota',
-                      value: '39,99 PLN / miesiąc',
-                      isDark: isDark,
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.receipt_long_outlined,
-                      label: 'Historia płatności',
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showBillingHistory(context, roleColor),
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.credit_card_outlined,
-                      label: 'Zmień metodę płatności',
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'Metoda płatności',
-                          'Obsługujemy BLIK, kartę płatniczą oraz przelew bankowy. Zarządzaj metodami płatności w panelu klienta.',
-                          roleColor),
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.cancel_outlined,
-                      label: 'Anuluj subskrypcję',
-                      color: AppTheme.errorColor,
-                      isDark: isDark,
-                      onTap: () => _showCancelDialog(context, roleColor),
-                    ),
-                  ]),
+                  if (_showPreLaunchPlaceholderSections) ...[
+                    const SizedBox(height: 20),
+                    SectionHeader(
+                        label: 'Subskrypcja i rozliczenia',
+                        icon: Icons.credit_card_outlined),
+                    SettingsCard(isDark: isDark, children: [
+                      InfoTile(
+                        icon: Icons.workspace_premium_outlined,
+                        label: 'Plan',
+                        value: 'Coparentes',
+                        isDark: isDark,
+                        valueColor: const Color(0xFF6A1B9A),
+                      ),
+                      SettingsDivider(),
+                      InfoTile(
+                        icon: Icons.calendar_month_outlined,
+                        label: 'Następne odnowienie',
+                        value: '15 maja 2025',
+                        isDark: isDark,
+                      ),
+                      SettingsDivider(),
+                      InfoTile(
+                        icon: Icons.payments_outlined,
+                        label: 'Kwota',
+                        value: '39,99 PLN / miesiąc',
+                        isDark: isDark,
+                      ),
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Historia płatności',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _showBillingHistory(context, roleColor),
+                      ),
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.credit_card_outlined,
+                        label: 'Zmień metodę płatności',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _showFeatureInfo(
+                            context,
+                            'Metoda płatności',
+                            'Obsługujemy BLIK, kartę płatniczą oraz przelew bankowy. Zarządzaj metodami płatności w panelu klienta.',
+                            roleColor),
+                      ),
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.cancel_outlined,
+                        label: 'Anuluj subskrypcję',
+                        color: AppTheme.errorColor,
+                        isDark: isDark,
+                        onTap: () => _showCancelDialog(context, roleColor),
+                      ),
+                    ]),
+                  ],
 
                   const SizedBox(height: 20),
 
@@ -675,14 +680,10 @@ class SettingsScreen extends StatelessWidget {
                     ActionTile(
                       icon: Icons.download_outlined,
                       label: 'Pobierz moje dane (RODO)',
-                      subtitle: 'Eksport JSON wszystkich danych konta',
+                      subtitle: 'Wyślij wniosek e-mailem do supportu',
                       color: roleColor,
                       isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'Eksport RODO',
-                          'Możesz pobrać kompletną kopię swoich danych zgodnie z art. 20 RODO. Plik zostanie wygenerowany i przesłany na Twój adres e-mail w ciągu 24 godzin.',
-                          roleColor),
+                      onTap: () => _showRodoExportDialog(context, ap, roleColor),
                     ),
                     SettingsDivider(),
                     ActionTile(
@@ -691,7 +692,7 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: 'Nieodwracalne – wymaga potwierdzenia',
                       color: AppTheme.errorColor,
                       isDark: isDark,
-                      onTap: () => _showDeleteDialog(context, roleColor),
+                      onTap: () => _showDeleteDialog(context, ap, roleColor),
                     ),
                   ]),
 
@@ -732,42 +733,44 @@ class SettingsScreen extends StatelessWidget {
                       value: ap.currencyCode,
                       isDark: isDark,
                     ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.gavel_outlined,
-                      label: 'Regulamin',
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'Regulamin',
-                          '${LegalConfig.companyName} · ${LegalConfig.companyAddress}\nRegulamin i polityka prywatnosci powinny byc opublikowane pod ${LegalConfig.websiteUrl} przed wysylka do sklepow.',
-                          roleColor),
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.shield_moon_outlined,
-                      label: 'Polityka prywatności (RODO)',
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'RODO',
-                          'Administratorem danych jest ${LegalConfig.companyName}. Zakres danych i retencja zaleza od aktywnych funkcji konta. Przed publikacja produkcyjna nalezy opublikowac finalna polityke prywatnosci pod ${LegalConfig.privacyUrl}.',
-                          roleColor),
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.support_agent_outlined,
-                      label: 'Pomoc i wsparcie',
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'Wsparcie',
-                          'E-mail: ${LegalConfig.supportEmail}\nTelefon: ${LegalConfig.supportPhone}\nWWW: ${LegalConfig.supportUrl}\n\nPrzed wypchnieciem do sklepow upewnij sie, ze te dane prowadza do aktywnego supportu.',
-                          roleColor),
-                    ),
+                    if (_showPreLaunchPlaceholderSections) ...[
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.gavel_outlined,
+                        label: 'Regulamin',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _showFeatureInfo(
+                            context,
+                            'Regulamin',
+                            '${LegalConfig.companyName} · ${LegalConfig.companyAddress}\nRegulamin i polityka prywatnosci powinny byc opublikowane pod ${LegalConfig.websiteUrl} przed wysylka do sklepow.',
+                            roleColor),
+                      ),
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.shield_moon_outlined,
+                        label: 'Polityka prywatności (RODO)',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _showFeatureInfo(
+                            context,
+                            'RODO',
+                            'Administratorem danych jest ${LegalConfig.companyName}. Zakres danych i retencja zaleza od aktywnych funkcji konta. Przed publikacja produkcyjna nalezy opublikowac finalna polityke prywatnosci pod ${LegalConfig.privacyUrl}.',
+                            roleColor),
+                      ),
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.support_agent_outlined,
+                        label: 'Pomoc i wsparcie',
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _showFeatureInfo(
+                            context,
+                            'Wsparcie',
+                            'E-mail: ${LegalConfig.supportEmail}\nTelefon: ${LegalConfig.supportPhone}\nWWW: ${LegalConfig.supportUrl}\n\nPrzed wypchnieciem do sklepow upewnij sie, ze te dane prowadza do aktywnego supportu.',
+                            roleColor),
+                      ),
+                    ],
                   ]),
 
                   const SizedBox(height: 24),
@@ -1176,13 +1179,64 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, Color color) {
+  void _openSupportMailto({required String subject, required String body}) {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: LegalConfig.supportEmail,
+      queryParameters: {
+        'subject': subject,
+        'body': body,
+      },
+    );
+    openExternalUrl(uri.toString());
+  }
+
+  void _showRodoExportDialog(
+    BuildContext context,
+    AppProvider ap,
+    Color color,
+  ) {
+    final email = ap.currentUser?.email ?? '';
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eksport danych RODO'),
+        content: Text(
+          'Wyślemy wniosek o kopię Twoich danych (art. 20 RODO) na adres '
+          '${LegalConfig.supportEmail}. Odpowiemy na e-mail powiązany z kontem.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _openSupportMailto(
+                subject: 'Wniosek o eksport danych RODO — Coparentes',
+                body: 'Proszę o eksport moich danych osobowych.\n\n'
+                    'E-mail konta: $email\n',
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: color),
+            child: const Text('Wyślij e-mail', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, AppProvider ap, Color color) {
+    final email = ap.currentUser?.email ?? '';
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Usuń konto'),
         content: const Text(
-            'Ta operacja jest nieodwracalna. Wszystkie Twoje dane zostaną trwale usunięte. Czy na pewno chcesz kontynuować?'),
+          'Ta operacja jest nieodwracalna. Aby usunąć konto, wyślij wniosek '
+          'e-mailem do supportu. Potwierdzimy usunięcie danych po weryfikacji.',
+        ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1190,17 +1244,15 @@ class SettingsScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Wniosek o usunięcie konta został wysłany'),
-                  backgroundColor: AppTheme.errorColor,
-                ),
+              _openSupportMailto(
+                subject: 'Wniosek o usunięcie konta — Coparentes',
+                body: 'Proszę o trwałe usunięcie mojego konta Coparentes.\n\n'
+                    'E-mail konta: $email\n',
               );
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorColor),
-            child: const Text('Usuń konto',
+            child: const Text('Wyślij wniosek e-mailem',
                 style: TextStyle(color: Colors.white)),
           ),
         ],

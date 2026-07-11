@@ -64,4 +64,45 @@ void main() {
       expect(filtered.map((m) => m.id), ['m1']);
     });
   });
+
+  group('threadMatchesAllTabSearch', () {
+    MessageThread _thread(List<Message> messages) {
+      return MessageThread(
+        id: 'thread_1',
+        subject: 'Test',
+        category: 'Ogólne',
+        lastActivity: DateTime(2026, 1, 1),
+        hasUnread: false,
+        messages: messages,
+      );
+    }
+
+    test('matches thread when any message has the tag', () {
+      final thread = _thread([
+        _message(id: 'm1', content: 'Bez etykiety'),
+        _message(id: 'm2', content: 'Z paragonem'),
+      ]);
+      final tags = {
+        'm2': {'paragon'},
+      };
+      final matches = threadMatchesAllTabSearch(
+        thread: thread,
+        query: const MessageSearchQuery(text: '', tags: ['paragon']),
+        tagsByMessageId: tags,
+      );
+      expect(matches, isTrue);
+    });
+
+    test('does not match thread without the tag', () {
+      final thread = _thread([
+        _message(id: 'm1', content: 'Inna wiadomość'),
+      ]);
+      final matches = threadMatchesAllTabSearch(
+        thread: thread,
+        query: const MessageSearchQuery(text: '', tags: ['paragon']),
+        tagsByMessageId: const {},
+      );
+      expect(matches, isFalse);
+    });
+  });
 }

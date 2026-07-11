@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_environment.dart';
+import '../../config/legal_config.dart';
 import '../../data/api/app_api_client.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../models/models.dart';
@@ -386,7 +387,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                 const SizedBox(height: 14),
                                 if (_mode != _AuthMode.register)
                                   Text(
-                                    'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną Coparentes.ai.',
+                                    'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną ${LegalConfig.websiteUrl}.',
                                     style: Theme.of(context).textTheme.bodySmall,
                                   ),
                               ],
