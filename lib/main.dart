@@ -293,17 +293,22 @@ class _AppGateState extends State<_AppGate> {
         calendarProvider.clear();
         financeProvider.clear();
         documentsProvider.clear();
-        final loadedDemo = await calendarProvider.loadPersistedDemoIfAvailable();
-        if (!loadedDemo) {
-          calendarProvider.initializeSampleData();
-        }
-        financeProvider.initializeSampleData();
+
+        // Seed messaging/finance/exports synchronously BEFORE any await so
+        // IndexedStack panels (e.g. InlineCategoryChatPanel) never resolve
+        // against an empty provider and stick on "Nie udało się otworzyć…".
         if (context.read<AppProvider>().currentUser?.role == UserRole.child) {
           messagingProvider.initializeChildSampleData();
         } else {
           messagingProvider.initializeSampleData();
         }
+        financeProvider.initializeSampleData();
         exportsProvider.initializeSampleData();
+
+        final loadedDemo = await calendarProvider.loadPersistedDemoIfAvailable();
+        if (!loadedDemo) {
+          calendarProvider.initializeSampleData();
+        }
       } else {
         final appProvider = context.read<AppProvider>();
         final role = appProvider.currentUser?.role;

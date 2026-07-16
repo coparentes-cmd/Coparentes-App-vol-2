@@ -382,7 +382,13 @@ class CalendarProvider extends ChangeNotifier {
 
   Future<bool> loadPersistedDemoIfAvailable() async {
     final snapshot = _repository.getCachedSnapshot();
-    if (snapshot.custodySchedule == null) {
+    final schedule = snapshot.custodySchedule;
+    if (schedule == null) {
+      return false;
+    }
+    // Never reuse a production offline cache as "demo" — that left demo with
+    // empty/wrong calendar while messaging showed sample threads.
+    if (!schedule.id.startsWith('demo_schedule_')) {
       return false;
     }
     _applySnapshot(snapshot);

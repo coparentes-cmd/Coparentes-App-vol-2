@@ -59,10 +59,10 @@ class FinanceScreenState extends State<FinanceScreen>
       if (!app.isDemoMode) {
         unawaited(context.read<FinanceProvider>().load(silent: true));
         unawaited(context.read<OfflineSyncProvider>().pollFinanceNow());
-      }
-      final exports = context.read<ExportsProvider>();
-      if (exports.jobs.isEmpty && !exports.isLoading) {
-        exports.loadExports();
+        final exports = context.read<ExportsProvider>();
+        if (exports.jobs.isEmpty && !exports.isLoading) {
+          exports.loadExports();
+        }
       }
     });
 

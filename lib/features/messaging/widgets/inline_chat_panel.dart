@@ -131,6 +131,21 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       thread = messaging.getThreadById(widget.threadId!);
     } else if (appProvider.isDemoMode) {
       thread = messaging.getCategoryChannel(widget.category!);
+      // Demo seed can land after this panel mounts; wait briefly for hydrate.
+      if (thread == null) {
+        for (var attempt = 0; attempt < 8 && mounted; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          if (!mounted) {
+            return;
+          }
+          thread = context
+              .read<MessagingProvider>()
+              .getCategoryChannel(widget.category!);
+          if (thread != null) {
+            break;
+          }
+        }
+      }
     } else {
       thread = await messaging.openCategoryChannel(widget.category!);
     }
@@ -323,9 +338,26 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
         !isChild && context.watch<AppProvider>().aiCoachEnabled;
     final aiShield = context.watch<AppProvider>().aiShieldEnabled;
     final isReadOnly = user?.role == UserRole.observer;
+    final messaging = context.watch<MessagingProvider>();
     final thread = _threadId == null
         ? null
-        : context.watch<MessagingProvider>().getThreadById(_threadId!);
+        : messaging.getThreadById(_threadId!);
+
+    // Recover if demo hydrate finished after the first failed resolve.
+    if (!_initializing &&
+        thread == null &&
+        widget.category != null &&
+        context.read<AppProvider>().isDemoMode) {
+      final recovered = messaging.getCategoryChannel(widget.category!);
+      if (recovered != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _threadId != null) {
+            return;
+          }
+          setState(() => _threadId = recovered.id);
+        });
+      }
+    }
 
     if (_initializing) {
       return const Center(child: CircularProgressIndicator());
@@ -350,7 +382,6 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
     final panelSubtitle = widget.threadId != null
         ? thread.subject
         : categoryChannelSubtitle(panelCategory);
-    final messaging = context.watch<MessagingProvider>();
     final visibleMessages = widget.messageSearchQuery == null
         ? thread.messages
         : filterMessagesForSearch(
