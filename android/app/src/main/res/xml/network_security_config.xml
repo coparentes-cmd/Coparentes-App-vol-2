@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Production / release network policy:
+  - No cleartext (HTTP) by default
+  - Trust only system Certificate Authorities
+  - No certificate pinning (pins break on Let's Encrypt / CDN rotation)
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Explicit HTTPS domains used by Coparentes (still system CA trust). -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">getcoparentes.app</domain>
+        <domain includeSubdomains="true">railway.app</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
