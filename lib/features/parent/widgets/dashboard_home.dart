@@ -1,33 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../config/messaging_categories.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
+import '../../../../utils/calendar_date_utils.dart';
 import '../../../../utils/layout_utils.dart';
 import '../../../../widgets/parent_tab_scaffold.dart';
 import '../../../screens/settings/settings_screen.dart';
 
-import 'today_card.dart';
+import 'day_agenda_list.dart';
 import 'message_thread_preview.dart';
-import 'finance_snapshot_card.dart';
-import 'child_chip.dart';
-import 'ai_coach_cta.dart';
+import 'today_card.dart';
 
-class DashboardHome extends StatelessWidget {
-  final ValueChanged<int> onNavigateToTab;
+enum _DashboardFeedTab { messages, finance, calendar, family }
+
+class DashboardHome extends StatefulWidget {
   final ValueChanged<DateTime> onOpenCalendarDay;
   final ValueChanged<String> onOpenChatThread;
   final ValueChanged<String> onOpenFinanceExpense;
   final ValueChanged<String> onOpenChatCategory;
 
   const DashboardHome({
-    required this.onNavigateToTab,
+    super.key,
     required this.onOpenCalendarDay,
     required this.onOpenChatThread,
     required this.onOpenFinanceExpense,
     required this.onOpenChatCategory,
   });
+
+  @override
+  State<DashboardHome> createState() => _DashboardHomeState();
+}
+
+class _DashboardHomeState extends State<DashboardHome> {
+  _DashboardFeedTab _feedTab = _DashboardFeedTab.messages;
 
   @override
   Widget build(BuildContext context) {
@@ -39,20 +47,47 @@ class DashboardHome extends StatelessWidget {
     final calendar = context.watch<CalendarProvider>();
 
     final now = DateTime.now();
-    final todaySlots = calendar.getSlotsForDay(now);
-    final todayEvents = calendar.getEventsForDay(now);
+    final today = calendarDayFrom(now);
+    final todaySlots = calendar.getSlotsForDay(today);
+    final todayEvents = calendar.getEventsForDay(today);
     final pendingSwaps = calendar.swapRequests
         .where((s) => s.status == SwapStatus.pending)
-        .length;
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final nextHandover = calendar.getNextHandover();
-    final latestExpenseId = _latestFinanceExpenseId(finance);
 
-    AppUser? parentA;
-    AppUser? parentB;
-    for (final member in workspace?.members ?? []) {
-      if (member.role == UserRole.parentA) parentA = member;
-      if (member.role == UserRole.parentB) parentB = member;
-    }
+    final recentThreads = [...messaging.threads]
+      ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+    final familyThreads = recentThreads.where(isFamilyChannel).toList();
+    final parentThreads =
+        recentThreads.where((t) => !isFamilyChannel(t)).toList();
+
+    final pendingExpenses = finance.expenses
+        .where((e) => e.status == ExpenseStatus.pending)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    final recentExpenses = () {
+      if (pendingExpenses.isNotEmpty) {
+        return pendingExpenses;
+      }
+      final all = [...finance.expenses]
+        ..sort((a, b) => b.date.compareTo(a.date));
+      return all;
+    }();
+
+    final upcomingEvents = calendar.events
+        .where(
+          (e) => !calendarDayFrom(e.startDate).isBefore(today),
+        )
+        .toList()
+      ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
+
+    final messagesCount = parentThreads.length;
+    final financeCount = pendingExpenses.isNotEmpty
+        ? pendingExpenses.length
+        : recentExpenses.length;
+    final calendarCount = calendar.pendingRequestCount;
+    final familyCount = familyThreads.length;
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -178,172 +213,131 @@ class DashboardHome extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
-
-                // Today custody status card
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TodayCard(
-                    date: now,
-                    todayEvents: todayEvents,
-                    pendingSwaps: pendingSwaps,
+                    date: today,
+                    pendingSwaps: pendingSwaps.length,
                     roleColor: roleColor,
-                    custodyLabel: todaySlots.isNotEmpty ? custodyText : null,
+                    custodyLabel:
+                        todaySlots.isNotEmpty ? custodyText : null,
                     nextHandover: nextHandover,
-                    onTap: () => onOpenCalendarDay(now),
+                    onTap: () => widget.onOpenCalendarDay(today),
                   ),
                 ),
-
-                const SizedBox(height: 16),
-
+                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _DashboardQuickTab(
-                              label: 'Czat',
-                              icon: Icons.chat_bubble,
-                              color: AppTheme.primaryTeal,
-                              onTap: () => onNavigateToTab(1),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _DashboardQuickTab(
-                              label: 'Kalendarz',
-                              icon: Icons.calendar_month,
-                              color: AppTheme.parentBColor,
-                              onTap: () => onNavigateToTab(2),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _DashboardQuickTab(
-                              label: 'Finanse',
-                              icon: Icons.account_balance_wallet,
-                              color: AppTheme.warningColor,
-                              onTap: () {
-                                if (latestExpenseId != null) {
-                                  onOpenFinanceExpense(latestExpenseId);
-                                } else {
-                                  onNavigateToTab(3);
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _DashboardQuickTab(
-                              label: 'Rodzina',
-                              icon: Icons.family_restroom,
-                              color: AppTheme.childColor,
-                              onTap: () =>
-                                  onOpenChatCategory(familyCategoryChannel),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Recent messages section
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Ostatnie wiadomości',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ...messaging.threads
-                    .take(3)
-                    .map(
-                      (t) => MessageThreadPreview(
-                        thread: t,
-                        viewerUserId: user?.id,
-                        onTap: () => onOpenChatThread(t.id),
-                      ),
-                    ),
-
-                const SizedBox(height: 20),
-
-                // Finance snapshot
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Finanse – ten miesiąc',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                FinanceSnapshotCard(
-                  finance: finance,
-                  user: user,
-                  parentA: parentA,
-                  parentB: parentB,
-                ),
-
-                const SizedBox(height: 20),
-
-                // Children section
-                if (workspace != null && workspace.children.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Dzieci',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: DayAgendaList(
+                        events: todayEvents,
+                        onEmptyTap: () => widget.onOpenCalendarDay(today),
+                        onEventTap: (_) => widget.onOpenCalendarDay(today),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: workspace.children.length,
-                      itemBuilder: (ctx, i) {
-                        final child = workspace.children[i];
-                        return ChildChip(child: child);
-                      },
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 30),
-
-                // AI Coach CTA
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: AiCoachCta(),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 8),
+                _FeedTabBar(
+                  selected: _feedTab,
+                  messagesCount: messagesCount,
+                  financeCount: financeCount,
+                  calendarCount: calendarCount,
+                  familyCount: familyCount,
+                  onSelect: (tab) => setState(() => _feedTab = tab),
+                ),
+                const SizedBox(height: 8),
+                _buildFeedBody(
+                  userId: user?.id,
+                  parentThreads: parentThreads,
+                  familyThreads: familyThreads,
+                  expenses: recentExpenses.take(5).toList(),
+                  upcomingEvents: upcomingEvents.take(5).toList(),
+                  pendingSwaps: pendingSwaps.take(5).toList(),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildFeedBody({
+    required String? userId,
+    required List<MessageThread> parentThreads,
+    required List<MessageThread> familyThreads,
+    required List<Expense> expenses,
+    required List<CalendarEvent> upcomingEvents,
+    required List<SwapRequest> pendingSwaps,
+  }) {
+    switch (_feedTab) {
+      case _DashboardFeedTab.messages:
+        if (parentThreads.isEmpty) {
+          return const _FeedEmpty(text: 'Brak wiadomości');
+        }
+        return Column(
+          children: parentThreads
+              .take(5)
+              .map(
+                (t) => MessageThreadPreview(
+                  thread: t,
+                  viewerUserId: userId,
+                  onTap: () => widget.onOpenChatThread(t.id),
+                ),
+              )
+              .toList(),
+        );
+      case _DashboardFeedTab.finance:
+        if (expenses.isEmpty) {
+          return const _FeedEmpty(text: 'Brak wydatków');
+        }
+        return Column(
+          children: expenses
+              .map(
+                (e) => _FinanceFeedTile(
+                  expense: e,
+                  onTap: () => widget.onOpenFinanceExpense(e.id),
+                ),
+              )
+              .toList(),
+        );
+      case _DashboardFeedTab.calendar:
+        return _CalendarFeed(
+          swaps: pendingSwaps,
+          events: upcomingEvents,
+          onOpenDay: widget.onOpenCalendarDay,
+        );
+      case _DashboardFeedTab.family:
+        if (familyThreads.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: _FeedEmpty(
+              text: 'Brak wiadomości ${familyCategoryDisplayLabel}',
+              actionLabel: 'Otwórz czat',
+              onAction: () =>
+                  widget.onOpenChatCategory(familyCategoryChannel),
+            ),
+          );
+        }
+        return Column(
+          children: familyThreads
+              .take(5)
+              .map(
+                (t) => MessageThreadPreview(
+                  thread: t,
+                  viewerUserId: userId,
+                  onTap: () => widget.onOpenChatThread(t.id),
+                ),
+              )
+              .toList(),
+        );
+    }
   }
 
   void _openSettings(BuildContext context) {
@@ -354,56 +348,202 @@ class DashboardHome extends StatelessWidget {
   }
 }
 
-class _DashboardQuickTab extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
+class _FeedTabBar extends StatelessWidget {
+  final _DashboardFeedTab selected;
+  final int messagesCount;
+  final int financeCount;
+  final int calendarCount;
+  final int familyCount;
+  final ValueChanged<_DashboardFeedTab> onSelect;
+
+  const _FeedTabBar({
+    required this.selected,
+    required this.messagesCount,
+    required this.financeCount,
+    required this.calendarCount,
+    required this.familyCount,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <(_DashboardFeedTab, String, int)>[
+      (_DashboardFeedTab.messages, 'Wiadomości', messagesCount),
+      (_DashboardFeedTab.finance, 'Finanse', financeCount),
+      (_DashboardFeedTab.calendar, 'Kalendarz', calendarCount),
+      (
+        _DashboardFeedTab.family,
+        familyCategoryDisplayLabel,
+        familyCount,
+      ),
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: items.map((item) {
+          final tab = item.$1;
+          final label = item.$2;
+          final count = item.$3;
+          final isSelected = selected == tab;
+          final text = count > 0 ? '$label ($count)' : label;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              onTap: () => onSelect(tab),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected
+                          ? AppTheme.brandHeaderBlue
+                          : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? AppTheme.brandHeaderBlue
+                        : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _FeedEmpty extends StatelessWidget {
+  final String text;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _FeedEmpty({
+    required this.text,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onAction,
+              child: Text(actionLabel!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FinanceFeedTile extends StatelessWidget {
+  final Expense expense;
   final VoidCallback onTap;
 
-  const _DashboardQuickTab({
-    required this.label,
-    required this.icon,
-    required this.color,
+  const _FinanceFeedTile({
+    required this.expense,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
+    final statusColor = switch (expense.status) {
+      ExpenseStatus.pending => AppTheme.warningColor,
+      ExpenseStatus.accepted => AppTheme.successColor,
+      ExpenseStatus.disputed => AppTheme.errorColor,
+      ExpenseStatus.settled => AppTheme.textSecondary,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: color,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: statusColor,
+                    size: 20,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        expense.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${expense.date.day}.${expense.date.month}.${expense.date.year}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${expense.amount.toStringAsFixed(0)} PLN',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -411,25 +551,137 @@ class _DashboardQuickTab extends StatelessWidget {
   }
 }
 
-Expense? _resolveLatestFinanceExpense(FinanceProvider finance) {
-  final pending = finance.expenses
-      .where((expense) => expense.status == ExpenseStatus.pending)
-      .toList()
-    ..sort((a, b) => b.date.compareTo(a.date));
+class _CalendarFeed extends StatelessWidget {
+  final List<SwapRequest> swaps;
+  final List<CalendarEvent> events;
+  final ValueChanged<DateTime> onOpenDay;
 
-  if (pending.isNotEmpty) {
-    return pending.first;
+  const _CalendarFeed({
+    required this.swaps,
+    required this.events,
+    required this.onOpenDay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (swaps.isEmpty && events.isEmpty) {
+      return const _FeedEmpty(text: 'Brak nadchodzących pozycji');
+    }
+
+    return Column(
+      children: [
+        ...swaps.map(
+          (swap) => _SimpleFeedTile(
+            icon: Icons.swap_horiz,
+            color: AppTheme.warningColor,
+            title:
+                'Zamiana ${swap.originalDate.day}.${swap.originalDate.month}→${swap.proposedDate.day}.${swap.proposedDate.month}',
+            subtitle: swap.requesterName,
+            onTap: () => onOpenDay(swap.originalDate),
+          ),
+        ),
+        ...events.map(
+          (event) => _SimpleFeedTile(
+            icon: event.typeIcon,
+            color: event.typeColor,
+            title: event.title,
+            subtitle: formatAgendaTimeColumn(
+              start: event.startDate,
+              end: event.endDate,
+            ),
+            trailing:
+                '${event.startDate.day}.${event.startDate.month}',
+            onTap: () => onOpenDay(event.startDate),
+          ),
+        ),
+      ],
+    );
   }
-
-  if (finance.expenses.isEmpty) {
-    return null;
-  }
-
-  final latest = [...finance.expenses]
-    ..sort((a, b) => b.date.compareTo(a.date));
-  return latest.first;
 }
 
-String? _latestFinanceExpenseId(FinanceProvider finance) {
-  return _resolveLatestFinanceExpense(finance)?.id;
+class _SimpleFeedTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String? subtitle;
+  final String? trailing;
+  final VoidCallback onTap;
+
+  const _SimpleFeedTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailing != null)
+                  Text(
+                    trailing!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textHint,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

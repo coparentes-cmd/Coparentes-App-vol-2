@@ -82,7 +82,7 @@ class MessageThreadPreview extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            thread.subject,
+                            threadListTitle(thread),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: _hasUnread

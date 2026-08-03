@@ -55,3 +55,19 @@ String? formatEventTimeLabel(DateTime date) {
   final minute = local.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
 }
+
+/// Google Calendar–style time column: "Cały dzień" or "09:30–10:00".
+String formatAgendaTimeColumn({
+  required DateTime start,
+  DateTime? end,
+}) {
+  final startLabel = formatEventTimeLabel(start);
+  if (startLabel == null) {
+    return 'Cały dzień';
+  }
+  final endLabel = end == null ? null : formatEventTimeLabel(end);
+  if (endLabel == null || endLabel == startLabel) {
+    return startLabel;
+  }
+  return '$startLabel–$endLabel';
+}

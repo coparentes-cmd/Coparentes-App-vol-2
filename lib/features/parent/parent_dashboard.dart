@@ -179,7 +179,6 @@ class _ParentDashboardState extends State<ParentDashboard> {
         index: _selectedIndex,
         children: [
           DashboardHome(
-            onNavigateToTab: _navigateToTab,
             onOpenCalendarDay: _openCalendarOnDay,
             onOpenChatThread: _openChatThread,
             onOpenFinanceExpense: _openFinanceExpense,
@@ -231,11 +230,8 @@ class _ParentDashboardState extends State<ParentDashboard> {
               ? AppTheme.parentAColor
               : AppTheme.parentBColor,
           unselectedItemColor: AppTheme.textHint,
-          selectedLabelStyle: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: const TextStyle(fontSize: 11),
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
           elevation: 0,
           items: [
             const BottomNavigationBarItem(

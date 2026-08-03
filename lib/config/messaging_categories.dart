@@ -1,8 +1,18 @@
 import '../models/models.dart';
 
 const String familyCategoryChannel = 'Rodzina';
+/// UI label for [familyCategoryChannel] — channel id stays unchanged for API/data.
+const String familyCategoryDisplayLabel = 'z dziećmi';
 const String scheduleCategoryChannel = 'Zmiana grafiku';
 const String allTabLabel = 'Wszystkie';
+
+/// Visible label for messaging category chips and titles.
+String messagingCategoryLabel(String category) {
+  if (category == familyCategoryChannel) {
+    return familyCategoryDisplayLabel;
+  }
+  return category;
+}
 
 const List<String> legacyThematicChannels = [
   'Szkoła',
@@ -169,7 +179,7 @@ String categoryChannelSubtitle(String category) {
     case allTabLabel:
       return 'Wspólne wiadomości — oznaczaj własnymi etykietami';
     case familyCategoryChannel:
-      return 'Rozmowy z całą rodziną';
+      return 'Rozmowy z dziećmi i rodzicami';
     case 'Szkoła':
       return 'Lekcje, zebrania, oceny';
     case 'Zdrowie':
@@ -189,7 +199,7 @@ String threadListTitle(MessageThread thread) {
     return allTabLabel;
   }
   if (isFamilyChannel(thread)) {
-    return familyCategoryChannel;
+    return familyCategoryDisplayLabel;
   }
   if (isScheduleChannel(thread)) {
     return scheduleCategoryChannel;

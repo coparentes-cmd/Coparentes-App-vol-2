@@ -8,6 +8,7 @@ import '../../../providers/calendar_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/app_browser_back.dart';
+import '../../../config/messaging_categories.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import 'widgets/child_todo_models.dart';
@@ -143,7 +144,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
           BottomNavigationBarItem(
             icon: Icon(Icons.family_restroom_outlined),
             activeIcon: Icon(Icons.family_restroom),
-            label: 'Rodzina',
+            label: familyCategoryDisplayLabel,
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt_outlined),

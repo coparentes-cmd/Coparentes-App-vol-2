@@ -300,7 +300,7 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     if (childFamilyOnly) {
       return ParentTabScaffold(
-        title: 'Rodzina',
+        title: familyCategoryDisplayLabel,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -344,7 +344,7 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     return ParentTabScaffold(
       title: showInlineChat
-          ? _selectedCategory
+          ? messagingCategoryLabel(_selectedCategory)
           : showAllTabInlineThread
               ? threadListTitle(inlineThread!)
               : activeAllTabThread != null
