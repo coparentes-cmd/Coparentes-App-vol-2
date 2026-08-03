@@ -12,7 +12,7 @@ import '../../utils/app_browser_back.dart';
 import '../../utils/layout_utils.dart';
 import '../../utils/message_tag_search.dart';
 import '../../utils/messaging_helpers.dart';
-import '../../widgets/parent_tab_scaffold.dart';
+import '../../widgets/app_content_shell.dart';
 import 'messaging_navigation.dart';
 import 'thread_screen.dart';
 import 'widgets/inline_chat_panel.dart';
@@ -270,7 +270,11 @@ class MessagingScreenState extends State<MessagingScreen> {
     }
 
     final twoPane = useTwoPaneLayout(context);
-    if (twoPane) {
+    // Category chats (Z dziećmi / Zmiana grafiku) stay full-width — the
+    // master–detail split is only for Wszystkie / Nieprzeczytane thread lists.
+    final categoryTabFullWidth = _listTab == _ChatListTab.family ||
+        _listTab == _ChatListTab.schedule;
+    if (twoPane && !categoryTabFullWidth) {
       return _buildTwoPane(context, messaging, user);
     }
 
@@ -322,17 +326,9 @@ class MessagingScreenState extends State<MessagingScreen> {
     MessagingProvider messaging,
     AppUser? user,
   ) {
-    final isReadOnly = user?.role == UserRole.observer;
-    return ParentTabScaffold(
-      title: 'Czat',
-      actions: [
-        if (!isReadOnly)
-          IconButton(
-            icon: const Icon(Icons.add, size: 28),
-            tooltip: 'Nowy wątek',
-            onPressed: () => _newThread(context),
-          ),
-      ],
+    return _buildMessagingChrome(
+      context: context,
+      user: user,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -423,19 +419,61 @@ class MessagingScreenState extends State<MessagingScreen> {
     MessagingProvider messaging,
     AppUser? user,
   ) {
-    final isReadOnly = user?.role == UserRole.observer;
-
-    return ParentTabScaffold(
-      title: 'Czat',
-      actions: [
-        if (!isReadOnly)
-          IconButton(
-            icon: const Icon(Icons.add, size: 28),
-            tooltip: 'Nowy wątek',
-            onPressed: () => _newThread(context),
-          ),
-      ],
+    return _buildMessagingChrome(
+      context: context,
+      user: user,
       body: _buildListColumn(context, messaging, user),
+    );
+  }
+
+  /// Chat chrome without the navy "Czat" bar — only a circular + for new thread.
+  Widget _buildMessagingChrome({
+    required BuildContext context,
+    required AppUser? user,
+    required Widget body,
+  }) {
+    final isReadOnly = user?.role == UserRole.observer;
+    final top = MediaQuery.paddingOf(context).top;
+
+    return Scaffold(
+      backgroundColor: AppTheme.surfaceColor,
+      body: AppContentShell(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(height: top + (isReadOnly ? 8 : 4)),
+            if (!isReadOnly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Tooltip(
+                    message: 'Nowy wątek',
+                    child: Material(
+                      color: AppTheme.brandHeaderBlue,
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => _newThread(context),
+                        child: const SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(child: body),
+          ],
+        ),
+      ),
     );
   }
 
@@ -509,11 +547,9 @@ class MessagingScreenState extends State<MessagingScreen> {
           onSelect: (tab) {
             setState(() {
               _listTab = tab;
-              if (tab == _ChatListTab.family ||
-                  tab == _ChatListTab.schedule) {
-                _conversationThreadId = null;
-                _conversationCategory = null;
-              }
+              // Always show the selected filter list (close open chat).
+              _conversationThreadId = null;
+              _conversationCategory = null;
             });
           },
         ),
@@ -533,7 +569,8 @@ class MessagingScreenState extends State<MessagingScreen> {
                 context,
                 messaging,
                 user,
-                searchedThreads,
+                messaging.threads,
+                searchQuery: searchQuery,
               ),
             _ChatListTab.all => _buildThreadsScroll(
                 context,
@@ -552,19 +589,27 @@ class MessagingScreenState extends State<MessagingScreen> {
     BuildContext context,
     MessagingProvider messaging,
     AppUser? user,
-    List<MessageThread> threads,
-  ) {
+    List<MessageThread> threads, {
+    MessageSearchQuery searchQuery = const MessageSearchQuery(text: '', tags: []),
+  }) {
     final viewerId = user?.id;
     final items = <({MessageThread thread, Message message})>[];
     if (viewerId != null) {
-      for (final thread in threads) {
-        for (final message in thread.messages) {
-          if (!message.isRead && message.senderId != viewerId) {
-            items.add((thread: thread, message: message));
-          }
+      for (final item in collectUnreadMessagesForViewer(threads, viewerId)) {
+        if (searchQuery.isEmpty ||
+            messageMatchesAllTabSearch(
+              message: item.message,
+              query: searchQuery,
+              tagsByMessageId: messaging.tagsByMessageId,
+            ) ||
+            threadMatchesAllTabSearch(
+              thread: item.thread,
+              query: searchQuery,
+              tagsByMessageId: messaging.tagsByMessageId,
+            )) {
+          items.add(item);
         }
       }
-      items.sort((a, b) => b.message.sentAt.compareTo(a.message.sentAt));
     }
 
     return RefreshIndicator(

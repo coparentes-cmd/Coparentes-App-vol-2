@@ -3,10 +3,18 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
+bool messageIsUnreadForViewer(Message message, String viewerUserId) {
+  return !message.isRead && message.senderId != viewerUserId;
+}
+
 bool threadHasUnreadForViewer(MessageThread thread, String viewerUserId) {
-  return thread.messages.any(
-    (message) => !message.isRead && message.senderId != viewerUserId,
-  );
+  if (thread.messages.any(
+    (message) => messageIsUnreadForViewer(message, viewerUserId),
+  )) {
+    return true;
+  }
+  // Trust server flag when message payloads are stale/inconsistent.
+  return thread.hasUnread;
 }
 
 int countUnreadThreadsForViewer(
@@ -22,15 +30,80 @@ int countUnreadMessagesForViewer(
   List<MessageThread> threads,
   String viewerUserId,
 ) {
-  var count = 0;
+  return collectUnreadMessagesForViewer(threads, viewerUserId).length;
+}
+
+/// Unread incoming messages across threads. If [MessageThread.hasUnread] is set
+/// but no message is flagged unread (stale sync), falls back to the latest
+/// incoming message so the Nieprzeczytane tab stays accurate.
+List<({MessageThread thread, Message message})> collectUnreadMessagesForViewer(
+  List<MessageThread> threads,
+  String viewerUserId,
+) {
+  final items = <({MessageThread thread, Message message})>[];
   for (final thread in threads) {
+    var foundUnreadMessage = false;
     for (final message in thread.messages) {
-      if (!message.isRead && message.senderId != viewerUserId) {
-        count++;
+      if (messageIsUnreadForViewer(message, viewerUserId)) {
+        items.add((thread: thread, message: message));
+        foundUnreadMessage = true;
+      }
+    }
+    if (!foundUnreadMessage && thread.hasUnread) {
+      Message? latestIncoming;
+      for (final message in thread.messages) {
+        if (message.senderId == viewerUserId) {
+          continue;
+        }
+        if (latestIncoming == null ||
+            message.sentAt.isAfter(latestIncoming.sentAt)) {
+          latestIncoming = message;
+        }
+      }
+      if (latestIncoming != null) {
+        items.add((thread: thread, message: latestIncoming));
       }
     }
   }
-  return count;
+  items.sort((a, b) => b.message.sentAt.compareTo(a.message.sentAt));
+  return items;
+}
+
+/// Keeps locally-read incoming messages as read when a stale poll returns
+/// older unread flags (race with mark-as-read).
+MessageThread mergeThreadPreservingLocalReads({
+  required MessageThread remote,
+  required MessageThread? local,
+}) {
+  if (local == null || local.messages.isEmpty) {
+    return remote;
+  }
+  final localById = {
+    for (final message in local.messages) message.id: message,
+  };
+  var changed = false;
+  final mergedMessages = remote.messages.map((message) {
+    final previous = localById[message.id];
+    if (previous != null && previous.isRead && !message.isRead) {
+      changed = true;
+      return message.copyWith(isRead: true);
+    }
+    return message;
+  }).toList();
+  if (!changed) {
+    return remote;
+  }
+  return MessageThread(
+    id: remote.id,
+    subject: remote.subject,
+    category: remote.category,
+    childId: remote.childId,
+    audience: remote.audience,
+    lastActivity: remote.lastActivity,
+    // Prefer remote viewer-specific flag; clear it when nothing is unread.
+    hasUnread: remote.hasUnread && mergedMessages.any((message) => !message.isRead),
+    messages: mergedMessages,
+  );
 }
 
 Message? findNewIncomingMessage(

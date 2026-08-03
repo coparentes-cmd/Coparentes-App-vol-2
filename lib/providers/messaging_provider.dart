@@ -131,9 +131,20 @@ class MessagingProvider extends ChangeNotifier {
         syncKnownMessageIds(result.threads, _knownMessageIds);
       }
 
+      final previousById = {
+        for (final thread in _threads) thread.id: thread,
+      };
+      final merged = result.threads
+          .map(
+            (remote) => mergeThreadPreservingLocalReads(
+              remote: remote,
+              local: previousById[remote.id],
+            ),
+          )
+          .toList();
       _threads
         ..clear()
-        ..addAll(result.threads);
+        ..addAll(merged);
       _tagsByMessageId
         ..clear()
         ..addAll(result.tagsByMessageId);
@@ -150,41 +161,48 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   Future<void> markThreadRead(String threadId, {required String viewerUserId}) async {
-    final updated = await _repository.markThreadRead(threadId);
-    if (updated != null) {
-      final index = _threads.indexWhere((thread) => thread.id == threadId);
-      if (index >= 0) {
-        _threads[index] = updated;
-      }
+    // Optimistically clear unread so Nieprzeczytane updates immediately and
+    // a concurrent poll cannot resurrect stale unread flags.
+    final index = _threads.indexWhere((thread) => thread.id == threadId);
+    if (index >= 0) {
+      final thread = _threads[index];
+      final readMessages = thread.messages
+          .map(
+            (message) => message.senderId == viewerUserId
+                ? message
+                : message.copyWith(isRead: true),
+          )
+          .toList();
+      _threads[index] = MessageThread(
+        id: thread.id,
+        subject: thread.subject,
+        category: thread.category,
+        childId: thread.childId,
+        audience: thread.audience,
+        lastActivity: thread.lastActivity,
+        hasUnread: false,
+        messages: readMessages,
+      );
       syncKnownMessageIds(_threads, _knownMessageIds);
       notifyListeners();
+    }
+
+    suppressRemoteLoad(const Duration(seconds: 2));
+
+    final updated = await _repository.markThreadRead(threadId);
+    if (updated == null) {
       return;
     }
 
-    final index = _threads.indexWhere((thread) => thread.id == threadId);
-    if (index < 0) {
-      return;
+    final updatedIndex = _threads.indexWhere((thread) => thread.id == threadId);
+    if (updatedIndex >= 0) {
+      _threads[updatedIndex] = mergeThreadPreservingLocalReads(
+        remote: updated,
+        local: _threads[updatedIndex],
+      );
+    } else {
+      _threads.insert(0, updated);
     }
-
-    final thread = _threads[index];
-    final readMessages = thread.messages
-        .map(
-          (message) => message.senderId == viewerUserId
-              ? message
-              : message.copyWith(isRead: true),
-        )
-        .toList();
-
-    _threads[index] = MessageThread(
-      id: thread.id,
-      subject: thread.subject,
-      category: thread.category,
-      childId: thread.childId,
-      audience: thread.audience,
-      lastActivity: thread.lastActivity,
-      hasUnread: false,
-      messages: readMessages,
-    );
     syncKnownMessageIds(_threads, _knownMessageIds);
     notifyListeners();
   }

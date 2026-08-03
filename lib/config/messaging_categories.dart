@@ -2,7 +2,7 @@ import '../models/models.dart';
 
 const String familyCategoryChannel = 'Rodzina';
 /// UI label for [familyCategoryChannel] — channel id stays unchanged for API/data.
-const String familyCategoryDisplayLabel = 'z dziećmi';
+const String familyCategoryDisplayLabel = 'Z dziećmi';
 const String scheduleCategoryChannel = 'Zmiana grafiku';
 const String allTabLabel = 'Wszystkie';
 

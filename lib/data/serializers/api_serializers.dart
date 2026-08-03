@@ -29,6 +29,25 @@ String userRoleToApi(UserRole role) {
   }
 }
 
+bool _jsonBool(Object? value, {required bool fallback}) {
+  if (value is bool) {
+    return value;
+  }
+  if (value is num) {
+    return value != 0;
+  }
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'true' || normalized == '1') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == '0') {
+      return false;
+    }
+  }
+  return fallback;
+}
+
 MessageTone messageToneFromApi(String value) {
   switch (value) {
     case 'neutral':
@@ -172,7 +191,7 @@ MessageThread messageThreadFromJson(Map<String, dynamic> json) {
     childId: json['childId'] as String?,
     audience: json['audience'] as String? ?? 'parents',
     lastActivity: DateTime.parse(json['lastActivity'] as String),
-    hasUnread: json['hasUnread'] as bool? ?? false,
+    hasUnread: _jsonBool(json['hasUnread'], fallback: false),
     messages: (json['messages'] as List<dynamic>)
         .map(
           (item) => messageFromJson(Map<String, dynamic>.from(item as Map)),
@@ -215,10 +234,10 @@ Message messageFromJson(Map<String, dynamic> json) {
         )
         .toList(),
     sentAt: DateTime.parse(json['sentAt'] as String),
-    isDelivered: json['isDelivered'] as bool? ?? true,
-    isRead: json['isRead'] as bool? ?? false,
+    isDelivered: _jsonBool(json['isDelivered'], fallback: true),
+    isRead: _jsonBool(json['isRead'], fallback: false),
     hash: json['hash'] as String? ?? '',
-    isShielded: json['isShielded'] as bool? ?? false,
+    isShielded: _jsonBool(json['isShielded'], fallback: false),
   );
 }
 

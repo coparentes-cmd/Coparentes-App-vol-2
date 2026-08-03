@@ -167,6 +167,19 @@ class ThreadScreenState extends State<ThreadScreen> {
       );
     }
 
+    final viewerId = user?.id;
+    if (viewerId != null && threadHasUnreadForViewer(thread, viewerId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        context.read<MessagingProvider>().markThreadRead(
+              widget.threadId,
+              viewerUserId: viewerId,
+            );
+      });
+    }
+
     if (!_initialScrollDone && thread.messages.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -193,19 +206,9 @@ class ThreadScreenState extends State<ThreadScreen> {
             onPressed: _handleBack,
           ),
           automaticallyImplyLeading: false,
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                threadListTitle(thread),
-                style: const TextStyle(fontSize: 16),
-              ),
-              if (!isFamilyChannel(thread) && !isScheduleChannel(thread))
-                Text(
-                  thread.category,
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                ),
-            ],
+          title: Text(
+            threadListTitle(thread),
+            style: const TextStyle(fontSize: 16),
           ),
           actions: [
             IconButton(
@@ -217,46 +220,6 @@ class ThreadScreenState extends State<ThreadScreen> {
         ),
         body: Column(
           children: [
-            if (aiShield)
-              Container(
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.dividerColor),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.aiCoachColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.shield,
-                        size: 10,
-                        color: AppTheme.aiCoachColor,
-                      ),
-                      SizedBox(width: 3),
-                      Text(
-                        'AI Shield',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: AppTheme.aiCoachColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
             // Messages list
             Expanded(
               child: ColoredBox(

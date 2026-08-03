@@ -144,7 +144,7 @@ Future<_CapturedChildUi> _captureChildDashboard(
   expect(greetingFinder, findsOneWidget);
   final greeting = tester.widget<Text>(greetingFinder).data!;
 
-  const expectedNav = ['Dzisiaj', 'Kalendarz', 'z dziećmi', 'Lista'];
+  const expectedNav = ['Dzisiaj', 'Kalendarz', 'Z dziećmi', 'Lista'];
   for (final label in expectedNav) {
     expect(
       find.descendant(
@@ -175,7 +175,7 @@ Future<_CapturedChildUi> _captureChildDashboard(
   expect(calendarTitle, findsOneWidget);
   final calendarHasSwapTab = find.text('Prośby').evaluate().isNotEmpty;
 
-  await tester.tap(_navTab('z dziećmi'));
+  await tester.tap(_navTab('Z dziećmi'));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));
 
