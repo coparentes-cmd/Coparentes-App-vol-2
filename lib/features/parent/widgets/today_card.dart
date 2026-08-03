@@ -47,6 +47,15 @@ class TodayCard extends StatelessWidget {
   });
 
   String get _dateLabel {
+    const weekdays = [
+      'poniedziałek',
+      'wtorek',
+      'środa',
+      'czwartek',
+      'piątek',
+      'sobota',
+      'niedziela',
+    ];
     const months = [
       'sty',
       'lut',
@@ -61,7 +70,8 @@ class TodayCard extends StatelessWidget {
       'lis',
       'gru',
     ];
-    return '${date.day} ${months[date.month - 1]}';
+    final weekday = weekdays[date.weekday - 1];
+    return '$weekday · ${date.day} ${months[date.month - 1]}';
   }
 
   @override

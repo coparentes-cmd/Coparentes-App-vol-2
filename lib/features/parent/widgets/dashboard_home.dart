@@ -1,27 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
+import '../../../../config/messaging_categories.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
-import '../../../../providers/offline_sync_provider.dart';
 import '../../../../theme/app_theme.dart';
-import '../../../../utils/calendar_date_utils.dart';
-import '../../../../config/messaging_categories.dart';
-import '../../../../utils/messaging_helpers.dart';
 import '../../../../utils/layout_utils.dart';
-import '../../../../utils/app_browser_back.dart';
-import '../../../../widgets/brand_widgets.dart';
 import '../../../../widgets/parent_tab_scaffold.dart';
-import '../../../screens/messaging/messaging_screen.dart';
-import '../../../screens/calendar/calendar_screen.dart';
-import '../../../screens/finance/finance_screen.dart';
-import '../../../screens/exports/exports_screen.dart';
-import '../../../screens/documents/documents_screen.dart';
-import '../../../screens/ai_coach/ai_coach_screen.dart';
 import '../../../screens/settings/settings_screen.dart';
 
 import 'today_card.dart';
-import 'stat_card.dart';
 import 'message_thread_preview.dart';
 import 'finance_snapshot_card.dart';
 import 'child_chip.dart';
@@ -32,12 +19,14 @@ class DashboardHome extends StatelessWidget {
   final ValueChanged<DateTime> onOpenCalendarDay;
   final ValueChanged<String> onOpenChatThread;
   final ValueChanged<String> onOpenFinanceExpense;
+  final ValueChanged<String> onOpenChatCategory;
 
   const DashboardHome({
     required this.onNavigateToTab,
     required this.onOpenCalendarDay,
     required this.onOpenChatThread,
     required this.onOpenFinanceExpense,
+    required this.onOpenChatCategory,
   });
 
   @override
@@ -55,11 +44,8 @@ class DashboardHome extends StatelessWidget {
     final pendingSwaps = calendar.swapRequests
         .where((s) => s.status == SwapStatus.pending)
         .length;
-    final pendingRequests = calendar.pendingRequestCount;
     final nextHandover = calendar.getNextHandover();
-    final unreadMessages = user?.id == null
-        ? 0
-        : countUnreadThreadsForViewer(messaging.threads, user!.id);
+    final latestExpenseId = _latestFinanceExpenseId(finance);
 
     AppUser? parentA;
     AppUser? parentB;
@@ -67,31 +53,6 @@ class DashboardHome extends StatelessWidget {
       if (member.role == UserRole.parentA) parentA = member;
       if (member.role == UserRole.parentB) parentB = member;
     }
-
-    final netBalanceLabel = user != null && parentA != null && parentB != null
-        ? _formatNetBalanceLabel(
-            finance: finance,
-            userId: user.id,
-            parentA: parentA,
-            parentB: parentB,
-          )
-        : '${finance.totalPending.toStringAsFixed(0)} PLN';
-
-    final chatActivity = _latestChatActivity(messaging);
-    final chatDetail = unreadMessages == 0
-        ? 'Czat'
-        : 'Czat · $unreadMessages nowe';
-
-    final financeActivity = _latestFinanceActivity(finance);
-    final latestExpenseId = _latestFinanceExpenseId(finance);
-    final financeDetail = finance.pendingCount == 0
-        ? 'Finanse · $netBalanceLabel'
-        : 'Finanse · ${finance.pendingCount} oczekuje';
-
-    final calendarActivity = _latestCalendarActivity(calendar);
-    final calendarDetail = pendingRequests == 0
-        ? 'Kalendarz'
-        : 'Kalendarz · $pendingRequests prośby';
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -104,16 +65,19 @@ class DashboardHome extends StatelessWidget {
 
     final firstName = user?.name.split(' ').first ?? '';
     final compact = isCompactPhoneLayout(context);
+    final headerHeight = highConflict
+        ? (compact ? 88.0 : 96.0)
+        : (compact ? 72.0 : 80.0);
 
     return ParentTabScaffold(
       headerColor: AppTheme.brandHeaderBlue,
-      headerHeight: compact ? 108 : 130,
+      headerHeight: headerHeight,
       header: Padding(
         padding: EdgeInsets.fromLTRB(
           compact ? 16 : 20,
-          compact ? 8 : 14,
+          compact ? 10 : 12,
           compact ? 16 : 20,
-          compact ? 8 : 14,
+          compact ? 10 : 12,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -123,16 +87,11 @@ class DashboardHome extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  BrandLogo(
-                    height: compact ? 28 : 34,
-                    onDarkBackground: true,
-                  ),
-                  SizedBox(height: compact ? 6 : 10),
                   Text(
                     'Dzień dobry, $firstName',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: compact ? 18 : 22,
+                      fontSize: compact ? 18 : 20,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -145,7 +104,7 @@ class DashboardHome extends StatelessWidget {
                     ),
                   ),
                   if (highConflict) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -171,20 +130,20 @@ class DashboardHome extends StatelessWidget {
             GestureDetector(
               onTap: () => _openSettings(context),
               child: SizedBox(
-                width: compact ? 44 : 52,
-                height: compact ? 44 : 52,
+                width: compact ? 40 : 44,
+                height: compact ? 40 : 44,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     CircleAvatar(
-                      radius: compact ? 18 : 22,
+                      radius: compact ? 16 : 18,
                       backgroundColor: AppTheme.coralColor,
                       child: Text(
                         firstName.isNotEmpty ? firstName[0] : '?',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: compact ? 16 : 18,
+                          fontSize: compact ? 14 : 16,
                         ),
                       ),
                     ),
@@ -192,15 +151,15 @@ class DashboardHome extends StatelessWidget {
                       right: -4,
                       top: -4,
                       child: Container(
-                        width: 20,
-                        height: 20,
+                        width: 18,
+                        height: 18,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.9),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.settings,
-                          size: 13,
+                          size: 12,
                           color: roleColor,
                         ),
                       ),
@@ -236,45 +195,59 @@ class DashboardHome extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Ostatnie aktywności z zakładek
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: StatCard(
-                          label: chatDetail,
-                          value: chatActivity,
-                          icon: Icons.chat_bubble,
-                          color: AppTheme.primaryTeal,
-                          onTap: () => onNavigateToTab(1),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DashboardQuickTab(
+                              label: 'Czat',
+                              icon: Icons.chat_bubble,
+                              color: AppTheme.primaryTeal,
+                              onTap: () => onNavigateToTab(1),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _DashboardQuickTab(
+                              label: 'Kalendarz',
+                              icon: Icons.calendar_month,
+                              color: AppTheme.parentBColor,
+                              onTap: () => onNavigateToTab(2),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: StatCard(
-                          label: financeDetail,
-                          value: financeActivity,
-                          icon: Icons.account_balance_wallet,
-                          color: AppTheme.warningColor,
-                          onTap: () {
-                            if (latestExpenseId != null) {
-                              onOpenFinanceExpense(latestExpenseId);
-                            } else {
-                              onNavigateToTab(3);
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: StatCard(
-                          label: calendarDetail,
-                          value: calendarActivity,
-                          icon: Icons.calendar_month,
-                          color: AppTheme.parentBColor,
-                          onTap: () => onNavigateToTab(2),
-                        ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DashboardQuickTab(
+                              label: 'Finanse',
+                              icon: Icons.account_balance_wallet,
+                              color: AppTheme.warningColor,
+                              onTap: () {
+                                if (latestExpenseId != null) {
+                                  onOpenFinanceExpense(latestExpenseId);
+                                } else {
+                                  onNavigateToTab(3);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _DashboardQuickTab(
+                              label: 'Rodzina',
+                              icon: Icons.family_restroom,
+                              color: AppTheme.childColor,
+                              onTap: () =>
+                                  onOpenChatCategory(familyCategoryChannel),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -381,55 +354,61 @@ class DashboardHome extends StatelessWidget {
   }
 }
 
-String _formatNetBalanceLabel({
-  required FinanceProvider finance,
-  required String userId,
-  required AppUser parentA,
-  required AppUser parentB,
-}) {
-  final signed = finance.signedBalanceForUser(
-    userId: userId,
-    parentAId: parentA.id,
-    parentBId: parentB.id,
-  );
-  if (signed.abs() < 0.01) {
-    return '0 PLN';
-  }
-  if (signed > 0) {
-    return '+${signed.toStringAsFixed(0)} PLN';
-  }
-  return '-${signed.abs().toStringAsFixed(0)} PLN';
-}
+class _DashboardQuickTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
-String _latestChatActivity(MessagingProvider messaging) {
-  if (messaging.threads.isEmpty) {
-    return 'Brak wiadomości';
+  const _DashboardQuickTab({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
-
-  final threads = [...messaging.threads]
-    ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
-  final thread = threads.first;
-  final lastMsg = thread.messages.isNotEmpty ? thread.messages.last : null;
-
-  if (lastMsg != null) {
-    final preview = lastMsg.content.trim();
-    if (preview.isEmpty && lastMsg.attachments.isNotEmpty) {
-      return '📎 ${thread.subject}';
-    }
-    if (preview.isNotEmpty) {
-      return preview.length > 32 ? '${preview.substring(0, 32)}…' : preview;
-    }
-  }
-
-  return thread.subject;
-}
-
-String _latestFinanceActivity(FinanceProvider finance) {
-  final expense = _resolveLatestFinanceExpense(finance);
-  if (expense == null) {
-    return 'Brak wydatków';
-  }
-  return '${expense.title} · ${expense.amount.toStringAsFixed(0)} PLN';
 }
 
 Expense? _resolveLatestFinanceExpense(FinanceProvider finance) {
@@ -453,37 +432,4 @@ Expense? _resolveLatestFinanceExpense(FinanceProvider finance) {
 
 String? _latestFinanceExpenseId(FinanceProvider finance) {
   return _resolveLatestFinanceExpense(finance)?.id;
-}
-
-String _latestCalendarActivity(CalendarProvider calendar) {
-  final pendingSwaps = calendar.swapRequests
-      .where((swap) => swap.status == SwapStatus.pending)
-      .toList()
-    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-  if (pendingSwaps.isNotEmpty) {
-    final swap = pendingSwaps.first;
-    return 'Zamiana ${_formatShortDate(swap.originalDate)}→${_formatShortDate(swap.proposedDate)}';
-  }
-
-  final now = DateTime.now();
-  final upcoming = calendar.events
-      .where(
-        (event) => !event.startDate.isBefore(
-          DateTime(now.year, now.month, now.day),
-        ),
-      )
-      .toList()
-    ..sort((a, b) => a.startDate.compareTo(b.startDate));
-
-  if (upcoming.isNotEmpty) {
-    final event = upcoming.first;
-    return '${event.title} · ${_formatShortDate(event.startDate)}';
-  }
-
-  return 'Brak nadchodzących';
-}
-
-String _formatShortDate(DateTime date) {
-  return '${date.day}.${date.month}';
 }

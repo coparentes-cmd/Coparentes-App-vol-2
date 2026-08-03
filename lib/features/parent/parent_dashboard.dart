@@ -183,6 +183,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
             onOpenCalendarDay: _openCalendarOnDay,
             onOpenChatThread: _openChatThread,
             onOpenFinanceExpense: _openFinanceExpense,
+            onOpenChatCategory: _openChatCategory,
           ),
           MessagingScreen(
             key: _messagingKey,

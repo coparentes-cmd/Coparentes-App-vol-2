@@ -102,15 +102,15 @@ double parentTabHeaderTopInset(BuildContext context) {
   return isCompactPhoneLayout(context) ? 0.0 : 8.0;
 }
 
-/// Shorter header row on phone; unchanged on web/desktop.
+/// Shorter default AppBar on phone; custom headers keep their requested height.
 double parentTabResolvedHeaderHeight(BuildContext context, double height) {
   if (!isCompactPhoneLayout(context)) {
     return height;
   }
-  if (height > 80) {
-    return 108;
+  if (height <= kToolbarHeight + 1) {
+    return 46;
   }
-  return 46;
+  return height;
 }
 
 /// Shorter tab row under header on phone.
