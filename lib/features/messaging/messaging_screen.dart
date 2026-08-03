@@ -457,12 +457,12 @@ class MessagingScreenState extends State<MessagingScreen> {
                         customBorder: const CircleBorder(),
                         onTap: () => _newThread(context),
                         child: const SizedBox(
-                          width: 40,
-                          height: 40,
+                          width: 48,
+                          height: 48,
                           child: Icon(
                             Icons.add,
                             color: Colors.white,
-                            size: 22,
+                            size: 26,
                           ),
                         ),
                       ),

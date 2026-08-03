@@ -200,27 +200,47 @@ class ThreadScreenState extends State<ThreadScreen> {
       },
       child: Scaffold(
         backgroundColor: AppTheme.surfaceColor,
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: _handleBack,
-          ),
-          automaticallyImplyLeading: false,
-          title: Text(
-            threadListTitle(thread),
-            style: const TextStyle(fontSize: 16),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              onPressed: () => _exportThread(context),
-              tooltip: 'Eksportuj wątek',
-            ),
-          ],
-        ),
         body: Column(
           children: [
-            // Messages list
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  height: 44,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 22),
+                        color: AppTheme.textPrimary,
+                        tooltip: 'Wróć',
+                        onPressed: _handleBack,
+                      ),
+                      Expanded(
+                        child: Text(
+                          threadListTitle(thread),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.picture_as_pdf_outlined, size: 22),
+                        color: AppTheme.textSecondary,
+                        tooltip: 'Eksportuj wątek',
+                        onPressed: () => _exportThread(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             Expanded(
               child: ColoredBox(
                 color: imessageChatBackground,
