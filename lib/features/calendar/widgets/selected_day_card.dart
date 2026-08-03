@@ -101,15 +101,20 @@ class SelectedDayCard extends StatelessWidget {
                         color: color,
                       ),
                     ),
-                    const Spacer(),
-                    if (slot!.handoverTime != null)
-                      Text(
-                        'Przekazanie: ${slot!.handoverTime}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
+                    if (slot!.handoverTime != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Przekazanie: ${slot!.handoverTime}',
+                          textAlign: TextAlign.end,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ),
+                    ],
                   ],
                 ),
                 if (slot!.handoverLocation != null) ...[
@@ -122,11 +127,14 @@ class SelectedDayCard extends StatelessWidget {
                         color: AppTheme.textSecondary,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        slot!.handoverLocation!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
+                      Expanded(
+                        child: Text(
+                          slot!.handoverLocation!,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ),
                     ],
