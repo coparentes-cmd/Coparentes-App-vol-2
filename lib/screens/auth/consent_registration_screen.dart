@@ -5,6 +5,7 @@ import '../../config/consent_config.dart';
 import '../../data/models/user_consent.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/consent_widgets.dart';
 
@@ -88,7 +89,9 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
+              constraints: const BoxConstraints(
+                maxWidth: LayoutTokens.authConsentMax,
+              ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
                 child: BrandCard(

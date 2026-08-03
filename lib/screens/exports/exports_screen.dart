@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/models.dart';
 import '../../providers/exports_provider.dart';
+import '../../utils/layout_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 
@@ -51,7 +52,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
             ),
             const SizedBox(height: 12),
             GridView.count(
-              crossAxisCount: 2,
+              crossAxisCount: gridCrossAxisCountFor(context),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 10,

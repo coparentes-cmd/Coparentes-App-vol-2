@@ -9,6 +9,7 @@ import '../../../providers/exports_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/receipt_attachment_service.dart';
+import '../../../utils/layout_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
 import 'widgets/status_count_chip.dart';
@@ -410,50 +411,61 @@ class FinanceScreenState extends State<FinanceScreen>
           // Main balance card — kompaktowa, zielony brand (jak dawne paski)
           Align(
             alignment: Alignment.centerLeft,
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 320),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryTeal,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryTeal.withValues(alpha: 0.22),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: LayoutTokens.financeBalanceCardMax,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    balanceHeadline,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+              child: SizedBox(
+                width: double.infinity,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryTeal,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryTeal.withValues(alpha: 0.22),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    signedBalance.abs() < 0.01
-                        ? 'Po zaakceptowanych wydatkach oboje jesteście na zero.'
-                        : signedBalance > 0
-                        ? 'Drugi rodzic winien Tobie po akceptacji wydatków.'
-                        : 'Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        balanceHeadline,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        signedBalance.abs() < 0.01
+                            ? 'Po zaakceptowanych wydatkach oboje jesteście na zero.'
+                            : signedBalance > 0
+                            ? 'Drugi rodzic winien Tobie po akceptacji wydatków.'
+                            : 'Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.',
+                        style:
+                            const TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                      if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Ostatnia synchronizacja: ${_formatSyncTime(finance.lastSyncedAt!)}',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Ostatnia synchronizacja: ${_formatSyncTime(finance.lastSyncedAt!)}',
-                      style:
-                          const TextStyle(color: Colors.white54, fontSize: 10),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ),

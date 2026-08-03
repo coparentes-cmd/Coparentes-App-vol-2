@@ -11,6 +11,7 @@ import '../../../services/ai_guidance_service.dart';
 import '../../../services/message_attachment_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/file_download.dart';
+import '../../../utils/layout_utils.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/message_status_indicator.dart';
@@ -58,7 +59,7 @@ class MessageBubbleState extends State<MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final maxBubbleWidth = MediaQuery.of(context).size.width * 0.72;
+    final maxBubbleWidth = chatBubbleMaxWidthFor(context);
     final calendar = context.watch<CalendarProvider>();
     final workspace = context.watch<AppProvider>().currentWorkspace;
     final senderRole = senderRoleForMessage(widget.message, workspace);

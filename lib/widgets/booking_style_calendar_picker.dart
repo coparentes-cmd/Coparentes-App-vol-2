@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/layout_utils.dart';
 
 enum BookingCalendarMode { range, multiSelect }
 
@@ -200,7 +201,8 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
               const SizedBox(height: 16),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final sideBySide = constraints.maxWidth >= 520;
+                  final sideBySide =
+                      constraints.maxWidth >= LayoutTokens.sideBySideCalendarMin;
                   if (sideBySide) {
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,

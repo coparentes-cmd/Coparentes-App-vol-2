@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../data/models/login_challenge.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -210,7 +211,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
+                constraints: const BoxConstraints(
+                  maxWidth: LayoutTokens.authFormMax,
+                ),
                 child: BrandCard(
                   padding: const EdgeInsets.all(26),
                   child: Column(

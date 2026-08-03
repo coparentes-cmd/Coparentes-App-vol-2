@@ -9,6 +9,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import 'consent_registration_screen.dart';
 import 'otp_verification_screen.dart';
@@ -90,12 +91,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1040),
+              constraints: const BoxConstraints(
+                maxWidth: LayoutTokens.authMarketingMax,
+              ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final narrow = constraints.maxWidth < 840;
+                    final narrow =
+                        constraints.maxWidth < LayoutTokens.authTwoColumnMin;
                     return Wrap(
                       spacing: 22,
                       runSpacing: 22,

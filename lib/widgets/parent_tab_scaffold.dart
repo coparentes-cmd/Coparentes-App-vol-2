@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/layout_utils.dart';
+import 'app_content_shell.dart';
 
 /// Shared inset header for parent bottom-nav tabs — matches content width (16px).
 class ParentTabScaffold extends StatelessWidget {
@@ -52,54 +53,56 @@ class ParentTabScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
       floatingActionButton: floatingActionButton,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              sideInset,
-              topPadding + topGap,
-              sideInset,
-              0,
-            ),
-            child: Material(
-              color: color,
-              borderRadius: headerRadius,
-              clipBehavior: Clip.antiAlias,
-              elevation: 0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: resolvedHeaderHeight,
-                    child: header ??
-                        AppBar(
-                          primary: false,
-                          automaticallyImplyLeading: false,
-                          elevation: 0,
-                          scrolledUnderElevation: 0,
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          toolbarHeight: resolvedHeaderHeight,
-                          title: Text(title!),
-                          actions: actions,
-                        ),
-                  ),
-                  if (tabBar != null)
+      body: AppContentShell(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                sideInset,
+                topPadding + topGap,
+                sideInset,
+                0,
+              ),
+              child: Material(
+                color: color,
+                borderRadius: headerRadius,
+                clipBehavior: Clip.antiAlias,
+                elevation: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     SizedBox(
-                      height: resolvedTabBarHeight,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: tabBar!,
-                      ),
+                      height: resolvedHeaderHeight,
+                      child: header ??
+                          AppBar(
+                            primary: false,
+                            automaticallyImplyLeading: false,
+                            elevation: 0,
+                            scrolledUnderElevation: 0,
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            toolbarHeight: resolvedHeaderHeight,
+                            title: Text(title!),
+                            actions: actions,
+                          ),
                     ),
-                ],
+                    if (tabBar != null)
+                      SizedBox(
+                        height: resolvedTabBarHeight,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: tabBar!,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(child: body),
-        ],
+            const SizedBox(height: 8),
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }
