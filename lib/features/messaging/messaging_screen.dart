@@ -10,6 +10,8 @@ import '../../providers/messaging_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_browser_back.dart';
 import '../../utils/message_tag_search.dart';
+import '../../utils/messaging_helpers.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 import 'messaging_navigation.dart';
 import 'thread_screen.dart';
 import 'widgets/inline_chat_panel.dart';
@@ -42,12 +44,15 @@ class MessagingScreen extends StatefulWidget {
   State<MessagingScreen> createState() => MessagingScreenState();
 }
 
+enum _ChatListTab { all, unread, family, schedule }
+
 class MessagingScreenState extends State<MessagingScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _conversationThreadId;
   String? _conversationCategory;
   bool _conversationAllowsPrivateTags = false;
   bool _returnToPreviousTab = false;
+  _ChatListTab _listTab = _ChatListTab.all;
 
   @override
   void initState() {
@@ -312,8 +317,9 @@ class MessagingScreenState extends State<MessagingScreen> {
     AppUser? user,
   ) {
     final isReadOnly = user?.role == UserRole.observer;
+    final viewerId = user?.id;
     final searchQuery = parseMessageSearchQuery(_searchController.text);
-    final threads = messaging.threads
+    final searchedThreads = messaging.threads
         .where(
           (thread) => threadMatchesAllTabSearch(
             thread: thread,
@@ -324,30 +330,21 @@ class MessagingScreenState extends State<MessagingScreen> {
         .toList()
       ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceColor,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.textPrimary,
-        elevation: 0.5,
-        title: const Text(
-          'Czat',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
+    final allThreads = searchedThreads.where(isAllTabThread).toList();
+    final unreadCount = viewerId == null
+        ? 0
+        : countUnreadMessagesForViewer(messaging.threads, viewerId);
+
+    return ParentTabScaffold(
+      title: 'Czat',
+      actions: [
+        if (!isReadOnly)
           IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Odśwież',
-            onPressed: () => _loadThreads(context),
+            icon: const Icon(Icons.add, size: 28),
+            tooltip: 'Nowy wątek',
+            onPressed: () => _newThread(context),
           ),
-          if (!isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Nowy wątek',
-              onPressed: () => _newThread(context),
-            ),
-        ],
-      ),
+      ],
       body: Column(
         children: [
           Padding(
@@ -388,44 +385,134 @@ class MessagingScreenState extends State<MessagingScreen> {
               ),
             ),
           ),
+          _ChatFilterTabs(
+            selected: _listTab,
+            unreadCount: unreadCount,
+            onSelect: (tab) => setState(() => _listTab = tab),
+          ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async => _loadThreads(context),
-              child: messaging.isLoading && messaging.threads.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : threads.isEmpty
-                      ? ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(height: 80),
-                            Center(
-                              child: Text(
-                                'Brak wątków',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.only(bottom: 16),
-                          itemCount: threads.length,
-                          itemBuilder: (context, index) {
-                            final thread = threads[index];
-                            return ThreadTile(
-                              thread: thread,
-                              viewerUserId: user?.id,
-                              selected: false,
-                              onTap: () => _openThreadById(thread.id),
-                            );
-                          },
-                        ),
-            ),
+            child: switch (_listTab) {
+              _ChatListTab.family => InlineCategoryChatPanel(
+                  key: const ValueKey(familyCategoryChannel),
+                  category: familyCategoryChannel,
+                  allowPrivateTags: false,
+                ),
+              _ChatListTab.schedule => InlineCategoryChatPanel(
+                  key: const ValueKey(scheduleCategoryChannel),
+                  category: scheduleCategoryChannel,
+                  allowPrivateTags: !isReadOnly,
+                ),
+              _ChatListTab.unread => _buildUnreadMessagesList(
+                  context,
+                  messaging,
+                  user,
+                  searchedThreads,
+                ),
+              _ChatListTab.all => _buildThreadsScroll(
+                  context,
+                  messaging,
+                  user,
+                  allThreads,
+                  emptyLabel: 'Brak wątków',
+                ),
+            },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildUnreadMessagesList(
+    BuildContext context,
+    MessagingProvider messaging,
+    AppUser? user,
+    List<MessageThread> threads,
+  ) {
+    final viewerId = user?.id;
+    final items = <({MessageThread thread, Message message})>[];
+    if (viewerId != null) {
+      for (final thread in threads) {
+        for (final message in thread.messages) {
+          if (!message.isRead && message.senderId != viewerId) {
+            items.add((thread: thread, message: message));
+          }
+        }
+      }
+      items.sort((a, b) => b.message.sentAt.compareTo(a.message.sentAt));
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => _loadThreads(context),
+      child: messaging.isLoading && messaging.threads.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : items.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 80),
+                    Center(
+                      child: Text(
+                        'Brak nieprzeczytanych wiadomości',
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 16),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return _UnreadMessageTile(
+                      thread: item.thread,
+                      message: item.message,
+                      onTap: () => _openThreadById(item.thread.id),
+                    );
+                  },
+                ),
+    );
+  }
+
+  Widget _buildThreadsScroll(
+    BuildContext context,
+    MessagingProvider messaging,
+    AppUser? user,
+    List<MessageThread> threads, {
+    required String emptyLabel,
+  }) {
+    return RefreshIndicator(
+      onRefresh: () async => _loadThreads(context),
+      child: messaging.isLoading && messaging.threads.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : threads.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    const SizedBox(height: 80),
+                    Center(
+                      child: Text(
+                        emptyLabel,
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 16),
+                  itemCount: threads.length,
+                  itemBuilder: (context, index) {
+                    final thread = threads[index];
+                    return ThreadTile(
+                      thread: thread,
+                      viewerUserId: user?.id,
+                      selected: false,
+                      onTap: () => _openThreadById(thread.id),
+                    );
+                  },
+                ),
     );
   }
 
@@ -452,4 +539,165 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     _openThreadConversation(thread.id, allowPrivateTags: true);
   }
+}
+
+class _ChatFilterTabs extends StatelessWidget {
+  final _ChatListTab selected;
+  final int unreadCount;
+  final ValueChanged<_ChatListTab> onSelect;
+
+  const _ChatFilterTabs({
+    required this.selected,
+    required this.unreadCount,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <(_ChatListTab, String)>[
+      (_ChatListTab.all, 'Wszystkie'),
+      (
+        _ChatListTab.unread,
+        unreadCount > 0 ? 'Nieprzeczytane ($unreadCount)' : 'Nieprzeczytane',
+      ),
+      (_ChatListTab.family, familyCategoryDisplayLabel),
+      (_ChatListTab.schedule, scheduleCategoryChannel),
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: items.map((item) {
+          final tab = item.$1;
+          final label = item.$2;
+          final isSelected = selected == tab;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              onTap: () => onSelect(tab),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected
+                          ? AppTheme.brandHeaderBlue
+                          : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? AppTheme.brandHeaderBlue
+                        : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _UnreadMessageTile extends StatelessWidget {
+  final MessageThread thread;
+  final Message message;
+  final VoidCallback onTap;
+
+  const _UnreadMessageTile({
+    required this.thread,
+    required this.message,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = message.content.trim().isEmpty
+        ? (message.attachments.isNotEmpty ? 'Załącznik' : '…')
+        : message.content;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: thread.categoryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                thread.categoryIcon,
+                color: thread.categoryColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    threadListTitle(thread),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${message.senderName}: $preview',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _formatUnreadTime(message.sentAt),
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.textHint,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatUnreadTime(DateTime dt) {
+  final now = DateTime.now();
+  final diff = now.difference(dt);
+  if (diff.inMinutes < 60) {
+    return '${diff.inMinutes}m';
+  }
+  if (diff.inHours < 24) {
+    return '${diff.inHours}h';
+  }
+  return '${diff.inDays}d';
 }

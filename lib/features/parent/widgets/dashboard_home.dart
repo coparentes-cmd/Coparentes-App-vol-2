@@ -7,6 +7,7 @@ import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../utils/calendar_date_utils.dart';
 import '../../../../utils/layout_utils.dart';
+import '../../../../utils/messaging_helpers.dart';
 import '../../../../widgets/parent_tab_scaffold.dart';
 import '../../../screens/settings/settings_screen.dart';
 
@@ -83,12 +84,17 @@ class _DashboardHomeState extends State<DashboardHome> {
         .toList()
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
 
-    final messagesCount = parentThreads.length;
+    final viewerId = user?.id;
+    final messagesCount = viewerId == null
+        ? 0
+        : countUnreadMessagesForViewer(parentThreads, viewerId);
     final financeCount = pendingExpenses.isNotEmpty
         ? pendingExpenses.length
         : recentExpenses.length;
     final calendarCount = calendar.pendingRequestCount;
-    final familyCount = familyThreads.length;
+    final familyCount = viewerId == null
+        ? 0
+        : countUnreadMessagesForViewer(familyThreads, viewerId);
 
     final isParentA = user?.role == UserRole.parentA;
     final roleColor = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
@@ -225,18 +231,17 @@ class _DashboardHomeState extends State<DashboardHome> {
                     onTap: () => widget.onOpenCalendarDay(today),
                   ),
                 ),
-                if (nextHandover != null) ...[
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: NextHandoverBar(
-                      handover: nextHandover,
-                      accentColor: roleColor,
-                      onTap: () =>
-                          widget.onOpenCalendarDay(nextHandover.date),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: NextHandoverBar(
+                    handover: nextHandover,
+                    accentColor: roleColor,
+                    onTap: () => widget.onOpenCalendarDay(
+                      nextHandover?.date ?? today,
                     ),
                   ),
-                ],
+                ),
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

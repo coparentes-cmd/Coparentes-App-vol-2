@@ -18,6 +18,21 @@ int countUnreadThreadsForViewer(
       .length;
 }
 
+int countUnreadMessagesForViewer(
+  List<MessageThread> threads,
+  String viewerUserId,
+) {
+  var count = 0;
+  for (final thread in threads) {
+    for (final message in thread.messages) {
+      if (!message.isRead && message.senderId != viewerUserId) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
 Message? findNewIncomingMessage(
   List<MessageThread> threads,
   String viewerUserId,

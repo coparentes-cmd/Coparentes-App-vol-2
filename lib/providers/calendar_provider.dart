@@ -100,23 +100,32 @@ class CalendarProvider extends ChangeNotifier {
       (hasPendingScheduleApproval ? 1 : 0);
 
   CustodySlot? getNextHandover({DateTime? after}) {
-    final base = after ?? DateTime.now();
-    final today = DateTime(base.year, base.month, base.day);
-    final upcoming = _custodySlots
-        .where((slot) {
-          final day = DateTime(slot.date.year, slot.date.month, slot.date.day);
-          if (day.isBefore(today)) {
-            return false;
-          }
-          final hasTime = slot.handoverTime != null &&
-              slot.handoverTime!.trim().isNotEmpty;
-          final hasPlace = slot.handoverLocation != null &&
-              slot.handoverLocation!.trim().isNotEmpty;
-          return hasTime || hasPlace;
-        })
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
-    return upcoming.isEmpty ? null : upcoming.first;
+    final primary =
+        _displaySlots.isNotEmpty ? _displaySlots : _custodySlots;
+    final fromPrimary = findNextCustodyHandover(
+      slots: primary,
+      schedule: _custodySchedule,
+      after: after,
+    );
+    if (fromPrimary != null) {
+      return fromPrimary;
+    }
+
+    final schedule = _custodySchedule;
+    if (schedule == null) {
+      return null;
+    }
+    if (schedule.status != CustodyScheduleStatus.active &&
+        schedule.status != CustodyScheduleStatus.pendingApproval) {
+      return null;
+    }
+
+    // API may return sparse custody slots without transitions; derive from grafik.
+    return findNextCustodyHandover(
+      slots: generateSlotsFromSchedule(schedule),
+      schedule: schedule,
+      after: after,
+    );
   }
 
   Future<void> load({bool silent = false}) async {

@@ -5,7 +5,7 @@ import '../../../../theme/app_theme.dart';
 
 /// Readable next custody handover strip — data from [CalendarProvider.getNextHandover].
 class NextHandoverBar extends StatelessWidget {
-  final CustodySlot handover;
+  final CustodySlot? handover;
   final Color accentColor;
   final VoidCallback? onTap;
 
@@ -17,6 +17,10 @@ class NextHandoverBar extends StatelessWidget {
   });
 
   String get _dateLabel {
+    final slot = handover;
+    if (slot == null) {
+      return 'Brak zaplanowanego przekazania';
+    }
     const weekdays = [
       'poniedziałek',
       'wtorek',
@@ -40,10 +44,10 @@ class NextHandoverBar extends StatelessWidget {
       'lis',
       'gru',
     ];
-    final day = handover.date;
+    final day = slot.date;
     final weekday = weekdays[day.weekday - 1];
     final datePart = '$weekday, ${day.day} ${months[day.month - 1]}';
-    final time = handover.handoverTime?.trim();
+    final time = slot.handoverTime?.trim();
     if (time == null || time.isEmpty) {
       return datePart;
     }
@@ -51,7 +55,7 @@ class NextHandoverBar extends StatelessWidget {
   }
 
   String get _placeLabel {
-    final place = handover.handoverLocation?.trim();
+    final place = handover?.handoverLocation?.trim();
     if (place == null || place.isEmpty) {
       return 'Miejsce nieustalone';
     }
@@ -60,6 +64,8 @@ class NextHandoverBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasHandover = handover != null;
+
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
@@ -103,37 +109,41 @@ class NextHandoverBar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _dateLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         height: 1.3,
-                        color: AppTheme.textPrimary,
+                        color: hasHandover
+                            ? AppTheme.textPrimary
+                            : AppTheme.textSecondary,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.place_outlined, size: 18, color: accentColor),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _placeLabel,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        height: 1.3,
-                        color: _placeLabel == 'Miejsce nieustalone'
-                            ? AppTheme.textSecondary
-                            : AppTheme.textPrimary,
+              if (hasHandover) ...[
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.place_outlined, size: 18, color: accentColor),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _placeLabel,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                          color: _placeLabel == 'Miejsce nieustalone'
+                              ? AppTheme.textSecondary
+                              : AppTheme.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

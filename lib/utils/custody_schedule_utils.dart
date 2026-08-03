@@ -117,3 +117,86 @@ List<CustodySlot> mergeScheduleSlotsWithOverrides({
       })
       .toList();
 }
+
+String _dayKey(DateTime date) =>
+    '${date.year}-${date.month}-${date.day}';
+
+DateTime _dateOnly(DateTime date) =>
+    DateTime(date.year, date.month, date.day);
+
+CustodySlot _enrichHandoverDetails(
+  CustodySlot slot,
+  CustodySchedule? schedule,
+) {
+  final time = slot.handoverTime?.trim();
+  final place = slot.handoverLocation?.trim();
+  return slot.copyWith(
+    handoverTime: (time != null && time.isNotEmpty)
+        ? slot.handoverTime
+        : schedule?.handoverTime,
+    handoverLocation: (place != null && place.isNotEmpty)
+        ? slot.handoverLocation
+        : schedule?.handoverLocation,
+  );
+}
+
+bool handoverMomentAlreadyPassed(CustodySlot slot, DateTime now) {
+  final day = _dateOnly(slot.date);
+  final today = _dateOnly(now);
+  if (day.isAfter(today)) {
+    return false;
+  }
+  if (day.isBefore(today)) {
+    return true;
+  }
+  final raw = slot.handoverTime?.trim();
+  if (raw == null || raw.isEmpty) {
+    return false;
+  }
+  final parts = raw.split(':');
+  if (parts.length < 2) {
+    return false;
+  }
+  final hour = int.tryParse(parts[0].trim());
+  final minute = int.tryParse(parts[1].trim());
+  if (hour == null || minute == null) {
+    return false;
+  }
+  final at = DateTime(now.year, now.month, now.day, hour, minute);
+  return !now.isBefore(at);
+}
+
+/// Next custody handoff: first upcoming day where the custodian changes.
+CustodySlot? findNextCustodyHandover({
+  required List<CustodySlot> slots,
+  CustodySchedule? schedule,
+  DateTime? after,
+}) {
+  if (slots.isEmpty) {
+    return null;
+  }
+
+  final base = after ?? DateTime.now();
+  final today = _dateOnly(base);
+  final sorted = [...slots]..sort((a, b) => a.date.compareTo(b.date));
+
+  CustodySlot? previous;
+  for (final slot in sorted) {
+    final day = _dateOnly(slot.date);
+    final isHandoverDay =
+        previous != null && previous.custodian != slot.custodian;
+    previous = slot;
+
+    if (!isHandoverDay || day.isBefore(today)) {
+      continue;
+    }
+
+    final enriched = _enrichHandoverDetails(slot, schedule);
+    if (handoverMomentAlreadyPassed(enriched, base)) {
+      continue;
+    }
+    return enriched;
+  }
+
+  return null;
+}
