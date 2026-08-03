@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
-/// WhatsApp-style receipt: one tick = delivered, two blue ticks = read.
+/// WhatsApp-style receipt: two gray ticks = sent, two blue ticks = read.
 class MessageReceiptFooter extends StatelessWidget {
   final Message message;
   final bool isMe;
@@ -45,7 +45,7 @@ class MessageReceiptFooter extends StatelessWidget {
     final pendingColor = onColoredBubble
         ? Colors.white.withValues(alpha: 0.65)
         : AppTheme.textHint;
-    final deliveredColor = onColoredBubble
+    final sentColor = onColoredBubble
         ? Colors.white.withValues(alpha: 0.85)
         : AppTheme.textSecondary;
 
@@ -57,18 +57,11 @@ class MessageReceiptFooter extends StatelessWidget {
       );
     }
 
-    if (message.isRead) {
-      return const Icon(
-        Icons.done_all,
-        size: 14,
-        color: _readBlue,
-      );
-    }
-
+    // Read = blue double ticks. Sent/delivered (not yet read) = gray double ticks.
     return Icon(
-      Icons.done,
+      Icons.done_all,
       size: 14,
-      color: deliveredColor,
+      color: message.isRead ? _readBlue : sentColor,
     );
   }
 
@@ -87,5 +80,5 @@ String messageReceiptLabel(Message message, {required bool isMe}) {
   if (message.isRead) {
     return 'Odczytana';
   }
-  return 'Dostarczona';
+  return 'Wysłana';
 }

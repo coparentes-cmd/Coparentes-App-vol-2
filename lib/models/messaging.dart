@@ -108,6 +108,38 @@ class Message {
     required this.hash,
     this.isShielded = false,
   });
+
+  Message copyWith({
+    String? id,
+    String? threadId,
+    String? senderId,
+    String? senderName,
+    String? content,
+    String? aiSuggestedContent,
+    MessageTone? tone,
+    List<MessageAttachment>? attachments,
+    DateTime? sentAt,
+    bool? isDelivered,
+    bool? isRead,
+    String? hash,
+    bool? isShielded,
+  }) {
+    return Message(
+      id: id ?? this.id,
+      threadId: threadId ?? this.threadId,
+      senderId: senderId ?? this.senderId,
+      senderName: senderName ?? this.senderName,
+      content: content ?? this.content,
+      aiSuggestedContent: aiSuggestedContent ?? this.aiSuggestedContent,
+      tone: tone ?? this.tone,
+      attachments: attachments ?? this.attachments,
+      sentAt: sentAt ?? this.sentAt,
+      isDelivered: isDelivered ?? this.isDelivered,
+      isRead: isRead ?? this.isRead,
+      hash: hash ?? this.hash,
+      isShielded: isShielded ?? this.isShielded,
+    );
+  }
 }
 
 class MessageAttachment {

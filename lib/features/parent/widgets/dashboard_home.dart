@@ -129,13 +129,33 @@ class _DashboardHomeState extends State<DashboardHome> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Dzień dobry, $firstName',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: compact ? 18 : 20,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Dzień dobry, $firstName',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: compact ? 18 : 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SizedBox(width: compact ? 8 : 10),
+                      Image.asset(
+                        'assets/branding/coparentes-logo.png',
+                        width: compact ? 28 : 32,
+                        height: compact ? 28 : 32,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.family_restroom,
+                          size: compact ? 24 : 28,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                   SizedBox(height: compact ? 2 : 3),
                   Text(

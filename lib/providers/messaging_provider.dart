@@ -171,20 +171,7 @@ class MessagingProvider extends ChangeNotifier {
         .map(
           (message) => message.senderId == viewerUserId
               ? message
-              : Message(
-                  id: message.id,
-                  threadId: message.threadId,
-                  senderId: message.senderId,
-                  senderName: message.senderName,
-                  content: message.content,
-                  tone: message.tone,
-                  attachments: message.attachments,
-                  sentAt: message.sentAt,
-                  isDelivered: message.isDelivered,
-                  isRead: true,
-                  hash: message.hash,
-                  isShielded: message.isShielded,
-                ),
+              : message.copyWith(isRead: true),
         )
         .toList();
 
@@ -456,19 +443,22 @@ class MessagingProvider extends ChangeNotifier {
         attachments: attachments,
         channelCategory: channelCategory,
       );
-      if (threadId != updatedThread.id) {
+      // Just-sent outgoing messages must stay unread until the other parent
+      // opens the thread — never trust a premature isRead on the send response.
+      final sanitized = _withOutgoingSendUnread(updatedThread);
+      if (threadId != sanitized.id) {
         _threads.removeWhere((thread) => thread.id == threadId);
       }
       final index =
-          _threads.indexWhere((thread) => thread.id == updatedThread.id);
+          _threads.indexWhere((thread) => thread.id == sanitized.id);
       if (index >= 0) {
-        _threads[index] = updatedThread;
+        _threads[index] = sanitized;
       } else {
-        _threads.insert(0, updatedThread);
+        _threads.insert(0, sanitized);
       }
 
-      final lastMessage = updatedThread.messages.isNotEmpty
-          ? updatedThread.messages.last
+      final lastMessage = sanitized.messages.isNotEmpty
+          ? sanitized.messages.last
           : null;
       if (lastMessage != null &&
           (lastMessage.id.startsWith('local_msg_') || !lastMessage.isDelivered)) {
@@ -480,12 +470,38 @@ class MessagingProvider extends ChangeNotifier {
 
       suppressRemoteLoad();
       notifyListeners();
-      return updatedThread;
+      return sanitized;
     } catch (error) {
       _error = _mapSendMessageError(error);
       notifyListeners();
       return null;
     }
+  }
+
+  /// Send response can race with the other parent's mark-as-read; the message
+  /// that was just created in this request must still show as unread locally.
+  MessageThread _withOutgoingSendUnread(MessageThread thread) {
+    if (thread.messages.isEmpty) {
+      return thread;
+    }
+    final last = thread.messages.last;
+    if (!last.isRead) {
+      return thread;
+    }
+    final messages = [
+      ...thread.messages.sublist(0, thread.messages.length - 1),
+      last.copyWith(isRead: false),
+    ];
+    return MessageThread(
+      id: thread.id,
+      subject: thread.subject,
+      category: thread.category,
+      childId: thread.childId,
+      audience: thread.audience,
+      lastActivity: thread.lastActivity,
+      hasUnread: thread.hasUnread,
+      messages: messages,
+    );
   }
 
   String _mapSendMessageError(Object error) {
@@ -537,7 +553,7 @@ class MessagingProvider extends ChangeNotifier {
       attachments: const [],
       sentAt: now,
       isDelivered: true,
-      isRead: true,
+      isRead: false,
       hash: 'sha256_demo_${now.microsecondsSinceEpoch}',
     );
 
