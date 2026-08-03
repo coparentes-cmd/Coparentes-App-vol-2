@@ -216,9 +216,11 @@ class _CalendarScreenState extends State<CalendarScreen>
       children: [
         if (calendar.isLoading && calendar.isEmpty)
           const LinearProgressIndicator(minHeight: 2),
-        if (calendar.error != null && calendar.isEmpty)
+        if (calendar.error != null &&
+            calendar.isEmpty &&
+            !calendar.loadedFromApi)
           MaterialBanner(
-            content: Text(
+            content: const Text(
               'Nie udało się załadować kalendarza. Sprawdź połączenie i spróbuj ponownie.',
             ),
             actions: [

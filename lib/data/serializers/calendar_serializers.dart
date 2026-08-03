@@ -292,15 +292,17 @@ Map<String, dynamic> custodyExceptionToJson(CustodyException exception) {
 CalendarEvent calendarEventFromJson(Map<String, dynamic> json) {
   return CalendarEvent(
     id: json['id'] as String,
-    title: json['title'] as String,
+    title: (json['title'] as String?)?.trim().isNotEmpty == true
+        ? json['title'] as String
+        : 'Zdarzenie',
     description: json['description'] as String?,
     startDate: DateTime.parse(json['startDate'] as String),
     endDate: json['endDate'] == null
         ? null
         : DateTime.parse(json['endDate'] as String),
-    type: eventTypeFromApi(json['type'] as String),
+    type: eventTypeFromApi(json['type'] as String? ?? 'other'),
     childId: json['childId'] as String?,
-    createdBy: json['createdBy'] as String,
+    createdBy: json['createdBy'] as String? ?? '',
     location: json['location'] as String?,
   );
 }

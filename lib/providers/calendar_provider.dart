@@ -513,9 +513,8 @@ class CalendarProvider extends ChangeNotifier {
       if (status == SwapStatus.accepted) {
         _applyAcceptedSwapToSlots(updated);
       }
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
+      // Keep local optimistic update; caller shows snackbar.
       rethrow;
     }
   }
@@ -569,9 +568,7 @@ class CalendarProvider extends ChangeNotifier {
       await _reloadBestEffort();
       // Keep the saved event visible if an older refresh finishes last.
       _upsertEvent(created);
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -634,9 +631,7 @@ class CalendarProvider extends ChangeNotifier {
       _upsertEvent(updated);
       await _reloadBestEffort();
       _upsertEvent(updated);
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -654,9 +649,7 @@ class CalendarProvider extends ChangeNotifier {
       );
       _upsertSwap(created);
       await _reloadBestEffort();
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -684,9 +677,7 @@ class CalendarProvider extends ChangeNotifier {
       notifyListeners();
       await _reloadBestEffort();
       return schedule;
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -782,9 +773,7 @@ class CalendarProvider extends ChangeNotifier {
         responseNote: responseNote,
       );
       await _reloadBestEffort();
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -807,9 +796,7 @@ class CalendarProvider extends ChangeNotifier {
       _custodyExceptions.insert(0, created);
       notifyListeners();
       await _reloadBestEffort();
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -831,9 +818,7 @@ class CalendarProvider extends ChangeNotifier {
       }
       notifyListeners();
       await _reloadBestEffort();
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }
@@ -858,9 +843,7 @@ class CalendarProvider extends ChangeNotifier {
       }
       notifyListeners();
       await _reloadBestEffort();
-    } catch (error) {
-      _error = error.toString();
-      notifyListeners();
+    } catch (_) {
       rethrow;
     }
   }

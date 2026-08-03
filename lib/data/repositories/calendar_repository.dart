@@ -314,8 +314,11 @@ class CalendarRepository {
         }
       } on ApiException catch (error) {
         if (error.statusCode >= 500) {
-          rethrow;
+          // Keep retrying later — do not block calendar fetch.
+          networkFailed = true;
+          rewrittenQueue.add(action);
         }
+        // 4xx: drop the poisoned action so fetch can proceed.
       } catch (_) {
         networkFailed = true;
         rewrittenQueue.add(action);

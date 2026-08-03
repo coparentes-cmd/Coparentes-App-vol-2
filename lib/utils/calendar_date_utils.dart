@@ -6,7 +6,17 @@ String calendarDateToApiIso(DateTime date) {
 
 /// Event start/end with a specific local time.
 String calendarDateTimeToApiIso(DateTime date) {
-  return date.toLocal().toUtc().toIso8601String();
+  final utc = date.toLocal().toUtc();
+  // Strip microseconds so Zod datetime always accepts the payload.
+  return DateTime.utc(
+    utc.year,
+    utc.month,
+    utc.day,
+    utc.hour,
+    utc.minute,
+    utc.second,
+    utc.millisecond,
+  ).toIso8601String();
 }
 
 /// All-day events use noon UTC; timed events keep the local clock time.
