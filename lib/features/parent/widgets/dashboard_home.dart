@@ -12,6 +12,7 @@ import '../../../screens/settings/settings_screen.dart';
 
 import 'day_agenda_list.dart';
 import 'message_thread_preview.dart';
+import 'next_handover_bar.dart';
 import 'today_card.dart';
 
 enum _DashboardFeedTab { messages, finance, calendar, family }
@@ -221,10 +222,21 @@ class _DashboardHomeState extends State<DashboardHome> {
                     roleColor: roleColor,
                     custodyLabel:
                         todaySlots.isNotEmpty ? custodyText : null,
-                    nextHandover: nextHandover,
                     onTap: () => widget.onOpenCalendarDay(today),
                   ),
                 ),
+                if (nextHandover != null) ...[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: NextHandoverBar(
+                      handover: nextHandover,
+                      accentColor: roleColor,
+                      onTap: () =>
+                          widget.onOpenCalendarDay(nextHandover.date),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

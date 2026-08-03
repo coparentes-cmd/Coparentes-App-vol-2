@@ -105,7 +105,14 @@ class CalendarProvider extends ChangeNotifier {
     final upcoming = _custodySlots
         .where((slot) {
           final day = DateTime(slot.date.year, slot.date.month, slot.date.day);
-          return !day.isBefore(today) && slot.handoverTime != null;
+          if (day.isBefore(today)) {
+            return false;
+          }
+          final hasTime = slot.handoverTime != null &&
+              slot.handoverTime!.trim().isNotEmpty;
+          final hasPlace = slot.handoverLocation != null &&
+              slot.handoverLocation!.trim().isNotEmpty;
+          return hasTime || hasPlace;
         })
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));

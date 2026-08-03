@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../../../models/models.dart';
 import '../../../../theme/app_theme.dart';
 
-/// Compact Today header: date, custody, handover — schedule lives below.
+/// Compact Today header: date and custody — handover has its own bar below.
 class TodayCard extends StatelessWidget {
   final DateTime date;
   final int pendingSwaps;
   final Color roleColor;
   final String? custodyLabel;
-  final CustodySlot? nextHandover;
   final VoidCallback onTap;
 
   const TodayCard({
@@ -18,7 +16,6 @@ class TodayCard extends StatelessWidget {
     required this.pendingSwaps,
     required this.roleColor,
     this.custodyLabel,
-    this.nextHandover,
     required this.onTap,
   });
 
@@ -131,30 +128,6 @@ class TodayCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (nextHandover != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.swap_horiz,
-                        color: roleColor.withValues(alpha: 0.7),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Następne przekazanie: ${nextHandover!.date.day}.${nextHandover!.date.month}'
-                          '${nextHandover!.handoverTime != null ? ' o ${nextHandover!.handoverTime}' : ''}'
-                          '${nextHandover!.handoverLocation != null ? ' · ${nextHandover!.handoverLocation}' : ''}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
                         ),
                       ),
                     ],

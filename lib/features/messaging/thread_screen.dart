@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../config/messaging_categories.dart';
 import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
@@ -195,11 +196,15 @@ class ThreadScreenState extends State<ThreadScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(thread.subject, style: const TextStyle(fontSize: 16)),
               Text(
-                thread.category,
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
+                threadListTitle(thread),
+                style: const TextStyle(fontSize: 16),
               ),
+              if (!isFamilyChannel(thread) && !isScheduleChannel(thread))
+                Text(
+                  thread.category,
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
             ],
           ),
           actions: [

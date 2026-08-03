@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/message_tags.dart';
 import '../../config/messaging_categories.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
@@ -11,14 +10,8 @@ import '../../providers/messaging_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_browser_back.dart';
 import '../../utils/message_tag_search.dart';
-import '../../utils/messaging_helpers.dart';
-import '../../widgets/common_widgets.dart';
-import '../../widgets/message_tag_widgets.dart';
-import '../../widgets/parent_tab_scaffold.dart';
 import 'messaging_navigation.dart';
 import 'thread_screen.dart';
-import 'widgets/category_chip.dart';
-import 'widgets/general_inbox_tile.dart';
 import 'widgets/inline_chat_panel.dart';
 import 'widgets/new_thread_sheet.dart';
 import 'widgets/thread_tile.dart';
@@ -50,11 +43,10 @@ class MessagingScreen extends StatefulWidget {
 }
 
 class MessagingScreenState extends State<MessagingScreen> {
-  String _selectedCategory = allTabLabel;
   final TextEditingController _searchController = TextEditingController();
-  String? _inlineThreadId;
-  String? _allTabActiveThreadId;
-  bool _inlineThreadAllowsPrivateTags = false;
+  String? _conversationThreadId;
+  String? _conversationCategory;
+  bool _conversationAllowsPrivateTags = false;
   bool _returnToPreviousTab = false;
 
   @override
@@ -102,92 +94,11 @@ class MessagingScreenState extends State<MessagingScreen> {
       if (!mounted) {
         return;
       }
-      markBrowserHistoryForward();
-      setState(() {
-        _selectedCategory = category;
-        _inlineThreadId = null;
-        _returnToPreviousTab = returnToPreviousTab;
-      });
+      _openCategoryConversation(
+        category,
+        returnToPreviousTab: returnToPreviousTab,
+      );
     });
-  }
-
-  void _openInlineThread(
-    String threadId, {
-    bool returnToPreviousTab = false,
-    bool allowPrivateTags = false,
-  }) {
-    markBrowserHistoryForward();
-    setState(() {
-      _selectedCategory = allTabLabel;
-      _inlineThreadId = threadId;
-      _allTabActiveThreadId = threadId;
-      _inlineThreadAllowsPrivateTags = allowPrivateTags;
-      _returnToPreviousTab = returnToPreviousTab;
-    });
-  }
-
-  void _selectAllTabThread(String threadId) {
-    setState(() {
-      _allTabActiveThreadId = threadId;
-      _inlineThreadId = null;
-      _inlineThreadAllowsPrivateTags = false;
-    });
-  }
-
-  void _selectGeneralInbox() {
-    setState(() {
-      _allTabActiveThreadId = null;
-      _inlineThreadId = null;
-      _inlineThreadAllowsPrivateTags = false;
-    });
-  }
-
-  void _ensureAllTabActiveThread(List<MessageThread> threads) {
-    if (_allTabActiveThreadId == null) {
-      return;
-    }
-
-    final activeStillVisible =
-        threads.any((thread) => thread.id == _allTabActiveThreadId);
-    if (!activeStillVisible) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        setState(() => _allTabActiveThreadId = null);
-      });
-    }
-  }
-
-  void _toggleSearchTag(String tag) {
-    final query = parseMessageSearchQuery(_searchController.text);
-    final tags = List<String>.from(query.tags);
-    final normalized = normalizeMessageTag(tag);
-    if (tags.contains(normalized)) {
-      tags.remove(normalized);
-    } else {
-      tags.add(normalized);
-    }
-
-    final parts = <String>[];
-    if (query.text.isNotEmpty) {
-      parts.add(query.text);
-    }
-    parts.addAll(tags.map((item) => 'tag:$item'));
-    _searchController.text = parts.join(' ');
-    setState(() {});
-  }
-
-  void _closeInlineThread() {
-    final shouldReturn = _returnToPreviousTab;
-    setState(() {
-      _inlineThreadId = null;
-      _inlineThreadAllowsPrivateTags = false;
-      _returnToPreviousTab = false;
-    });
-    if (shouldReturn) {
-      widget.onReturnTab?.call();
-    }
   }
 
   void _scheduleOpenThread(
@@ -195,8 +106,50 @@ class MessagingScreenState extends State<MessagingScreen> {
     bool returnToPreviousTab = false,
   }) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_openThreadById(threadId, returnToPreviousTab: returnToPreviousTab));
+      unawaited(
+        _openThreadById(threadId, returnToPreviousTab: returnToPreviousTab),
+      );
     });
+  }
+
+  void _openCategoryConversation(
+    String category, {
+    bool returnToPreviousTab = false,
+  }) {
+    markBrowserHistoryForward();
+    setState(() {
+      _conversationCategory = category;
+      _conversationThreadId = null;
+      _conversationAllowsPrivateTags = category != familyCategoryChannel;
+      _returnToPreviousTab = returnToPreviousTab;
+    });
+  }
+
+  void _openThreadConversation(
+    String threadId, {
+    bool returnToPreviousTab = false,
+    bool allowPrivateTags = true,
+  }) {
+    markBrowserHistoryForward();
+    setState(() {
+      _conversationThreadId = threadId;
+      _conversationCategory = null;
+      _conversationAllowsPrivateTags = allowPrivateTags;
+      _returnToPreviousTab = returnToPreviousTab;
+    });
+  }
+
+  void _closeConversation() {
+    final shouldReturn = _returnToPreviousTab;
+    setState(() {
+      _conversationThreadId = null;
+      _conversationCategory = null;
+      _conversationAllowsPrivateTags = false;
+      _returnToPreviousTab = false;
+    });
+    if (shouldReturn) {
+      widget.onReturnTab?.call();
+    }
   }
 
   Future<void> _openThreadById(
@@ -228,14 +181,14 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     final category = categoryChannelForThread(thread);
     if (category != null) {
-      _scheduleOpenCategory(
+      _openCategoryConversation(
         category,
         returnToPreviousTab: returnToPreviousTab,
       );
       return;
     }
 
-    _openInlineThread(
+    _openThreadConversation(
       thread.id,
       returnToPreviousTab: returnToPreviousTab,
       allowPrivateTags: true,
@@ -255,33 +208,20 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   /// Handles in-tab back navigation. Returns true when consumed.
   bool handleBack() {
-    if (_inlineThreadId != null) {
-      _closeInlineThread();
-      return true;
-    }
-    if (_selectedCategory != allTabLabel) {
-      final shouldReturn = _returnToPreviousTab;
-      setState(() {
-        _selectedCategory = allTabLabel;
-        _returnToPreviousTab = false;
-      });
-      if (shouldReturn) {
-        widget.onReturnTab?.call();
-      }
+    if (_hasInternalBackState) {
+      _closeConversation();
       return true;
     }
     return false;
   }
 
   bool get _hasInternalBackState =>
-      _inlineThreadId != null || _selectedCategory != allTabLabel;
+      _conversationThreadId != null || _conversationCategory != null;
 
   bool get hasInternalNavigation => _hasInternalBackState;
 
   @override
   Widget build(BuildContext context) {
-    final content = _buildContent(context);
-
     return PopScope(
       canPop: !widget.isTabActive || !_hasInternalBackState,
       onPopInvokedWithResult: (didPop, result) {
@@ -289,7 +229,7 @@ class MessagingScreenState extends State<MessagingScreen> {
           handleBack();
         }
       },
-      child: content,
+      child: _buildContent(context),
     );
   }
 
@@ -299,15 +239,21 @@ class MessagingScreenState extends State<MessagingScreen> {
     final childFamilyOnly = widget.familyOnly || user?.role == UserRole.child;
 
     if (childFamilyOnly) {
-      return ParentTabScaffold(
-        title: familyCategoryDisplayLabel,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Odśwież wiadomości',
-            onPressed: () => _loadThreads(context),
-          ),
-        ],
+      return Scaffold(
+        backgroundColor: AppTheme.surfaceColor,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.textPrimary,
+          elevation: 0.5,
+          title: Text(familyCategoryDisplayLabel),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Odśwież wiadomości',
+              onPressed: () => _loadThreads(context),
+            ),
+          ],
+        ),
         body: InlineCategoryChatPanel(
           key: const ValueKey(familyCategoryChannel),
           category: familyCategoryChannel,
@@ -317,9 +263,57 @@ class MessagingScreenState extends State<MessagingScreen> {
       );
     }
 
+    if (_conversationThreadId != null) {
+      return ThreadScreen(
+        key: ValueKey(_conversationThreadId),
+        threadId: _conversationThreadId!,
+        onBack: _closeConversation,
+        allowPrivateTags: _conversationAllowsPrivateTags &&
+            user?.role != UserRole.observer,
+      );
+    }
+
+    if (_conversationCategory != null) {
+      final isReadOnly = user?.role == UserRole.observer;
+      return Scaffold(
+        backgroundColor: AppTheme.surfaceColor,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.textPrimary,
+          elevation: 0.5,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _closeConversation,
+          ),
+          title: Text(messagingCategoryLabel(_conversationCategory!)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Odśwież wiadomości',
+              onPressed: () => _loadThreads(context),
+            ),
+          ],
+        ),
+        body: InlineCategoryChatPanel(
+          key: ValueKey(_conversationCategory),
+          category: _conversationCategory,
+          allowPrivateTags:
+              _conversationAllowsPrivateTags && !isReadOnly,
+        ),
+      );
+    }
+
+    return _buildThreadList(context, messaging, user);
+  }
+
+  Widget _buildThreadList(
+    BuildContext context,
+    MessagingProvider messaging,
+    AppUser? user,
+  ) {
     final isReadOnly = user?.role == UserRole.observer;
     final searchQuery = parseMessageSearchQuery(_searchController.text);
-    final customAllTabThreads = messaging.customUserThreads
+    final threads = messaging.threads
         .where(
           (thread) => threadMatchesAllTabSearch(
             thread: thread,
@@ -327,198 +321,109 @@ class MessagingScreenState extends State<MessagingScreen> {
             tagsByMessageId: messaging.tagsByMessageId,
           ),
         )
-        .toList();
-    final showInlineChat = _selectedCategory != allTabLabel;
-    final inlineThread = _inlineThreadId == null
-        ? null
-        : messaging.getThreadById(_inlineThreadId!);
-    final showAllTabInlineThread =
-        !showInlineChat && _inlineThreadId != null && inlineThread != null;
-    if (!showInlineChat && !showAllTabInlineThread) {
-      _ensureAllTabActiveThread(customAllTabThreads);
-    }
-    final activeAllTabThreadId = _allTabActiveThreadId;
-    final activeAllTabThread = activeAllTabThreadId == null
-        ? null
-        : messaging.getThreadById(activeAllTabThreadId);
+        .toList()
+      ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
 
-    return ParentTabScaffold(
-      title: showInlineChat
-          ? messagingCategoryLabel(_selectedCategory)
-          : showAllTabInlineThread
-              ? threadListTitle(inlineThread!)
-              : activeAllTabThread != null
-                  ? threadListTitle(activeAllTabThread)
-                  : allTabLabel,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          tooltip: 'Odśwież wiadomości',
-          onPressed: () => _loadThreads(context),
+    return Scaffold(
+      backgroundColor: AppTheme.surfaceColor,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimary,
+        elevation: 0.5,
+        title: const Text(
+          'Czat',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        if (!isReadOnly && !showInlineChat)
-          ParentHeaderActionButton(
-            label: 'Nowy wątek',
-            icon: Icons.edit_note,
-            backgroundColor: AppTheme.purpleColor,
-            prominent: true,
-            onPressed: () => _newThread(context),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Odśwież',
+            onPressed: () => _loadThreads(context),
           ),
-      ],
+          if (!isReadOnly)
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Nowy wątek',
+              onPressed: () => _newThread(context),
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: messagingNavChips
-                  .map(
-                    (cat) => CategoryChip(
-                      category: cat,
-                      selected: _selectedCategory == cat,
-                      onTap: () {
-                        if (cat == allTabLabel && _inlineThreadId != null) {
-                          _closeInlineThread();
-                          return;
-                        }
-                        if (cat != _selectedCategory && cat != allTabLabel) {
-                          markBrowserHistoryForward();
-                        }
-                        setState(() {
-                          _selectedCategory = cat;
-                          if (cat != allTabLabel) {
-                            _inlineThreadId = null;
-                            _allTabActiveThreadId = null;
-                          } else {
-                            _inlineThreadId = null;
-                            _allTabActiveThreadId = null;
-                          }
-                        });
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-          if (!showInlineChat && !showAllTabInlineThread) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Szukaj lub tag:paragon',
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                        ),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppTheme.dividerColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppTheme.dividerColor),
-                  ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Szukaj',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {});
+                        },
+                      ),
+                filled: true,
+                fillColor: Colors.white,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: AppTheme.dividerColor),
                 ),
               ),
             ),
-            MessageTagFilterBar(
-              activeTags: searchQuery.tags.toSet(),
-              userTags: messaging.allUserTags,
-              onTagTap: _toggleSearchTag,
-            ),
-          ],
-          if (showInlineChat)
-            Expanded(
-              child: InlineCategoryChatPanel(
-                key: ValueKey(_selectedCategory),
-                category: _selectedCategory,
-                allowPrivateTags: !isReadOnly,
-              ),
-            )
-          else if (showAllTabInlineThread)
-            Expanded(
-              child: InlineCategoryChatPanel(
-                key: ValueKey(_inlineThreadId),
-                threadId: _inlineThreadId,
-                allowPrivateTags: _inlineThreadAllowsPrivateTags && !isReadOnly,
-                messageSearchQuery: searchQuery,
-              ),
-            )
-          else
-            Expanded(
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 220,
-                    child: RefreshIndicator(
-                      onRefresh: () async => _loadThreads(context),
-                      child: messaging.isLoading && messaging.threads.isEmpty
-                          ? const Center(child: CircularProgressIndicator())
-                          : ListView.builder(
-                              physics:
-                                  const AlwaysScrollableScrollPhysics(),
-                              padding: const EdgeInsets.only(bottom: 8),
-                              itemCount: customAllTabThreads.length + 1,
-                              itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  return GeneralInboxTile(
-                                    selected: activeAllTabThreadId == null,
-                                    onTap: _selectGeneralInbox,
-                                  );
-                                }
-
-                                final thread = customAllTabThreads[index - 1];
-                                final selected =
-                                    thread.id == activeAllTabThreadId;
-                                return ThreadTile(
-                                  thread: thread,
-                                  viewerUserId: user?.id,
-                                  selected: selected,
-                                  userTags: sortedMessageTags(
-                                    collectThreadUserTags(
-                                      thread,
-                                      messaging.tagsByMessageId,
-                                    ),
-                                  ).toSet(),
-                                  onTap: () =>
-                                      _selectAllTabThread(thread.id),
-                                );
-                              },
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _loadThreads(context),
+              child: messaging.isLoading && messaging.threads.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : threads.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 80),
+                            Center(
+                              child: Text(
+                                'Brak wątków',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
                             ),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: activeAllTabThreadId == null
-                        ? InlineCategoryChatPanel(
-                            key: const ValueKey('all_tab_general_inbox'),
-                            category: allTabLabel,
-                            allowPrivateTags: !isReadOnly,
-                            messageSearchQuery: searchQuery,
-                          )
-                        : InlineCategoryChatPanel(
-                            key: ValueKey(activeAllTabThreadId),
-                            threadId: activeAllTabThreadId,
-                            allowPrivateTags: !isReadOnly,
-                            messageSearchQuery: searchQuery,
-                          ),
-                  ),
-                ],
-              ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 16),
+                          itemCount: threads.length,
+                          itemBuilder: (context, index) {
+                            final thread = threads[index];
+                            return ThreadTile(
+                              thread: thread,
+                              viewerUserId: user?.id,
+                              selected: false,
+                              onTap: () => _openThreadById(thread.id),
+                            );
+                          },
+                        ),
             ),
+          ),
         ],
       ),
     );
@@ -545,6 +450,6 @@ class MessagingScreenState extends State<MessagingScreen> {
       ),
     );
 
-    _selectAllTabThread(thread.id);
+    _openThreadConversation(thread.id, allowPrivateTags: true);
   }
 }
