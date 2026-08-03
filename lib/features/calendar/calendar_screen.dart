@@ -7,6 +7,7 @@ import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
+import '../../../utils/layout_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
 import '../../../widgets/google_style_month_calendar.dart';
@@ -212,6 +213,8 @@ class _CalendarScreenState extends State<CalendarScreen>
     bool isReadOnly,
     String? userId,
   ) {
+    final twoPane = useTwoPaneLayout(context);
+
     return Column(
       children: [
         if (calendar.isLoading && calendar.isEmpty)
@@ -244,44 +247,36 @@ class _CalendarScreenState extends State<CalendarScreen>
             onReject: () => _respondToSchedule(context, approve: false),
           ),
         Expanded(
-          child: GoogleStyleMonthCalendar(
-            key: ValueKey(
-              'cal-${calendar.custodySlots.length}-'
-              '${calendar.events.length}-'
-              '${calendar.custodySchedule?.id}-'
-              '${calendar.custodySchedule?.status.name}-'
-              '${calendar.showsPendingSchedulePreview}-'
-              '${calendar.loadedFromApi}',
-            ),
-            focusedDay: _focusedDay,
-            selectedDay: _selectedDay,
-            accentColor: AppTheme.accentColor,
-            getSlotsForDay: calendar.getSlotsForDay,
-            getEventsForDay: calendar.getEventsForDay,
-            isExceptionDay: calendar.isExceptionDay,
-            hasPendingException: calendar.hasPendingExceptionForDay,
-            onDaySelected: (day) {
-              setState(() {
-                _selectedDay = day;
-                _focusedDay = day;
-              });
-            },
-            onDayTap: (day) =>
-                _showDayDetailSheet(context, calendar, day, isReadOnly),
-            onEventDoubleTap: isReadOnly
-                ? null
-                : (event) => _showEditEventSheet(context, event),
-            onMonthChanged: (month) {
-              setState(() => _focusedDay = month);
-            },
-            onTodayPressed: () {
-              final today = DateTime.now();
-              setState(() {
-                _focusedDay = today;
-                _selectedDay = today;
-              });
-            },
-          ),
+          child: twoPane
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: _buildMonthCalendar(
+                        context,
+                        calendar,
+                        isReadOnly,
+                        openDaySheet: false,
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    SizedBox(
+                      width: 340,
+                      child: _buildDaySidePanel(
+                        context,
+                        calendar,
+                        isReadOnly,
+                      ),
+                    ),
+                  ],
+                )
+              : _buildMonthCalendar(
+                  context,
+                  calendar,
+                  isReadOnly,
+                  openDaySheet: true,
+                ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -300,6 +295,155 @@ class _CalendarScreenState extends State<CalendarScreen>
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildMonthCalendar(
+    BuildContext context,
+    CalendarProvider calendar,
+    bool isReadOnly, {
+    required bool openDaySheet,
+  }) {
+    return GoogleStyleMonthCalendar(
+      key: ValueKey(
+        'cal-${calendar.custodySlots.length}-'
+        '${calendar.events.length}-'
+        '${calendar.custodySchedule?.id}-'
+        '${calendar.custodySchedule?.status.name}-'
+        '${calendar.showsPendingSchedulePreview}-'
+        '${calendar.loadedFromApi}',
+      ),
+      focusedDay: _focusedDay,
+      selectedDay: _selectedDay,
+      accentColor: AppTheme.accentColor,
+      getSlotsForDay: calendar.getSlotsForDay,
+      getEventsForDay: calendar.getEventsForDay,
+      isExceptionDay: calendar.isExceptionDay,
+      hasPendingException: calendar.hasPendingExceptionForDay,
+      onDaySelected: (day) {
+        setState(() {
+          _selectedDay = day;
+          _focusedDay = day;
+        });
+      },
+      onDayTap: (day) {
+        setState(() {
+          _selectedDay = day;
+          _focusedDay = day;
+        });
+        if (openDaySheet) {
+          _showDayDetailSheet(context, calendar, day, isReadOnly);
+        }
+      },
+      onEventDoubleTap: isReadOnly
+          ? null
+          : (event) => _showEditEventSheet(context, event),
+      onMonthChanged: (month) {
+        setState(() => _focusedDay = month);
+      },
+      onTodayPressed: () {
+        final today = DateTime.now();
+        setState(() {
+          _focusedDay = today;
+          _selectedDay = today;
+        });
+      },
+    );
+  }
+
+  Widget _buildDaySidePanel(
+    BuildContext context,
+    CalendarProvider calendar,
+    bool isReadOnly,
+  ) {
+    final day = _selectedDay;
+    final slots = calendar.getSlotsForDay(day);
+    final events = calendar.getEventsForDay(day);
+    final slot = slots.isNotEmpty ? slots.first : null;
+    final isPending = calendar.hasPendingExceptionForDay(day);
+    final isException = calendar.isExceptionDay(day);
+
+    return ColoredBox(
+      color: Colors.white,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: _buildDayDetailBody(
+          context: context,
+          calendar: calendar,
+          day: day,
+          slot: slot,
+          events: events,
+          isException: isException,
+          isPending: isPending,
+          isReadOnly: isReadOnly,
+          onBeforeAction: null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDayDetailBody({
+    required BuildContext context,
+    required CalendarProvider calendar,
+    required DateTime day,
+    required CustodySlot? slot,
+    required List<CalendarEvent> events,
+    required bool isException,
+    required bool isPending,
+    required bool isReadOnly,
+    required VoidCallback? onBeforeAction,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SelectedDayCard(
+          day: day,
+          slot: slot,
+          events: events,
+          isException: isException,
+          isPending: isPending,
+          onEventDoubleTap: isReadOnly
+              ? null
+              : (event) {
+                  onBeforeAction?.call();
+                  _showEditEventSheet(context, event);
+                },
+        ),
+        if (!isReadOnly) ...[
+          const SizedBox(height: 12),
+          if (calendar.hasActiveSchedule && !isPending)
+            DayActionButtons(
+              day: day,
+              slot: slot,
+              onChangeCustodian: () {
+                onBeforeAction?.call();
+                _showExceptionSheet(context, day, slot);
+              },
+              onRequestSwap: () {
+                onBeforeAction?.call();
+                _requestSwapForDay(context, day);
+              },
+            )
+          else if (calendar.hasPendingScheduleApproval &&
+              !calendar.hasActiveSchedule)
+            const Text(
+              'Grafik oczekuje na akceptację. Po zatwierdzeniu '
+              'zmiany dni będą możliwe tylko przez prośby.',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
+            )
+          else if (isPending)
+            const Text(
+              'Ten dzień ma już oczekującą prośbę o zmianę opiekuna.',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -440,57 +584,16 @@ class _CalendarScreenState extends State<CalendarScreen>
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: maxHeight),
                     child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SelectedDayCard(
-                            day: day,
-                            slot: slot,
-                            events: events,
-                            isException: isException,
-                            isPending: isPending,
-                            onEventDoubleTap: isReadOnly
-                                ? null
-                                : (event) {
-                                    Navigator.pop(ctx);
-                                    _showEditEventSheet(context, event);
-                                  },
-                          ),
-                          if (!isReadOnly) ...[
-                            const SizedBox(height: 12),
-                            if (calendar.hasActiveSchedule && !isPending)
-                              DayActionButtons(
-                                day: day,
-                                slot: slot,
-                                onChangeCustodian: () {
-                                  Navigator.pop(ctx);
-                                  _showExceptionSheet(context, day, slot);
-                                },
-                                onRequestSwap: () {
-                                  Navigator.pop(ctx);
-                                  _requestSwapForDay(context, day);
-                                },
-                              )
-                            else if (calendar.hasPendingScheduleApproval &&
-                                !calendar.hasActiveSchedule)
-                              const Text(
-                                'Grafik oczekuje na akceptację. Po zatwierdzeniu '
-                                'zmiany dni będą możliwe tylko przez prośby.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              )
-                            else if (isPending)
-                              const Text(
-                                'Ten dzień ma już oczekującą prośbę o zmianę opiekuna.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                          ],
-                        ],
+                      child: _buildDayDetailBody(
+                        context: context,
+                        calendar: calendar,
+                        day: day,
+                        slot: slot,
+                        events: events,
+                        isException: isException,
+                        isPending: isPending,
+                        isReadOnly: isReadOnly,
+                        onBeforeAction: () => Navigator.pop(ctx),
                       ),
                     ),
                   ),

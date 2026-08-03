@@ -3,13 +3,15 @@ import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/layout_utils.dart';
+import '../../widgets/app_content_shell.dart';
+import '../../widgets/brand_widgets.dart';
 import '../messaging/messaging_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../finance/finance_screen.dart';
 import '../exports/exports_screen.dart';
 import '../documents/documents_screen.dart';
 import '../settings/settings_screen.dart';
-import '../../widgets/brand_widgets.dart';
 
 class ObserverDashboard extends StatefulWidget {
   const ObserverDashboard({super.key});
@@ -32,53 +34,118 @@ class _ObserverDashboardState extends State<ObserverDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final useRail = isExpandedBreakpoint(context);
+
+    final content = IndexedStack(index: _selectedIndex, children: _screens);
+
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _screens),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
-        backgroundColor: Colors.white,
-        selectedItemColor: AppTheme.observerColor,
-        unselectedItemColor: AppTheme.textHint,
-        type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Przegląd',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: 'Wiadomości',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month_outlined),
-            activeIcon: Icon(Icons.calendar_month),
-            label: 'Kalendarz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            activeIcon: Icon(Icons.account_balance_wallet),
-            label: 'Finanse',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder_open_outlined),
-            activeIcon: Icon(Icons.folder_open),
-            label: 'Dokumenty',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder_special_outlined),
-            activeIcon: Icon(Icons.folder_special),
-            label: 'Eksporty',
-          ),
-        ],
-      ),
+      body: useRail
+          ? Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (i) =>
+                      setState(() => _selectedIndex = i),
+                  backgroundColor: Colors.white,
+                  selectedIconTheme:
+                      const IconThemeData(color: AppTheme.observerColor),
+                  unselectedIconTheme:
+                      const IconThemeData(color: AppTheme.textHint),
+                  selectedLabelTextStyle: const TextStyle(
+                    color: AppTheme.observerColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                  unselectedLabelTextStyle: const TextStyle(
+                    color: AppTheme.textHint,
+                    fontSize: 12,
+                  ),
+                  labelType: NavigationRailLabelType.all,
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.dashboard_outlined),
+                      selectedIcon: Icon(Icons.dashboard),
+                      label: Text('Przegląd'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.chat_bubble_outline),
+                      selectedIcon: Icon(Icons.chat_bubble),
+                      label: Text('Wiadomości'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.calendar_month_outlined),
+                      selectedIcon: Icon(Icons.calendar_month),
+                      label: Text('Kalendarz'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.account_balance_wallet_outlined),
+                      selectedIcon: Icon(Icons.account_balance_wallet),
+                      label: Text('Finanse'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.folder_open_outlined),
+                      selectedIcon: Icon(Icons.folder_open),
+                      label: Text('Dokumenty'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.folder_special_outlined),
+                      selectedIcon: Icon(Icons.folder_special),
+                      label: Text('Eksporty'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: content),
+              ],
+            )
+          : content,
+      bottomNavigationBar: useRail
+          ? null
+          : BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (i) => setState(() => _selectedIndex = i),
+              backgroundColor: Colors.white,
+              selectedItemColor: AppTheme.observerColor,
+              unselectedItemColor: AppTheme.textHint,
+              type: BottomNavigationBarType.fixed,
+              selectedLabelStyle: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: const TextStyle(fontSize: 11),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.dashboard_outlined),
+                  activeIcon: Icon(Icons.dashboard),
+                  label: 'Przegląd',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.chat_bubble_outline),
+                  activeIcon: Icon(Icons.chat_bubble),
+                  label: 'Wiadomości',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  activeIcon: Icon(Icons.calendar_month),
+                  label: 'Kalendarz',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  activeIcon: Icon(Icons.account_balance_wallet),
+                  label: 'Finanse',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.folder_open_outlined),
+                  activeIcon: Icon(Icons.folder_open),
+                  label: 'Dokumenty',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.folder_special_outlined),
+                  activeIcon: Icon(Icons.folder_special),
+                  label: 'Eksporty',
+                ),
+              ],
+            ),
     );
   }
 }
@@ -113,10 +180,14 @@ class _ObserverHome extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Panel obserwatora',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  Text('Tryb tylko do odczytu',
-                      style: TextStyle(fontSize: 11, color: Colors.white70)),
+                  Text(
+                    'Panel obserwatora',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    'Tryb tylko do odczytu',
+                    style: TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
                 ],
               ),
             ),
@@ -124,8 +195,10 @@ class _ObserverHome extends StatelessWidget {
         ),
         actions: [
           GestureDetector(
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
             child: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Stack(
@@ -137,9 +210,10 @@ class _ObserverHome extends StatelessWidget {
                     child: Text(
                       user?.name.isNotEmpty == true ? user!.name[0] : 'A',
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -152,8 +226,11 @@ class _ObserverHome extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.settings,
-                          size: 10, color: AppTheme.observerColor),
+                      child: Icon(
+                        Icons.settings,
+                        size: 10,
+                        color: AppTheme.observerColor,
+                      ),
                     ),
                   ),
                 ],
@@ -162,200 +239,192 @@ class _ObserverHome extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Observer badge
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppTheme.observerColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.observerColor.withValues(alpha: 0.2),
+      body: AppContentShell(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.observerColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppTheme.observerColor.withValues(alpha: 0.2),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.visibility,
-                    color: AppTheme.observerColor,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user?.name ?? 'Observer',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.observerColor,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.visibility,
+                      color: AppTheme.observerColor,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.name ?? 'Observer',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.observerColor,
+                            ),
                           ),
-                        ),
-                        const Text(
-                          'Read-only access · All actions are audited',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
+                          const Text(
+                            'Read-only access · All actions are audited',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.observerColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'READ-ONLY',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.observerColor,
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.observerColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'READ-ONLY',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.observerColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            if (workspace != null) ...[
-              Text(
-                workspace.name,
-                style: const TextStyle(
-                  fontSize: 20,
+              const SizedBox(height: 20),
+              if (workspace != null) ...[
+                Text(
+                  workspace.name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${workspace.children.length} dzieci · ${workspace.members.length} rodziców',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              const Text(
+                'Podsumowanie sprawy',
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${workspace.children.length} dzieci · ${workspace.members.length} rodziców',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Case summary stats
-            const Text(
-              'Podsumowanie sprawy',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.5,
-              children: [
-                _StatBlock(
-                  title: 'Wątki wiadomości',
-                  value: '$threads',
-                  icon: Icons.chat,
-                  color: AppTheme.primaryTeal,
-                ),
-                _StatBlock(
-                  title: 'Wydatki (miesiąc)',
-                  value: '${totalExpenses.toStringAsFixed(0)} PLN',
-                  icon: Icons.receipt_long,
-                  color: AppTheme.successColor,
-                ),
-                _StatBlock(
-                  title: 'Wnioski zamiany',
-                  value: '$pendingSwaps oczekujące',
-                  icon: Icons.swap_horiz,
-                  color: AppTheme.warningColor,
-                ),
-                _StatBlock(
-                  title: 'Wydatki sporne',
-                  value:
-                      '${finance.expenses.where((e) => e.status == ExpenseStatus.disputed).length}',
-                  icon: Icons.warning_amber,
-                  color: AppTheme.errorColor,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // Timeline feed
-            const Text(
-              'Ostatnia aktywność',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ..._buildTimeline(context, messaging, finance, calendar),
-
-            const SizedBox(height: 20),
-
-            // Quick export
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.dividerColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: gridCrossAxisCountFor(context).clamp(2, 4),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.5,
                 children: [
-                  const Text(
-                    'Szybki eksport',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
+                  _StatBlock(
+                    title: 'Wątki wiadomości',
+                    value: '$threads',
+                    icon: Icons.chat,
+                    color: AppTheme.primaryTeal,
                   ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.folder_special),
-                      label: const Text('Generuj pełny pakiet dowodowy'),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Pakiet dowodowy generowany... (PDF + manifest SHA-256)',
-                            ),
-                            backgroundColor: AppTheme.successColor,
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.observerColor,
-                      ),
-                    ),
+                  _StatBlock(
+                    title: 'Wydatki (miesiąc)',
+                    value: '${totalExpenses.toStringAsFixed(0)} PLN',
+                    icon: Icons.receipt_long,
+                    color: AppTheme.successColor,
+                  ),
+                  _StatBlock(
+                    title: 'Wnioski zamiany',
+                    value: '$pendingSwaps oczekujące',
+                    icon: Icons.swap_horiz,
+                    color: AppTheme.warningColor,
+                  ),
+                  _StatBlock(
+                    title: 'Wydatki sporne',
+                    value:
+                        '${finance.expenses.where((e) => e.status == ExpenseStatus.disputed).length}',
+                    icon: Icons.warning_amber,
+                    color: AppTheme.errorColor,
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              const Text(
+                'Ostatnia aktywność',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._buildTimeline(context, messaging, finance, calendar),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.dividerColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Szybki eksport',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.folder_special),
+                        label: const Text('Generuj pełny pakiet dowodowy'),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Pakiet dowodowy generowany... (PDF + manifest SHA-256)',
+                              ),
+                              backgroundColor: AppTheme.successColor,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.observerColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -377,7 +446,8 @@ class _ObserverHome extends StatelessWidget {
           'icon': Icons.chat,
           'color': AppTheme.primaryTeal,
           'title': 'Wiadomość w wątku: ${thread.subject}',
-          'subtitle': '${msg.senderName}: ${msg.content.substring(0, msg.content.length > 40 ? 40 : msg.content.length)}...',
+          'subtitle':
+              '${msg.senderName}: ${msg.content.substring(0, msg.content.length > 40 ? 40 : msg.content.length)}...',
         });
       }
     }
@@ -392,7 +462,9 @@ class _ObserverHome extends StatelessWidget {
       });
     }
 
-    items.sort((a, b) => (b['time'] as DateTime).compareTo(a['time'] as DateTime));
+    items.sort(
+      (a, b) => (b['time'] as DateTime).compareTo(a['time'] as DateTime),
+    );
 
     return items.take(5).map((item) {
       final dt = item['time'] as DateTime;

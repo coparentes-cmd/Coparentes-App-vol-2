@@ -7,6 +7,7 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/open_url.dart';
+import '../../../widgets/app_content_shell.dart';
 import '../../screens/auth/child_onboarding_sheet.dart';
 import '../../screens/settings/privacy_consents_section.dart';
 import 'widgets/edit_profile_sheet.dart';
@@ -40,7 +41,8 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : AppTheme.surfaceColor,
-      body: CustomScrollView(
+      body: AppContentShell(
+        child: CustomScrollView(
         slivers: [
           // ── App Bar ────────────────────────────────────────────────────────
           SliverAppBar(
@@ -813,6 +815,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

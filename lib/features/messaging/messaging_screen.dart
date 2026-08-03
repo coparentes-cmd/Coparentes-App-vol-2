@@ -9,6 +9,7 @@ import '../../providers/app_provider.dart';
 import '../../providers/messaging_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_browser_back.dart';
+import '../../utils/layout_utils.dart';
 import '../../utils/message_tag_search.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../widgets/parent_tab_scaffold.dart';
@@ -268,6 +269,11 @@ class MessagingScreenState extends State<MessagingScreen> {
       );
     }
 
+    final twoPane = useTwoPaneLayout(context);
+    if (twoPane) {
+      return _buildTwoPane(context, messaging, user);
+    }
+
     if (_conversationThreadId != null) {
       return ThreadScreen(
         key: ValueKey(_conversationThreadId),
@@ -311,7 +317,129 @@ class MessagingScreenState extends State<MessagingScreen> {
     return _buildThreadList(context, messaging, user);
   }
 
+  Widget _buildTwoPane(
+    BuildContext context,
+    MessagingProvider messaging,
+    AppUser? user,
+  ) {
+    final isReadOnly = user?.role == UserRole.observer;
+    return ParentTabScaffold(
+      title: 'Czat',
+      actions: [
+        if (!isReadOnly)
+          IconButton(
+            icon: const Icon(Icons.add, size: 28),
+            tooltip: 'Nowy wątek',
+            onPressed: () => _newThread(context),
+          ),
+      ],
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 360,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: AppTheme.dividerColor),
+                ),
+              ),
+              child: _buildListColumn(context, messaging, user),
+            ),
+          ),
+          Expanded(child: _buildDetailPane(context, user)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailPane(BuildContext context, AppUser? user) {
+    final isReadOnly = user?.role == UserRole.observer;
+
+    if (_conversationThreadId != null) {
+      return ThreadScreen(
+        key: ValueKey(_conversationThreadId),
+        threadId: _conversationThreadId!,
+        onBack: _closeConversation,
+        allowPrivateTags: _conversationAllowsPrivateTags && !isReadOnly,
+      );
+    }
+
+    if (_conversationCategory != null) {
+      return Column(
+        children: [
+          Material(
+            color: Colors.white,
+            elevation: 0.5,
+            child: SizedBox(
+              height: kToolbarHeight,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Zamknij',
+                    onPressed: _closeConversation,
+                  ),
+                  Expanded(
+                    child: Text(
+                      messagingCategoryLabel(_conversationCategory!),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Odśwież',
+                    onPressed: () => _loadThreads(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: InlineCategoryChatPanel(
+              key: ValueKey(_conversationCategory),
+              category: _conversationCategory,
+              allowPrivateTags:
+                  _conversationAllowsPrivateTags && !isReadOnly,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const Center(
+      child: Text(
+        'Wybierz wątek z listy',
+        style: TextStyle(color: AppTheme.textSecondary),
+      ),
+    );
+  }
+
   Widget _buildThreadList(
+    BuildContext context,
+    MessagingProvider messaging,
+    AppUser? user,
+  ) {
+    final isReadOnly = user?.role == UserRole.observer;
+
+    return ParentTabScaffold(
+      title: 'Czat',
+      actions: [
+        if (!isReadOnly)
+          IconButton(
+            icon: const Icon(Icons.add, size: 28),
+            tooltip: 'Nowy wątek',
+            onPressed: () => _newThread(context),
+          ),
+      ],
+      body: _buildListColumn(context, messaging, user),
+    );
+  }
+
+  Widget _buildListColumn(
     BuildContext context,
     MessagingProvider messaging,
     AppUser? user,
@@ -335,90 +463,88 @@ class MessagingScreenState extends State<MessagingScreen> {
         ? 0
         : countUnreadMessagesForViewer(messaging.threads, viewerId);
 
-    return ParentTabScaffold(
-      title: 'Czat',
-      actions: [
-        if (!isReadOnly)
-          IconButton(
-            icon: const Icon(Icons.add, size: 28),
-            tooltip: 'Nowy wątek',
-            onPressed: () => _newThread(context),
-          ),
-      ],
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Szukaj',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                        },
-                      ),
-                filled: true,
-                fillColor: Colors.white,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: AppTheme.dividerColor),
-                ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Szukaj',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: AppTheme.dividerColor),
               ),
             ),
           ),
-          _ChatFilterTabs(
-            selected: _listTab,
-            unreadCount: unreadCount,
-            onSelect: (tab) => setState(() => _listTab = tab),
-          ),
-          Expanded(
-            child: switch (_listTab) {
-              _ChatListTab.family => InlineCategoryChatPanel(
-                  key: const ValueKey(familyCategoryChannel),
-                  category: familyCategoryChannel,
-                  allowPrivateTags: false,
-                ),
-              _ChatListTab.schedule => InlineCategoryChatPanel(
-                  key: const ValueKey(scheduleCategoryChannel),
-                  category: scheduleCategoryChannel,
-                  allowPrivateTags: !isReadOnly,
-                ),
-              _ChatListTab.unread => _buildUnreadMessagesList(
-                  context,
-                  messaging,
-                  user,
-                  searchedThreads,
-                ),
-              _ChatListTab.all => _buildThreadsScroll(
-                  context,
-                  messaging,
-                  user,
-                  allThreads,
-                  emptyLabel: 'Brak wątków',
-                ),
-            },
-          ),
-        ],
-      ),
+        ),
+        _ChatFilterTabs(
+          selected: _listTab,
+          unreadCount: unreadCount,
+          onSelect: (tab) {
+            setState(() {
+              _listTab = tab;
+              if (tab == _ChatListTab.family ||
+                  tab == _ChatListTab.schedule) {
+                _conversationThreadId = null;
+                _conversationCategory = null;
+              }
+            });
+          },
+        ),
+        Expanded(
+          child: switch (_listTab) {
+            _ChatListTab.family => InlineCategoryChatPanel(
+                key: const ValueKey(familyCategoryChannel),
+                category: familyCategoryChannel,
+                allowPrivateTags: false,
+              ),
+            _ChatListTab.schedule => InlineCategoryChatPanel(
+                key: const ValueKey(scheduleCategoryChannel),
+                category: scheduleCategoryChannel,
+                allowPrivateTags: !isReadOnly,
+              ),
+            _ChatListTab.unread => _buildUnreadMessagesList(
+                context,
+                messaging,
+                user,
+                searchedThreads,
+              ),
+            _ChatListTab.all => _buildThreadsScroll(
+                context,
+                messaging,
+                user,
+                allThreads,
+                emptyLabel: 'Brak wątków',
+              ),
+          },
+        ),
+      ],
     );
   }
 
@@ -508,7 +634,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                     return ThreadTile(
                       thread: thread,
                       viewerUserId: user?.id,
-                      selected: false,
+                      selected: thread.id == _conversationThreadId,
                       onTap: () => _openThreadById(thread.id),
                     );
                   },

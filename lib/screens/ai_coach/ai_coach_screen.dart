@@ -4,6 +4,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../services/ai_guidance_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_content_shell.dart';
 import '../../widgets/common_widgets.dart';
 
 class AiCoachScreen extends StatefulWidget {
@@ -87,13 +88,15 @@ class _AiCoachScreenState extends State<AiCoachScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildAnalyzeTab(aiEnabled),
-          _buildTipsTab(),
-          _buildShieldTab(),
-        ],
+      body: AppContentShell(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildAnalyzeTab(aiEnabled),
+            _buildTipsTab(),
+            _buildShieldTab(),
+          ],
+        ),
       ),
     );
   }

@@ -5,20 +5,15 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
 import '../../../theme/app_theme.dart';
-import '../../../utils/calendar_date_utils.dart';
 import '../../../config/messaging_categories.dart';
-import '../../../utils/messaging_helpers.dart';
-import '../../../utils/layout_utils.dart';
 import '../../../utils/app_browser_back.dart';
-import '../../../widgets/brand_widgets.dart';
-import '../../../widgets/parent_tab_scaffold.dart';
+import '../../../utils/layout_utils.dart';
+import '../../../utils/messaging_helpers.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/finance/finance_screen.dart';
 import '../../screens/exports/exports_screen.dart';
 import '../../screens/documents/documents_screen.dart';
-import '../../screens/ai_coach/ai_coach_screen.dart';
-import '../../screens/settings/settings_screen.dart';
 import 'widgets/dashboard_home.dart';
 
 class ParentDashboard extends StatefulWidget {
@@ -166,6 +161,44 @@ class _ParentDashboardState extends State<ParentDashboard> {
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
     final isParentA = user?.role == UserRole.parentA;
+    final accent = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
+    final useRail = isExpandedBreakpoint(context);
+
+    final screens = [
+      DashboardHome(
+        onOpenCalendarDay: _openCalendarOnDay,
+        onOpenChatThread: _openChatThread,
+        onOpenFinanceExpense: _openFinanceExpense,
+        onOpenChatCategory: _openChatCategory,
+      ),
+      MessagingScreen(
+        key: _messagingKey,
+        isTabActive: _selectedIndex == 1,
+        openThreadId: _pendingOpenThreadId,
+        openThreadRequestId: _openThreadRequestId,
+        openCategory: _pendingOpenCategory,
+        openCategoryRequestId: _openCategoryRequestId,
+        onReturnTab: _returnFromChatThread,
+      ),
+      CalendarScreen(
+        focusDay: _calendarFocusDay,
+        focusRequestId: _calendarFocusRequestId,
+        onScheduleRejected: () =>
+            _openChatCategory(scheduleCategoryChannel),
+      ),
+      FinanceScreen(
+        key: _financeScreenKey,
+        openExpenseId: _pendingOpenExpenseId,
+        openExpenseRequestId: _openExpenseRequestId,
+      ),
+      const DocumentsScreen(),
+      const ExportsScreen(),
+    ];
+
+    final content = IndexedStack(
+      index: _selectedIndex,
+      children: screens,
+    );
 
     return PopScope(
       canPop: _canExitApp,
@@ -175,126 +208,190 @@ class _ParentDashboardState extends State<ParentDashboard> {
         }
       },
       child: Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          DashboardHome(
-            onOpenCalendarDay: _openCalendarOnDay,
-            onOpenChatThread: _openChatThread,
-            onOpenFinanceExpense: _openFinanceExpense,
-            onOpenChatCategory: _openChatCategory,
-          ),
-          MessagingScreen(
-            key: _messagingKey,
-            isTabActive: _selectedIndex == 1,
-            openThreadId: _pendingOpenThreadId,
-            openThreadRequestId: _openThreadRequestId,
-            openCategory: _pendingOpenCategory,
-            openCategoryRequestId: _openCategoryRequestId,
-            onReturnTab: _returnFromChatThread,
-          ),
-          CalendarScreen(
-            focusDay: _calendarFocusDay,
-            focusRequestId: _calendarFocusRequestId,
-            onScheduleRejected: () =>
-                _openChatCategory(scheduleCategoryChannel),
-          ),
-          FinanceScreen(
-            key: _financeScreenKey,
-            openExpenseId: _pendingOpenExpenseId,
-            openExpenseRequestId: _openExpenseRequestId,
-          ),
-          const DocumentsScreen(),
-          const ExportsScreen(),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 12,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (i) {
-            _navigateToTab(i);
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: isParentA
-              ? AppTheme.parentAColor
-              : AppTheme.parentBColor,
-          unselectedItemColor: AppTheme.textHint,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          elevation: 0,
-          items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'Start',
-            ),
-            BottomNavigationBarItem(
-              icon: Stack(
+        body: useRail
+            ? Row(
                 children: [
-                  const Icon(Icons.chat_bubble_outline),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Consumer2<MessagingProvider, AppProvider>(
-                      builder: (_, mp, ap, __) {
-                        final userId = ap.currentUser?.id;
-                        if (userId == null) {
-                          return const SizedBox.shrink();
-                        }
-                        final unread =
-                            countUnreadThreadsForViewer(mp.threads, userId);
-                        if (unread == 0) return const SizedBox.shrink();
-                        return Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.errorColor,
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      },
+                  NavigationRail(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _navigateToTab,
+                    backgroundColor: Colors.white,
+                    selectedIconTheme: IconThemeData(color: accent),
+                    unselectedIconTheme:
+                        const IconThemeData(color: AppTheme.textHint),
+                    selectedLabelTextStyle: TextStyle(
+                      color: accent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
                     ),
+                    unselectedLabelTextStyle: const TextStyle(
+                      color: AppTheme.textHint,
+                      fontSize: 12,
+                    ),
+                    labelType: NavigationRailLabelType.all,
+                    destinations: [
+                      const NavigationRailDestination(
+                        icon: Icon(Icons.dashboard_outlined),
+                        selectedIcon: Icon(Icons.dashboard),
+                        label: Text('Start'),
+                      ),
+                      NavigationRailDestination(
+                        icon: _ChatRailIcon(),
+                        selectedIcon: const Icon(Icons.chat_bubble),
+                        label: const Text('Czat'),
+                      ),
+                      const NavigationRailDestination(
+                        icon: Icon(Icons.calendar_month_outlined),
+                        selectedIcon: Icon(Icons.calendar_month),
+                        label: Text('Kalendarz'),
+                      ),
+                      const NavigationRailDestination(
+                        icon: Icon(Icons.account_balance_wallet_outlined),
+                        selectedIcon: Icon(Icons.account_balance_wallet),
+                        label: Text('Finanse'),
+                      ),
+                      const NavigationRailDestination(
+                        icon: Icon(Icons.folder_open_outlined),
+                        selectedIcon: Icon(Icons.folder_open),
+                        label: Text('Dokumenty'),
+                      ),
+                      const NavigationRailDestination(
+                        icon: Icon(Icons.folder_special_outlined),
+                        selectedIcon: Icon(Icons.folder_special),
+                        label: Text('Eksporty'),
+                      ),
+                    ],
                   ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: content),
                 ],
+              )
+            : content,
+        bottomNavigationBar: useRail
+            ? null
+            : Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 12,
+                      offset: Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: BottomNavigationBar(
+                  currentIndex: _selectedIndex,
+                  onTap: _navigateToTab,
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: Colors.white,
+                  selectedItemColor: accent,
+                  unselectedItemColor: AppTheme.textHint,
+                  showSelectedLabels: false,
+                  showUnselectedLabels: false,
+                  elevation: 0,
+                  items: [
+                    const BottomNavigationBarItem(
+                      icon: Icon(Icons.dashboard_outlined),
+                      activeIcon: Icon(Icons.dashboard),
+                      label: 'Start',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Stack(
+                        children: [
+                          const Icon(Icons.chat_bubble_outline),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Consumer2<MessagingProvider, AppProvider>(
+                              builder: (_, mp, ap, __) {
+                                final userId = ap.currentUser?.id;
+                                if (userId == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                final unread = countUnreadThreadsForViewer(
+                                  mp.threads,
+                                  userId,
+                                );
+                                if (unread == 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.errorColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      activeIcon: const Icon(Icons.chat_bubble),
+                      label: 'Czat',
+                    ),
+                    const BottomNavigationBarItem(
+                      icon: Icon(Icons.calendar_month_outlined),
+                      activeIcon: Icon(Icons.calendar_month),
+                      label: 'Kalendarz',
+                    ),
+                    const BottomNavigationBarItem(
+                      icon: Icon(Icons.account_balance_wallet_outlined),
+                      activeIcon: Icon(Icons.account_balance_wallet),
+                      label: 'Finanse',
+                    ),
+                    const BottomNavigationBarItem(
+                      icon: Icon(Icons.folder_open_outlined),
+                      activeIcon: Icon(Icons.folder_open),
+                      label: 'Dokumenty',
+                    ),
+                    const BottomNavigationBarItem(
+                      icon: Icon(Icons.folder_special_outlined),
+                      activeIcon: Icon(Icons.folder_special),
+                      label: 'Eksporty',
+                    ),
+                  ],
+                ),
               ),
-              activeIcon: const Icon(Icons.chat_bubble),
-              label: 'Czat',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
-              label: 'Kalendarz',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              activeIcon: Icon(Icons.account_balance_wallet),
-              label: 'Finanse',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.folder_open_outlined),
-              activeIcon: Icon(Icons.folder_open),
-              label: 'Dokumenty',
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.folder_special_outlined),
-              activeIcon: Icon(Icons.folder_special),
-              label: 'Eksporty',
-            ),
-          ],
-        ),
       ),
-    ),
+    );
+  }
+}
+
+class _ChatRailIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(Icons.chat_bubble_outline),
+        Positioned(
+          right: -2,
+          top: -2,
+          child: Consumer2<MessagingProvider, AppProvider>(
+            builder: (_, mp, ap, __) {
+              final userId = ap.currentUser?.id;
+              if (userId == null) {
+                return const SizedBox.shrink();
+              }
+              final unread =
+                  countUnreadThreadsForViewer(mp.threads, userId);
+              if (unread == 0) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: AppTheme.errorColor,
+                  shape: BoxShape.circle,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

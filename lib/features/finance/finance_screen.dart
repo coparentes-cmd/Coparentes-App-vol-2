@@ -403,13 +403,8 @@ class FinanceScreenState extends State<FinanceScreen>
         ? finance.pendingRefundForUser(user.id)
         : finance.totalPending;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Main balance card — kompaktowa, zielony brand (jak dawne paski)
-          Align(
+    final expanded = isExpandedBreakpoint(context);
+    final balanceCard = Align(
             alignment: Alignment.centerLeft,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
@@ -468,11 +463,9 @@ class FinanceScreenState extends State<FinanceScreen>
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+          );
 
-          // Status breakdown
-          Row(
+    final statusRow = Row(
             children: [
               Expanded(
                 child: StatusCountChip(
@@ -501,10 +494,9 @@ class FinanceScreenState extends State<FinanceScreen>
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
+          );
 
-          Row(
+    final summaryRow = Row(
             children: [
               Expanded(
                 child: SummaryCard(
@@ -527,9 +519,11 @@ class FinanceScreenState extends State<FinanceScreen>
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
+          );
 
+    final categorySection = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           const Text(
             'Podział po kategoriach',
             style: TextStyle(
@@ -568,7 +562,6 @@ class FinanceScreenState extends State<FinanceScreen>
               'Brak wydatków do podsumowania.',
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
-
           const SizedBox(height: 20),
           const Text(
             'Kto zapłacił (wszystkie wydatki)',
@@ -581,7 +574,38 @@ class FinanceScreenState extends State<FinanceScreen>
           const SizedBox(height: 12),
           SplitOverviewCard(finance: finance),
         ],
-      ),
+    );
+
+    final summaryColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        balanceCard,
+        const SizedBox(height: 16),
+        statusRow,
+        const SizedBox(height: 16),
+        summaryRow,
+      ],
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: expanded
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: summaryColumn),
+                const SizedBox(width: 20),
+                Expanded(child: categorySection),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summaryColumn,
+                const SizedBox(height: 20),
+                categorySection,
+              ],
+            ),
     );
   }
 
