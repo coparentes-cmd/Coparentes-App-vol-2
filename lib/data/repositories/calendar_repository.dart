@@ -53,7 +53,11 @@ class CalendarRepository {
         if (location != null) 'location': location,
       });
       final event = calendarEventFromJson(payload);
-      await _upsertEventInCache(event);
+      try {
+        await _upsertEventInCache(event);
+      } catch (_) {
+        // Event already saved on the server — keep the success path.
+      }
       return event;
     } catch (error) {
       if (!_apiClient.isNetworkError(error)) {
@@ -358,26 +362,32 @@ class CalendarRepository {
   CalendarSnapshot _getCachedSnapshot() {
     final raw = _offlineStore.getCalendarSnapshot();
     if (raw == null) {
-      return const CalendarSnapshot(
-        custodySlots: [],
-        events: [],
-        swapRequests: [],
-        custodyExceptions: [],
+      // Growable lists — const [] is immutable and breaks insert/add on web
+      // where the calendar cache is intentionally not persisted.
+      return CalendarSnapshot(
+        custodySlots: <CustodySlot>[],
+        events: <CalendarEvent>[],
+        swapRequests: <SwapRequest>[],
+        custodyExceptions: <CustodyException>[],
       );
     }
     return _snapshotFromPayload(raw);
   }
 
-  Future<void> _saveSnapshot(CalendarSnapshot snapshot) {
-    return _offlineStore.saveCalendarSnapshot({
-      'custodySlots': snapshot.custodySlots.map(custodySlotToJson).toList(),
-      'events': snapshot.events.map(calendarEventToJson).toList(),
-      'swapRequests': snapshot.swapRequests.map(swapRequestToJson).toList(),
-      if (snapshot.custodySchedule != null)
-        'custodySchedule': custodyScheduleToJson(snapshot.custodySchedule!),
-      'custodyExceptions':
-          snapshot.custodyExceptions.map(custodyExceptionToJson).toList(),
-    });
+  Future<void> _saveSnapshot(CalendarSnapshot snapshot) async {
+    try {
+      await _offlineStore.saveCalendarSnapshot({
+        'custodySlots': snapshot.custodySlots.map(custodySlotToJson).toList(),
+        'events': snapshot.events.map(calendarEventToJson).toList(),
+        'swapRequests': snapshot.swapRequests.map(swapRequestToJson).toList(),
+        if (snapshot.custodySchedule != null)
+          'custodySchedule': custodyScheduleToJson(snapshot.custodySchedule!),
+        'custodyExceptions':
+            snapshot.custodyExceptions.map(custodyExceptionToJson).toList(),
+      });
+    } catch (_) {
+      // Cache is best-effort (no-op on web); never fail a successful API write.
+    }
   }
 
   CalendarSnapshot getCachedSnapshot() => _getCachedSnapshot();
@@ -466,8 +476,17 @@ class CalendarRepository {
     });
     final exception = custodyExceptionFromJson(payload);
     final snapshot = _getCachedSnapshot();
-    snapshot.custodyExceptions.insert(0, exception);
-    await _saveSnapshot(snapshot);
+    final exceptions = List<CustodyException>.from(snapshot.custodyExceptions)
+      ..insert(0, exception);
+    await _saveSnapshot(
+      CalendarSnapshot(
+        custodySlots: List<CustodySlot>.from(snapshot.custodySlots),
+        events: List<CalendarEvent>.from(snapshot.events),
+        swapRequests: List<SwapRequest>.from(snapshot.swapRequests),
+        custodySchedule: snapshot.custodySchedule,
+        custodyExceptions: exceptions,
+      ),
+    );
     return exception;
   }
 
@@ -497,35 +516,65 @@ class CalendarRepository {
     });
     final slot = custodySlotFromJson(payload);
     final snapshot = _getCachedSnapshot();
-    final index = snapshot.custodySlots.indexWhere((item) => item.id == slotId);
+    final slots = List<CustodySlot>.from(snapshot.custodySlots);
+    final index = slots.indexWhere((item) => item.id == slotId);
     if (index >= 0) {
-      snapshot.custodySlots[index] = slot;
+      slots[index] = slot;
     }
-    await _saveSnapshot(snapshot);
+    await _saveSnapshot(
+      CalendarSnapshot(
+        custodySlots: slots,
+        events: List<CalendarEvent>.from(snapshot.events),
+        swapRequests: List<SwapRequest>.from(snapshot.swapRequests),
+        custodySchedule: snapshot.custodySchedule,
+        custodyExceptions:
+            List<CustodyException>.from(snapshot.custodyExceptions),
+      ),
+    );
     return slot;
   }
 
   Future<void> _upsertSwapInCache(SwapRequest swap) async {
     final snapshot = _getCachedSnapshot();
-    final index = snapshot.swapRequests.indexWhere((s) => s.id == swap.id);
+    final swaps = List<SwapRequest>.from(snapshot.swapRequests);
+    final index = swaps.indexWhere((s) => s.id == swap.id);
     if (index >= 0) {
-      snapshot.swapRequests[index] = swap;
+      swaps[index] = swap;
     } else {
-      snapshot.swapRequests.insert(0, swap);
+      swaps.insert(0, swap);
     }
-    await _saveSnapshot(snapshot);
+    await _saveSnapshot(
+      CalendarSnapshot(
+        custodySlots: List<CustodySlot>.from(snapshot.custodySlots),
+        events: List<CalendarEvent>.from(snapshot.events),
+        swapRequests: swaps,
+        custodySchedule: snapshot.custodySchedule,
+        custodyExceptions:
+            List<CustodyException>.from(snapshot.custodyExceptions),
+      ),
+    );
   }
 
   Future<void> _upsertEventInCache(CalendarEvent event) async {
     final snapshot = _getCachedSnapshot();
-    final index = snapshot.events.indexWhere((e) => e.id == event.id);
+    final events = List<CalendarEvent>.from(snapshot.events);
+    final index = events.indexWhere((e) => e.id == event.id);
     if (index >= 0) {
-      snapshot.events[index] = event;
+      events[index] = event;
     } else {
-      snapshot.events.insert(0, event);
+      events.insert(0, event);
     }
-    snapshot.events.sort((a, b) => a.startDate.compareTo(b.startDate));
-    await _saveSnapshot(snapshot);
+    events.sort((a, b) => a.startDate.compareTo(b.startDate));
+    await _saveSnapshot(
+      CalendarSnapshot(
+        custodySlots: List<CustodySlot>.from(snapshot.custodySlots),
+        events: events,
+        swapRequests: List<SwapRequest>.from(snapshot.swapRequests),
+        custodySchedule: snapshot.custodySchedule,
+        custodyExceptions:
+            List<CustodyException>.from(snapshot.custodyExceptions),
+      ),
+    );
   }
 
   void _replaceEventId(
