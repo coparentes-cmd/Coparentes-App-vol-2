@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/models.dart';
 import '../../../../theme/app_theme.dart';
+import '../../../../utils/custody_schedule_utils.dart';
 
 /// Readable next custody handover strip — data from [CalendarProvider.getNextHandover].
 class NextHandoverBar extends StatelessWidget {
@@ -21,37 +22,7 @@ class NextHandoverBar extends StatelessWidget {
     if (slot == null) {
       return 'Brak zaplanowanego przekazania';
     }
-    const weekdays = [
-      'poniedziałek',
-      'wtorek',
-      'środa',
-      'czwartek',
-      'piątek',
-      'sobota',
-      'niedziela',
-    ];
-    const months = [
-      'sty',
-      'lut',
-      'mar',
-      'kwi',
-      'maj',
-      'cze',
-      'lip',
-      'sie',
-      'wrz',
-      'paź',
-      'lis',
-      'gru',
-    ];
-    final day = slot.date;
-    final weekday = weekdays[day.weekday - 1];
-    final datePart = '$weekday, ${day.day} ${months[day.month - 1]}';
-    final time = slot.handoverTime?.trim();
-    if (time == null || time.isEmpty) {
-      return datePart;
-    }
-    return '$datePart · $time';
+    return formatNextHandoverLabel(slot);
   }
 
   String get _placeLabel {

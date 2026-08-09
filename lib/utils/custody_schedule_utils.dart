@@ -200,3 +200,55 @@ CustodySlot? findNextCustodyHandover({
 
   return null;
 }
+
+const _polishWeekdays = [
+  'poniedziałek',
+  'wtorek',
+  'środa',
+  'czwartek',
+  'piątek',
+  'sobota',
+  'niedziela',
+];
+
+const _polishMonthsGenitive = [
+  'stycznia',
+  'lutego',
+  'marca',
+  'kwietnia',
+  'maja',
+  'czerwca',
+  'lipca',
+  'sierpnia',
+  'września',
+  'października',
+  'listopada',
+  'grudnia',
+];
+
+/// Label for Start handover strip, e.g. `piątek, 7 sierpnia (jutro) 17:00`.
+/// Relative day only for dzisiaj / jutro / pojutrze.
+String formatNextHandoverLabel(CustodySlot slot, {DateTime? now}) {
+  final base = now ?? DateTime.now();
+  final day = _dateOnly(slot.date);
+  final today = _dateOnly(base);
+  final weekday = _polishWeekdays[day.weekday - 1];
+  final month = _polishMonthsGenitive[day.month - 1];
+  final datePart = '$weekday, ${day.day} $month';
+
+  final dayDiff = day.difference(today).inDays;
+  final relative = switch (dayDiff) {
+    0 => 'dzisiaj',
+    1 => 'jutro',
+    2 => 'pojutrze',
+    _ => null,
+  };
+
+  final withRelative =
+      relative == null ? datePart : '$datePart ($relative)';
+  final time = slot.handoverTime?.trim();
+  if (time == null || time.isEmpty) {
+    return withRelative;
+  }
+  return '$withRelative $time';
+}

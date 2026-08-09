@@ -144,18 +144,16 @@ class _CalendarScreenState extends State<CalendarScreen>
       actions: isReadOnly
           ? null
           : [
-              ParentHeaderActionButton(
-                label: hasActiveSchedule ? 'Zmiana grafiku' : 'Grafik opieki',
-                icon: Icons.view_week,
+              _CalendarHeaderIconButton(
+                tooltip: hasActiveSchedule ? 'Zmiana grafiku' : 'Grafik opieki',
+                icon: Icons.settings,
                 backgroundColor: AppTheme.primaryTeal,
-                prominent: true,
                 onPressed: () => _openScheduleWizard(context),
               ),
-              ParentHeaderActionButton(
-                label: 'Nowe zdarzenie',
+              _CalendarHeaderIconButton(
+                tooltip: 'Nowe zdarzenie',
                 icon: Icons.add,
                 backgroundColor: AppTheme.purpleColor,
-                prominent: true,
                 onPressed: () => _addEvent(context),
               ),
             ],
@@ -836,6 +834,48 @@ class _CalendarScreenState extends State<CalendarScreen>
       builder: (_) => SwapRejectSheet(
         swap: swap,
         onSubmitted: () => _refreshSwapMessaging(context),
+      ),
+    );
+  }
+}
+
+class _CalendarHeaderIconButton extends StatelessWidget {
+  static const double _size = 40;
+
+  final String tooltip;
+  final IconData icon;
+  final Color backgroundColor;
+  final VoidCallback onPressed;
+
+  const _CalendarHeaderIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.backgroundColor,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Center(
+        child: Tooltip(
+          message: tooltip,
+          child: Material(
+            color: backgroundColor,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onPressed,
+              child: SizedBox(
+                width: _size,
+                height: _size,
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

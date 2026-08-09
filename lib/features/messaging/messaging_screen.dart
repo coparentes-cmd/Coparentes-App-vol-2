@@ -271,7 +271,7 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     final twoPane = useTwoPaneLayout(context);
     // Category chats (Z dziećmi / Zmiana grafiku) stay full-width — the
-    // master–detail split is only for Wszystkie / Nieprzeczytane thread lists.
+    // master–detail split is only for Bez kategorii / Nieprzeczytane thread lists.
     final categoryTabFullWidth = _listTab == _ChatListTab.family ||
         _listTab == _ChatListTab.schedule;
     if (twoPane && !categoryTabFullWidth) {
@@ -426,13 +426,12 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
-  /// Chat chrome without the navy "Czat" bar — only a circular + for new thread.
+  /// Chat chrome — safe-area padding only (actions live in the list header).
   Widget _buildMessagingChrome({
     required BuildContext context,
     required AppUser? user,
     required Widget body,
   }) {
-    final isReadOnly = user?.role == UserRole.observer;
     final top = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
@@ -441,37 +440,33 @@ class MessagingScreenState extends State<MessagingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(height: top + (isReadOnly ? 8 : 4)),
-            if (!isReadOnly)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Tooltip(
-                    message: 'Nowy wątek',
-                    child: Material(
-                      color: AppTheme.brandHeaderBlue,
-                      shape: const CircleBorder(),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => _newThread(context),
-                        child: const SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            SizedBox(height: top + 4),
             Expanded(child: body),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewThreadButton(BuildContext context) {
+    return Tooltip(
+      message: 'Nowy wątek',
+      child: Material(
+        color: AppTheme.brandHeaderBlue,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => _newThread(context),
+          child: const SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              Icons.add,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
         ),
       ),
     );
@@ -504,41 +499,51 @@ class MessagingScreenState extends State<MessagingScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Szukaj',
-              prefixIcon: const Icon(Icons.search, size: 20),
-              suffixIcon: _searchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {});
-                      },
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Szukaj',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-              filled: true,
-              fillColor: Colors.white,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: AppTheme.dividerColor),
+                    ),
+                  ),
+                ),
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: AppTheme.dividerColor),
-              ),
-            ),
+              if (!isReadOnly) ...[
+                const SizedBox(width: 8),
+                _buildNewThreadButton(context),
+              ],
+            ],
           ),
         ),
         _ChatFilterTabs(
@@ -726,7 +731,7 @@ class _ChatFilterTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <(_ChatListTab, String)>[
-      (_ChatListTab.all, 'Wszystkie'),
+      (_ChatListTab.all, allTabDisplayLabel),
       (
         _ChatListTab.unread,
         unreadCount > 0 ? 'Nieprzeczytane ($unreadCount)' : 'Nieprzeczytane',

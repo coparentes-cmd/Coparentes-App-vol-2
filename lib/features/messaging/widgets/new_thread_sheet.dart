@@ -50,7 +50,7 @@ class NewThreadSheetState extends State<NewThreadSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Wątek pojawi się w zakładce Wszystkie. Możesz oznaczać wiadomości '
+            'Wątek pojawi się w zakładce $allTabDisplayLabel. Możesz oznaczać wiadomości '
             'prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
             style: TextStyle(
               fontSize: 13,

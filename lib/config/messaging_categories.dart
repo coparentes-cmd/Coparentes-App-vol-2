@@ -4,12 +4,18 @@ const String familyCategoryChannel = 'Rodzina';
 /// UI label for [familyCategoryChannel] — channel id stays unchanged for API/data.
 const String familyCategoryDisplayLabel = 'Z dziećmi';
 const String scheduleCategoryChannel = 'Zmiana grafiku';
+/// Channel id / API value — keep stable for backend compatibility.
 const String allTabLabel = 'Wszystkie';
+/// UI label for [allTabLabel].
+const String allTabDisplayLabel = 'Bez kategorii';
 
 /// Visible label for messaging category chips and titles.
 String messagingCategoryLabel(String category) {
   if (category == familyCategoryChannel) {
     return familyCategoryDisplayLabel;
+  }
+  if (category == allTabLabel) {
+    return allTabDisplayLabel;
   }
   return category;
 }
@@ -196,7 +202,7 @@ String categoryChannelSubtitle(String category) {
 
 String threadListTitle(MessageThread thread) {
   if (isParentsInboxChannel(thread)) {
-    return allTabLabel;
+    return allTabDisplayLabel;
   }
   if (isFamilyChannel(thread)) {
     return familyCategoryDisplayLabel;

@@ -131,6 +131,18 @@ class _DashboardHomeState extends State<DashboardHome> {
                 children: [
                   Row(
                     children: [
+                      Image.asset(
+                        'assets/branding/coparentes-logo.png',
+                        width: compact ? 28 : 32,
+                        height: compact ? 28 : 32,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.family_restroom,
+                          size: compact ? 24 : 28,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: compact ? 8 : 10),
                       Flexible(
                         child: Text(
                           'Dzień dobry, $firstName',
@@ -141,18 +153,6 @@ class _DashboardHomeState extends State<DashboardHome> {
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      SizedBox(width: compact ? 8 : 10),
-                      Image.asset(
-                        'assets/branding/coparentes-logo.png',
-                        width: compact ? 28 : 32,
-                        height: compact ? 28 : 32,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.family_restroom,
-                          size: compact ? 24 : 28,
-                          color: Colors.white,
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../config/messaging_categories.dart';
 import '../../../theme/app_theme.dart';
 
 class GeneralInboxTile extends StatelessWidget {
@@ -50,7 +51,7 @@ class GeneralInboxTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Wszystkie',
+                        allTabDisplayLabel,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
