@@ -12,6 +12,7 @@ class PendingScheduleBanner extends StatelessWidget {
   final bool keyboardAcceptAutofocus;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+  final VoidCallback? onChangeProposal;
 
   const PendingScheduleBanner({
     required this.schedule,
@@ -19,6 +20,7 @@ class PendingScheduleBanner extends StatelessWidget {
     this.keyboardAcceptAutofocus = false,
     required this.onAccept,
     required this.onReject,
+    this.onChangeProposal,
   });
 
   @override
@@ -74,6 +76,16 @@ class PendingScheduleBanner extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ] else if (onChangeProposal != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onChangeProposal,
+                    icon: const Icon(Icons.edit_calendar_outlined, size: 18),
+                    label: const Text('Zmień propozycję'),
                   ),
                 ),
               ],

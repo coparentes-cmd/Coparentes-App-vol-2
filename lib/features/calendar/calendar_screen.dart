@@ -193,6 +193,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 calendar.canRespondToPendingSchedule(userId),
             onAccept: () => _respondToSchedule(context, approve: true),
             onReject: () => _respondToSchedule(context, approve: false),
+            onChangeProposal: calendar.canRespondToPendingSchedule(userId)
+                ? null
+                : () => _openScheduleWizard(context),
           ),
         Expanded(
           child: twoPane
@@ -368,7 +371,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               },
             )
           else if (calendar.hasPendingScheduleApproval &&
-              !calendar.hasActiveSchedule)
+              !calendar.hasActiveSchedule) ...[
             const Text(
               'Grafik oczekuje na akceptację. Po zatwierdzeniu '
               'zmiany dni będą możliwe tylko przez prośby.',
@@ -376,8 +379,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 fontSize: 13,
                 color: AppTheme.textSecondary,
               ),
-            )
-          else if (isPending)
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  onBeforeAction?.call();
+                  _openScheduleWizard(context);
+                },
+                icon: const Icon(Icons.edit_calendar_outlined, size: 18),
+                label: const Text('Zmień propozycję'),
+              ),
+            ),
+          ] else if (isPending)
             const Text(
               'Ten dzień ma już oczekującą prośbę o zmianę opieki.',
               style: TextStyle(
