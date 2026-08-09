@@ -5,6 +5,7 @@ import '../config/messaging_categories.dart';
 import '../data/api/app_api_client.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../models/models.dart';
+import '../utils/demo_time.dart';
 import '../utils/messaging_helpers.dart';
 import '../utils/swap_message_utils.dart';
 
@@ -212,7 +213,7 @@ class MessagingProvider extends ChangeNotifier {
     _error = null;
     _isLoading = false;
 
-    final now = DateTime.now();
+    final now = DemoTime.now();
     _threads.addAll([
       MessageThread(
         id: 'thread_demo_all',
@@ -299,6 +300,82 @@ class MessagingProvider extends ChangeNotifier {
             isDelivered: true,
             isRead: true,
             hash: 'sha256_msg_demo_002',
+          ),
+        ],
+      ),
+      MessageThread(
+        id: 'thread_demo_vacations',
+        subject: 'Wakacje',
+        category: 'Wszystkie',
+        childId: 'child_001',
+        lastActivity: now.subtract(const Duration(hours: 5)),
+        hasUnread: true,
+        messages: [
+          Message(
+            id: 'msg_demo_vacations_001',
+            threadId: 'thread_demo_vacations',
+            senderId: 'user_demo_parent_a',
+            senderName: 'Anna Kowalska',
+            content:
+                'Proponuję wyjazd nad morze w pierwszym tygodniu sierpnia. Co myślisz?',
+            tone: MessageTone.positive,
+            attachments: const [],
+            sentAt: now.subtract(const Duration(hours: 6)),
+            isDelivered: true,
+            isRead: true,
+            hash: 'sha256_msg_demo_vacations_001',
+          ),
+          Message(
+            id: 'msg_demo_vacations_002',
+            threadId: 'thread_demo_vacations',
+            senderId: 'user_demo_parent_b',
+            senderName: 'Marek Kowalski',
+            content:
+                'Pasuje mi 3–10 sierpnia. Mogę zabrać dzieci na drogę w sobotę rano.',
+            tone: MessageTone.neutral,
+            attachments: const [],
+            sentAt: now.subtract(const Duration(hours: 5)),
+            isDelivered: true,
+            isRead: false,
+            hash: 'sha256_msg_demo_vacations_002',
+          ),
+        ],
+      ),
+      MessageThread(
+        id: 'thread_demo_school_year',
+        subject: 'Początek roku szkolnego',
+        category: 'Szkoła',
+        childId: 'child_001',
+        lastActivity: now.subtract(const Duration(hours: 8)),
+        hasUnread: false,
+        messages: [
+          Message(
+            id: 'msg_demo_school_year_001',
+            threadId: 'thread_demo_school_year',
+            senderId: 'user_demo_parent_b',
+            senderName: 'Marek Kowalski',
+            content:
+                'We wrześniu zaczyna się nowy rok. Ustalmy, kto kupuje wyprawkę i kto idzie na rozpoczęcie.',
+            tone: MessageTone.neutral,
+            attachments: const [],
+            sentAt: now.subtract(const Duration(hours: 10)),
+            isDelivered: true,
+            isRead: true,
+            hash: 'sha256_msg_demo_school_year_001',
+          ),
+          Message(
+            id: 'msg_demo_school_year_002',
+            threadId: 'thread_demo_school_year',
+            senderId: 'user_demo_parent_a',
+            senderName: 'Anna Kowalska',
+            content:
+                'Ja biorę wyprawkę Zosi, Ty Tomka. Na rozpoczęcie idę z Zosią — OK?',
+            tone: MessageTone.positive,
+            attachments: const [],
+            sentAt: now.subtract(const Duration(hours: 8)),
+            isDelivered: true,
+            isRead: true,
+            hash: 'sha256_msg_demo_school_year_002',
           ),
         ],
       ),
