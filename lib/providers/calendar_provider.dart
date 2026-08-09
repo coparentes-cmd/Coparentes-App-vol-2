@@ -375,20 +375,17 @@ class CalendarProvider extends ChangeNotifier {
       return;
     }
 
-    if (schedule.status == CustodyScheduleStatus.pendingApproval) {
+    // Always paint from the approved/proposed pattern so both parents see
+    // colors even before DB slots arrive (or if the snapshot is sparse).
+    if (schedule.status == CustodyScheduleStatus.pendingApproval ||
+        schedule.status == CustodyScheduleStatus.active) {
       final generated = generateSlotsFromSchedule(schedule);
       _displaySlots = mergeScheduleSlotsWithOverrides(
         generated: generated,
         overrides: _custodySlots,
       );
-      _showsPendingSchedulePreview = true;
-      return;
-    }
-
-    if (_custodySlots.isEmpty &&
-        schedule.status == CustodyScheduleStatus.active) {
-      _displaySlots = generateSlotsFromSchedule(schedule);
-      _showsPendingSchedulePreview = false;
+      _showsPendingSchedulePreview =
+          schedule.status == CustodyScheduleStatus.pendingApproval;
       return;
     }
 
@@ -676,6 +673,7 @@ class CalendarProvider extends ChangeNotifier {
     DateTime? endDate,
     CustodyWeekPattern? weekA,
     CustodyWeekPattern? weekB,
+    int? weekInterval,
     String? handoverTime,
     String? handoverLocation,
   }) async {
@@ -686,10 +684,12 @@ class CalendarProvider extends ChangeNotifier {
         endDate: endDate,
         weekA: weekA,
         weekB: weekB,
+        weekInterval: weekInterval,
         handoverTime: handoverTime,
         handoverLocation: handoverLocation,
       );
       _custodySchedule = schedule;
+      _rebuildDisplaySlots();
       notifyListeners();
       await _reloadBestEffort();
       return schedule;
@@ -705,6 +705,7 @@ class CalendarProvider extends ChangeNotifier {
     DateTime? endDate,
     CustodyWeekPattern? weekA,
     CustodyWeekPattern? weekB,
+    int? weekInterval,
     String? handoverTime,
     String? handoverLocation,
   }) {
@@ -717,6 +718,7 @@ class CalendarProvider extends ChangeNotifier {
           : DateTime(endDate.year, endDate.month, endDate.day),
       weekA: weekA ?? const CustodyWeekPattern({}),
       weekB: weekB ?? const CustodyWeekPattern({}),
+      weekInterval: weekInterval,
       handoverTime: handoverTime,
       handoverLocation: handoverLocation,
       status: CustodyScheduleStatus.pendingApproval,
@@ -760,6 +762,7 @@ class CalendarProvider extends ChangeNotifier {
       endDate: schedule.endDate,
       weekA: schedule.weekA,
       weekB: schedule.weekB,
+      weekInterval: schedule.weekInterval,
       handoverTime: schedule.handoverTime,
       handoverLocation: schedule.handoverLocation,
       status: CustodyScheduleStatus.active,
@@ -783,11 +786,35 @@ class CalendarProvider extends ChangeNotifier {
     String? responseNote,
   }) async {
     try {
-      await _repository.respondToSchedule(
+      final updated = await _repository.respondToSchedule(
         scheduleId: scheduleId,
         approve: approve,
         responseNote: responseNote,
       );
+
+      if (!approve) {
+        if (_custodySchedule?.id == scheduleId) {
+          _custodySchedule = null;
+        }
+      } else {
+        _custodySchedule = updated;
+        // Paint immediately from the pattern; server slots arrive on reload.
+        final generated = generateSlotsFromSchedule(updated);
+        final overrides = _custodySlots
+            .where(
+              (slot) =>
+                  slot.source == CustodySlotSource.exception ||
+                  slot.source == CustodySlotSource.swap,
+            )
+            .toList();
+        _custodySlots
+          ..clear()
+          ..addAll(generated)
+          ..addAll(overrides);
+      }
+      _rebuildDisplaySlots();
+      notifyListeners();
+      await _persistCurrentSnapshot();
       await _reloadBestEffort();
     } catch (_) {
       rethrow;

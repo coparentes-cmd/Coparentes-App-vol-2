@@ -391,6 +391,7 @@ class CalendarRepository {
     DateTime? endDate,
     CustodyWeekPattern? weekA,
     CustodyWeekPattern? weekB,
+    int? weekInterval,
     String? handoverTime,
     String? handoverLocation,
   }) async {
@@ -398,8 +399,13 @@ class CalendarRepository {
       'patternType': custodySchedulePatternToApi(patternType),
       'startDate': calendarDateToApiIso(startDate),
       if (endDate != null) 'endDate': calendarDateToApiIso(endDate),
-      if (weekA != null) 'weekA': weekPatternToApi(weekA),
+      if (weekA != null)
+        'weekA': weekPatternToApiWithInterval(
+          weekA,
+          weekInterval: weekInterval,
+        ),
       if (weekB != null) 'weekB': weekPatternToApi(weekB),
+      if (weekInterval != null) 'weekInterval': weekInterval,
       if (handoverTime != null) 'handoverTime': handoverTime,
       if (handoverLocation != null) 'handoverLocation': handoverLocation,
     });
@@ -429,7 +435,18 @@ class CalendarRepository {
         if (responseNote != null) 'responseNote': responseNote,
       },
     );
-    return custodyScheduleFromJson(payload)!;
+    final schedule = custodyScheduleFromJson(payload)!;
+    final snapshot = _getCachedSnapshot();
+    await _saveSnapshot(
+      CalendarSnapshot(
+        custodySlots: snapshot.custodySlots,
+        events: snapshot.events,
+        swapRequests: snapshot.swapRequests,
+        custodySchedule: approve ? schedule : null,
+        custodyExceptions: snapshot.custodyExceptions,
+      ),
+    );
+    return schedule;
   }
 
   Future<CustodyException> createException({

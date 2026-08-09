@@ -68,6 +68,8 @@ class CustodySchedule {
   final DateTime? endDate;
   final CustodyWeekPattern weekA;
   final CustodyWeekPattern weekB;
+  /// For [CustodySchedulePattern.customWeek]: repeat every N weeks (1 = weekly).
+  final int? weekInterval;
   final String? handoverTime;
   final String? handoverLocation;
   final CustodyScheduleStatus status;
@@ -83,6 +85,7 @@ class CustodySchedule {
     this.endDate,
     required this.weekA,
     required this.weekB,
+    this.weekInterval,
     this.handoverTime,
     this.handoverLocation,
     required this.status,

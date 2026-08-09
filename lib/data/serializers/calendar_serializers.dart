@@ -151,11 +151,18 @@ CustodyWeekPattern _weekPatternFromJson(Map<String, dynamic>? json) {
   if (json == null) {
     return const CustodyWeekPattern({});
   }
-  return CustodyWeekPattern(
-    json.map(
-      (key, value) => MapEntry(key, userRoleFromApi(value as String)),
-    ),
-  );
+  final days = <String, UserRole>{};
+  for (final entry in json.entries) {
+    if (entry.key.startsWith('_')) {
+      continue;
+    }
+    final value = entry.value;
+    if (value is! String) {
+      continue;
+    }
+    days[entry.key] = userRoleFromApi(value);
+  }
+  return CustodyWeekPattern(days);
 }
 
 Map<String, String> weekPatternToApi(CustodyWeekPattern pattern) {
@@ -164,10 +171,23 @@ Map<String, String> weekPatternToApi(CustodyWeekPattern pattern) {
   );
 }
 
+Map<String, dynamic> weekPatternToApiWithInterval(
+  CustodyWeekPattern pattern, {
+  int? weekInterval,
+}) {
+  final map = <String, dynamic>{...weekPatternToApi(pattern)};
+  if (weekInterval != null && weekInterval > 0) {
+    map['_weekInterval'] = weekInterval;
+  }
+  return map;
+}
+
 CustodySchedule? custodyScheduleFromJson(Map<String, dynamic>? json) {
   if (json == null) {
     return null;
   }
+  final weekAJson =
+      Map<String, dynamic>.from(json['weekA'] as Map? ?? const {});
   return CustodySchedule(
     id: json['id'] as String,
     patternType: custodySchedulePatternFromApi(json['patternType'] as String),
@@ -175,12 +195,27 @@ CustodySchedule? custodyScheduleFromJson(Map<String, dynamic>? json) {
     endDate: json['endDate'] == null
         ? null
         : DateTime.parse(json['endDate'] as String),
-    weekA: _weekPatternFromJson(
-      Map<String, dynamic>.from(json['weekA'] as Map? ?? const {}),
-    ),
+    weekA: _weekPatternFromJson(weekAJson),
     weekB: _weekPatternFromJson(
       Map<String, dynamic>.from(json['weekB'] as Map? ?? const {}),
     ),
+    weekInterval: () {
+      final top = json['weekInterval'];
+      if (top is int) {
+        return top;
+      }
+      if (top is num) {
+        return top.toInt();
+      }
+      final raw = weekAJson['_weekInterval'];
+      if (raw is int) {
+        return raw;
+      }
+      if (raw is num) {
+        return raw.toInt();
+      }
+      return null;
+    }(),
     handoverTime: json['handoverTime'] as String?,
     handoverLocation: json['handoverLocation'] as String?,
     status: custodyScheduleStatusFromApi(json['status'] as String),
@@ -199,8 +234,12 @@ Map<String, dynamic> custodyScheduleToJson(CustodySchedule schedule) {
     'patternType': custodySchedulePatternToApi(schedule.patternType),
     'startDate': schedule.startDate.toIso8601String(),
     'endDate': schedule.endDate?.toIso8601String(),
-    'weekA': weekPatternToApi(schedule.weekA),
+    'weekA': weekPatternToApiWithInterval(
+      schedule.weekA,
+      weekInterval: schedule.weekInterval,
+    ),
     'weekB': weekPatternToApi(schedule.weekB),
+    if (schedule.weekInterval != null) 'weekInterval': schedule.weekInterval,
     'handoverTime': schedule.handoverTime,
     'handoverLocation': schedule.handoverLocation,
     'status': schedule.status.name == 'pendingApproval'

@@ -40,6 +40,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Timer? _liveRefreshTimer;
 
   static const _liveRefreshInterval = Duration(seconds: 12);
+  static const _pendingLiveRefreshInterval = Duration(seconds: 4);
 
   @override
   void initState() {
@@ -67,6 +68,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
+  Duration _currentLiveRefreshInterval() {
+    final calendar = context.read<CalendarProvider>();
+    if (calendar.hasPendingScheduleApproval) {
+      return _pendingLiveRefreshInterval;
+    }
+    return _liveRefreshInterval;
+  }
+
   void _startLiveRefresh() {
     if (!mounted) {
       return;
@@ -78,16 +87,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     unawaited(context.read<CalendarProvider>().load(silent: true));
+    _scheduleNextLiveRefresh();
+  }
 
+  void _scheduleNextLiveRefresh() {
     _liveRefreshTimer?.cancel();
-    _liveRefreshTimer = Timer.periodic(_liveRefreshInterval, (_) {
+    if (!mounted || context.read<AppProvider>().isDemoMode) {
+      return;
+    }
+    _liveRefreshTimer = Timer(_currentLiveRefreshInterval(), () async {
+      if (!mounted || context.read<AppProvider>().isDemoMode) {
+        return;
+      }
+      await context.read<CalendarProvider>().load(silent: true);
       if (!mounted) {
         return;
       }
-      if (context.read<AppProvider>().isDemoMode) {
-        return;
-      }
-      context.read<CalendarProvider>().load(silent: true);
+      _scheduleNextLiveRefresh();
     });
   }
 
@@ -244,6 +260,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         '${calendar.events.length}-'
         '${calendar.custodySchedule?.id}-'
         '${calendar.custodySchedule?.status.name}-'
+        '${calendar.custodySchedule?.patternType.name}-'
+        '${calendar.custodySchedule?.weekInterval}-'
         '${calendar.showsPendingSchedulePreview}-'
         '${calendar.loadedFromApi}',
       ),

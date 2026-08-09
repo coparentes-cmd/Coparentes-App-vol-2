@@ -52,11 +52,33 @@ DateTime normalizeScheduleDate(DateTime date) =>
   }
 }
 
+int resolveCustomWeekInterval(CustodySchedule schedule) {
+  final explicit = schedule.weekInterval;
+  if (explicit != null && explicit > 0) {
+    return explicit;
+  }
+  // Legacy custom schedules without interval: weekly if A==B, else biweekly.
+  if (schedule.patternType == CustodySchedulePattern.customWeek) {
+    final same = schedule.weekA.days.length == schedule.weekB.days.length &&
+        schedule.weekA.days.entries.every(
+          (entry) => schedule.weekB.days[entry.key] == entry.value,
+        );
+    return same ? 1 : 2;
+  }
+  return 2;
+}
+
 UserRole custodianForScheduleDate(CustodySchedule schedule, DateTime date) {
   final patterns = resolveWeekPatterns(schedule);
   final start = normalizeScheduleDate(schedule.startDate);
   final current = normalizeScheduleDate(date);
   final weekIndex = current.difference(start).inDays ~/ 7;
+  if (schedule.patternType == CustodySchedulePattern.customWeek) {
+    final interval = resolveCustomWeekInterval(schedule);
+    final pattern =
+        weekIndex % interval == 0 ? patterns.weekA : patterns.weekB;
+    return pattern.forWeekday(current.weekday);
+  }
   final pattern = weekIndex.isEven ? patterns.weekA : patterns.weekB;
   return pattern.forWeekday(current.weekday);
 }

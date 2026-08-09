@@ -6,8 +6,11 @@ import '../data/api/app_api_client.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/custom_week_recurrence.dart';
 import 'booking_style_calendar_picker.dart';
 import 'mini_calendar_date_sheet.dart';
+
+enum _CustomEndRule { never, onDate, afterOccurrences }
 
 class CustodyScheduleWizard extends StatefulWidget {
   const CustodyScheduleWizard({super.key});
@@ -29,25 +32,19 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
 
   late Map<String, UserRole> _weekA;
   late Map<String, UserRole> _weekB;
-  DateTime _calendarLeftMonth = DateTime.now();
-  final Set<String> _selectedCustomDates = {};
 
-  static const _dayKeys = [
-    'monday',
-    'tuesday',
-    'wednesday',
-    'thursday',
-    'friday',
-    'saturday',
-    'sunday',
-  ];
+  int _customIntervalWeeks = 2;
+  final Set<int> _customWeekdays = {};
+  _CustomEndRule _customEndRule = _CustomEndRule.never;
+  int _customOccurrenceCount = 13;
+
+  static const _dayKeys = customWeekDayKeys;
 
   @override
   void initState() {
     super.initState();
     _startDate = DateTime.now();
     _endDate = DateTime(_startDate.year + 1, _startDate.month, _startDate.day);
-    _calendarLeftMonth = DateTime(_startDate.year, _startDate.month, 1);
     _handoverTimeController = TextEditingController(text: '17:00');
     _handoverLocationController = TextEditingController(text: 'Szkoła');
     _applyPatternPreset(_pattern, UserRole.parentA);
@@ -64,10 +61,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       _pattern == CustodySchedulePattern.weekAlternating ||
       _pattern == CustodySchedulePattern.everyOtherWeekend;
 
-  bool get _showsCalendar =>
-      _step == 0 &&
-      (_usesTemplateDateRange ||
-          _pattern == CustodySchedulePattern.customWeek);
+  bool get _usesCustomRecurrence =>
+      _pattern == CustodySchedulePattern.customWeek;
+
+  bool get _showsDateSection =>
+      _step == 0 && (_usesTemplateDateRange || _usesCustomRecurrence);
 
   DateTime get _normalizedStartDate =>
       DateTime(_startDate.year, _startDate.month, _startDate.day);
@@ -85,13 +83,14 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       _pattern = pattern;
       _calendarSaved = false;
       _calendarInteracted = false;
-      _selectedCustomDates.clear();
+      _customWeekdays.clear();
+      _customIntervalWeeks = 2;
+      _customEndRule = _CustomEndRule.never;
+      _customOccurrenceCount = 13;
       _applyPatternPreset(pattern, creatorRole);
-      if (_usesTemplateDateRange) {
-        _startDate = DateTime.now();
-        _endDate = DateTime(_startDate.year + 1, _startDate.month, _startDate.day);
-      }
-      _calendarLeftMonth = DateTime(_startDate.year, _startDate.month, 1);
+      _startDate = DateTime.now();
+      _endDate =
+          DateTime(_startDate.year + 1, _startDate.month, _startDate.day);
     });
   }
 
@@ -106,16 +105,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       }
       final hasFullRange = start != null && end != null;
       _calendarInteracted = hasFullRange;
-    });
-  }
-
-  void _updateSelectedDates(Set<String> dates) {
-    setState(() {
-      _calendarSaved = false;
-      _calendarInteracted = dates.isNotEmpty;
-      _selectedCustomDates
-        ..clear()
-        ..addAll(dates);
     });
   }
 
@@ -140,90 +129,90 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     setState(() => _calendarSaved = true);
   }
 
-  Future<void> _openCustomDaysMiniCalendar(String creatorLabel) async {
-    final creatorRole =
-        context.read<AppProvider>().currentUser?.role ?? UserRole.parentA;
+  Future<void> _openSingleDatePicker({
+    required String title,
+    required DateTime initial,
+    required ValueChanged<DateTime> onPicked,
+  }) async {
     final result = await showMiniCalendarSheet(
       context: context,
-      mode: BookingCalendarMode.multiSelect,
+      mode: BookingCalendarMode.range,
       accentColor: AppTheme.accentColor,
-      title: 'Zaznacz dni opieki',
-      subtitle: 'Dni zaznaczone kolorem ($creatorLabel).',
-      initialMonth: _calendarLeftMonth,
-      selectedDates: _selectedCustomDates,
-      colorForDay: (_) => creatorRole == UserRole.parentA
-          ? AppTheme.parentAColor
-          : AppTheme.parentBColor,
+      title: title,
+      subtitle: 'Wybierz dzień.',
+      initialMonth: initial,
+      rangeStart: initial,
+      rangeEnd: initial,
     );
-    if (result == null || !mounted) {
+    if (result?.rangeStart == null || !mounted) {
       return;
     }
-    _updateSelectedDates(result.selectedDates);
-    if (_selectedCustomDates.isNotEmpty) {
-      setState(() {
-        _calendarSaved = true;
-        final first = (_selectedCustomDates.toList()..sort()).first;
-        final parts = first.split('-');
-        _calendarLeftMonth = DateTime(
-          int.parse(parts[0]),
-          int.parse(parts[1]),
-          1,
-        );
-      });
-    }
+    onPicked(result!.rangeStart!);
   }
 
-  void _applyCustomDatesToWeekPattern() {
+  void _toggleCustomWeekday(int weekday) {
+    setState(() {
+      if (_customWeekdays.contains(weekday)) {
+        _customWeekdays.remove(weekday);
+      } else {
+        _customWeekdays.add(weekday);
+      }
+      _calendarInteracted = _customWeekdays.isNotEmpty;
+      _calendarSaved = false;
+    });
+  }
+
+  void _applyCustomRecurrencePattern() {
     final creatorRole =
         context.read<AppProvider>().currentUser?.role ?? UserRole.parentA;
-    final other = creatorRole == UserRole.parentA
-        ? UserRole.parentB
-        : UserRole.parentA;
-
-    final sortedKeys = _selectedCustomDates.toList()..sort();
-    final firstParts = sortedKeys.first.split('-');
-    final start = DateTime(
-      int.parse(firstParts[0]),
-      int.parse(firstParts[1]),
-      int.parse(firstParts[2]),
+    final patterns = buildCustomWeekPatterns(
+      creatorRole: creatorRole,
+      weekdays: _customWeekdays,
+      intervalWeeks: _customIntervalWeeks,
     );
-    _startDate = start;
+    _weekA = patterns.weekA;
+    _weekB = patterns.weekB;
+  }
 
-    _weekA = {for (final key in _dayKeys) key: other};
-    _weekB = {for (final key in _dayKeys) key: other};
-
-    for (final key in _selectedCustomDates) {
-      final parts = key.split('-');
-      if (parts.length != 3) {
-        continue;
-      }
-      final date = DateTime(
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-        int.parse(parts[2]),
-      );
-      final weekIndex = bookingNormalizeDate(date).difference(start).inDays ~/ 7;
-      final dayKey = _dayKeys[date.weekday - 1];
-      if (weekIndex.isEven) {
-        _weekA[dayKey] = creatorRole;
-      } else {
-        _weekB[dayKey] = creatorRole;
-      }
+  DateTime? _resolveCustomEndDate() {
+    switch (_customEndRule) {
+      case _CustomEndRule.never:
+        return null;
+      case _CustomEndRule.onDate:
+        return _normalizedEndDate;
+      case _CustomEndRule.afterOccurrences:
+        return endDateFromCustomOccurrences(
+          startDate: _normalizedStartDate,
+          weekdays: _customWeekdays,
+          intervalWeeks: _customIntervalWeeks,
+          occurrenceCount: _customOccurrenceCount,
+        );
     }
   }
 
   bool _isCalendarReady() {
-    if (!_showsCalendar) {
+    if (!_showsDateSection) {
       return true;
     }
-    if (!_calendarInteracted) {
-      return false;
-    }
     if (_usesTemplateDateRange) {
+      if (!_calendarInteracted) {
+        return false;
+      }
       return !_normalizedEndDate.isBefore(_normalizedStartDate);
     }
-    if (_pattern == CustodySchedulePattern.customWeek) {
-      return _selectedCustomDates.isNotEmpty;
+    if (_usesCustomRecurrence) {
+      if (_customWeekdays.isEmpty) {
+        return false;
+      }
+      if (_customEndRule == _CustomEndRule.onDate &&
+          _normalizedEndDate.isBefore(_normalizedStartDate)) {
+        return false;
+      }
+      if (_customEndRule == _CustomEndRule.afterOccurrences &&
+          _customOccurrenceCount < 1) {
+        return false;
+      }
+      return true;
     }
     return true;
   }
@@ -242,12 +231,13 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             backgroundColor: AppTheme.errorColor,
           ),
         );
-      } else {
+      } else if (_usesCustomRecurrence) {
+        final message = _customWeekdays.isEmpty
+            ? 'Wybierz co najmniej jeden dzień tygodnia.'
+            : 'Sprawdź datę końca grafiku.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Kliknij „Dni opieki” i zaznacz co najmniej jeden dzień.',
-            ),
+          SnackBar(
+            content: Text(message),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -255,8 +245,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       return false;
     }
 
-    if (_pattern == CustodySchedulePattern.customWeek) {
-      _applyCustomDatesToWeekPattern();
+    if (_usesCustomRecurrence) {
+      _applyCustomRecurrencePattern();
     }
     _calendarSaved = true;
     return true;
@@ -354,7 +344,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                 children: [
                   if (_step > 0)
                     TextButton(
-                      onPressed: _isSubmitting ? null : () => setState(() => _step--),
+                      onPressed:
+                          _isSubmitting ? null : () => setState(() => _step--),
                       child: const Text('Wstecz'),
                     ),
                   const Spacer(),
@@ -412,30 +403,30 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ),
         _PatternOption(
           title: 'Własny tydzień',
-          subtitle: 'Zaznacz dni w mini-kalendarzu — każdy dzień osobno',
+          subtitle: 'Wybierz dni tygodnia, co ile się powtarza i kiedy kończy',
           value: CustodySchedulePattern.customWeek,
           groupValue: _pattern,
           accentColor: creatorColor,
           onChanged: _selectPattern,
         ),
-        if (_showsCalendar) ...[
+        if (_showsDateSection) ...[
           const SizedBox(height: 16),
-          const Text(
-            'Daty',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.dividerColor),
+          if (_usesTemplateDateRange) ...[
+            const Text(
+              'Daty',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Column(
-                children: [
-                  if (_usesTemplateDateRange) ...[
+            const SizedBox(height: 8),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.dividerColor),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  children: [
                     IosDateFieldRow(
                       label: 'Początek',
                       value: _formatDate(_normalizedStartDate),
@@ -447,37 +438,32 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                       value: _formatDate(_normalizedEndDate),
                       onTap: _openRangeMiniCalendar,
                     ),
-                  ] else
-                    IosDateFieldRow(
-                      label: 'Dni opieki',
-                      value: _selectedCustomDates.isEmpty
-                          ? 'Wybierz…'
-                          : '${_selectedCustomDates.length} dni',
-                      onTap: () => _openCustomDaysMiniCalendar(creatorLabel),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          if (_calendarSaved) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.check_circle, color: creatorColor, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  _usesTemplateDateRange
-                      ? 'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)}'
-                      : 'Zaznaczono ${_selectedCustomDates.length} dni',
-                  style: TextStyle(
-                    color: creatorColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+            if (_calendarSaved) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: creatorColor, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)}',
+                    style: TextStyle(
+                      color: creatorColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+            ],
+          ] else
+            _buildCustomRecurrenceSection(
+              creatorColor: creatorColor,
+              creatorLabel: creatorLabel,
             ),
-          ],
         ],
         const SizedBox(height: 20),
         const Text(
@@ -504,11 +490,235 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     );
   }
 
+  Widget _buildCustomRecurrenceSection({
+    required Color creatorColor,
+    required String creatorLabel,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Powtarzanie niestandardowe',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.dividerColor),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                IosDateFieldRow(
+                  label: 'Początek',
+                  value: _formatDate(_normalizedStartDate),
+                  onTap: () => _openSingleDatePicker(
+                    title: 'Data rozpoczęcia',
+                    initial: _normalizedStartDate,
+                    onPicked: (date) => setState(() {
+                      _startDate = date;
+                      if (_endDate.isBefore(date)) {
+                        _endDate = date;
+                      }
+                      _calendarInteracted = _customWeekdays.isNotEmpty;
+                    }),
+                  ),
+                ),
+                const Divider(height: 1, indent: 16),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Powtarzaj co',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      _StepperChip(
+                        value: _customIntervalWeeks,
+                        min: 1,
+                        max: 12,
+                        onChanged: (value) => setState(() {
+                          _customIntervalWeeks = value;
+                          _calendarSaved = false;
+                        }),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.dividerColor),
+                        ),
+                        child: const Text(
+                          'tygodnie',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, indent: 16),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Powtarzaj w (opieka u $creatorLabel)',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          for (var i = 0; i < 7; i++)
+                            _WeekdayChip(
+                              label: customWeekDayLabels[i],
+                              selected: _customWeekdays.contains(i + 1),
+                              color: creatorColor,
+                              onTap: () => _toggleCustomWeekday(i + 1),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, indent: 16),
+                Padding(
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Kończy się',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+                RadioListTile<_CustomEndRule>(
+                  value: _CustomEndRule.never,
+                  groupValue: _customEndRule,
+                  activeColor: creatorColor,
+                  title: const Text('Nigdy'),
+                  onChanged: (value) => setState(() {
+                    _customEndRule = value!;
+                    _calendarSaved = false;
+                  }),
+                ),
+                RadioListTile<_CustomEndRule>(
+                  value: _CustomEndRule.onDate,
+                  groupValue: _customEndRule,
+                  activeColor: creatorColor,
+                  title: Row(
+                    children: [
+                      const Text('W dniu'),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _customEndRule == _CustomEndRule.onDate
+                            ? () => _openSingleDatePicker(
+                                  title: 'Data końca',
+                                  initial: _normalizedEndDate.isBefore(
+                                          _normalizedStartDate)
+                                      ? _normalizedStartDate
+                                      : _normalizedEndDate,
+                                  onPicked: (date) => setState(() {
+                                    _endDate = date;
+                                    _calendarSaved = false;
+                                  }),
+                                )
+                            : null,
+                        child: Text(_formatDate(_normalizedEndDate)),
+                      ),
+                    ],
+                  ),
+                  onChanged: (value) => setState(() {
+                    _customEndRule = value!;
+                    _calendarSaved = false;
+                  }),
+                ),
+                RadioListTile<_CustomEndRule>(
+                  value: _CustomEndRule.afterOccurrences,
+                  groupValue: _customEndRule,
+                  activeColor: creatorColor,
+                  title: Row(
+                    children: [
+                      const Text('Po'),
+                      const SizedBox(width: 8),
+                      _StepperChip(
+                        value: _customOccurrenceCount,
+                        min: 1,
+                        max: 999,
+                        enabled:
+                            _customEndRule == _CustomEndRule.afterOccurrences,
+                        onChanged: (value) => setState(() {
+                          _customOccurrenceCount = value;
+                          _calendarSaved = false;
+                        }),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('wystąpieniach'),
+                    ],
+                  ),
+                  onChanged: (value) => setState(() {
+                    _customEndRule = value!;
+                    _calendarSaved = false;
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_customWeekdays.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            customWeekSummary(
+              intervalWeeks: _customIntervalWeeks,
+              weekdays: _customWeekdays,
+              creatorLabel: creatorLabel,
+            ),
+            style: TextStyle(
+              color: creatorColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildSummaryStep({required String creatorLabel}) {
     final label = switch (_pattern) {
       CustodySchedulePattern.weekAlternating => 'Co tydzień na zmianę',
       CustodySchedulePattern.everyOtherWeekend => 'Co drugi weekend',
       CustodySchedulePattern.customWeek => 'Własny tydzień',
+    };
+    final customEndLabel = switch (_customEndRule) {
+      _CustomEndRule.never => 'Nigdy',
+      _CustomEndRule.onDate => _formatDate(_normalizedEndDate),
+      _CustomEndRule.afterOccurrences =>
+        'Po $_customOccurrenceCount wystąpieniach (${_formatDate(_resolveCustomEndDate()!)})',
     };
 
     return Column(
@@ -524,11 +734,17 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             label: 'Koniec',
             value: _formatDate(_normalizedEndDate),
           ),
-        if (_pattern == CustodySchedulePattern.customWeek)
+        if (_usesCustomRecurrence) ...[
           _SummaryRow(
-            label: 'Twoje dni',
-            value: '${_selectedCustomDates.length}',
+            label: 'Powtarzanie',
+            value: customWeekSummary(
+              intervalWeeks: _customIntervalWeeks,
+              weekdays: _customWeekdays,
+              creatorLabel: creatorLabel,
+            ),
           ),
+          _SummaryRow(label: 'Koniec', value: customEndLabel),
+        ],
         _SummaryRow(
           label: 'Twórca',
           value: creatorLabel,
@@ -577,7 +793,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       final handoverLocation = _handoverLocationController.text.trim().isEmpty
           ? null
           : _handoverLocationController.text.trim();
-      final endDate = _usesTemplateDateRange ? _normalizedEndDate : null;
+      final endDate = _usesTemplateDateRange
+          ? _normalizedEndDate
+          : _resolveCustomEndDate();
+      final weekInterval =
+          _usesCustomRecurrence ? _customIntervalWeeks : null;
 
       if (app.isDemoMode) {
         final schedule = calendar.proposeScheduleDemo(
@@ -587,6 +807,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           endDate: endDate,
           weekA: weekA,
           weekB: weekB,
+          weekInterval: weekInterval,
           handoverTime: handoverTime,
           handoverLocation: handoverLocation,
         );
@@ -604,6 +825,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           endDate: endDate,
           weekA: weekA,
           weekB: weekB,
+          weekInterval: weekInterval,
           handoverTime: handoverTime,
           handoverLocation: handoverLocation,
         );
@@ -626,6 +848,108 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+}
+
+class _WeekdayChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _WeekdayChip({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? color : Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected ? color : AppTheme.dividerColor,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: selected ? Colors.white : AppTheme.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepperChip extends StatelessWidget {
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+  final bool enabled;
+
+  const _StepperChip({
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppTheme.dividerColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: !enabled || value <= min
+                  ? null
+                  : () => onChanged(value - 1),
+              icon: const Icon(Icons.remove, size: 18),
+            ),
+            SizedBox(
+              width: 28,
+              child: Text(
+                '$value',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: !enabled || value >= max
+                  ? null
+                  : () => onChanged(value + 1),
+              icon: const Icon(Icons.add, size: 18),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -707,6 +1031,7 @@ class _SummaryRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 110,
