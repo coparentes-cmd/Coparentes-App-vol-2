@@ -1,30 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../data/api/app_api_client.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../providers/calendar_provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../utils/calendar_date_utils.dart';
 import '../../../../widgets/common_widgets.dart';
-import '../../../../widgets/parent_tab_scaffold.dart';
-import '../../../../widgets/google_style_month_calendar.dart';
-import '../../../../widgets/custody_schedule_wizard.dart';
 
 import '../calendar_helpers.dart';
-import 'legend_item.dart';
-import 'selected_day_card.dart';
-import 'swap_card.dart';
-import 'swap_date_row.dart';
-import 'swap_request_sheet.dart';
-import 'swap_reject_sheet.dart';
-import 'schedule_setup_banner.dart';
-import 'pending_schedule_banner.dart';
-import 'schedule_request_card.dart';
-import 'exception_request_card.dart';
-import 'day_action_buttons.dart';
-import 'exception_request_sheet.dart';
 
 class AddEventSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -39,8 +23,7 @@ class AddEventSheet extends StatefulWidget {
   State<AddEventSheet> createState() => AddEventSheetState();
 }
 
-class AddEventSheetState extends State<AddEventSheet>
-    with SingleTickerProviderStateMixin {
+class AddEventSheetState extends State<AddEventSheet> {
   final _titleController = TextEditingController();
   final _titleFocusNode = FocusNode();
   late EventType _selectedType;
@@ -48,8 +31,6 @@ class AddEventSheetState extends State<AddEventSheet>
   bool _isSubmitting = false;
   int _hintIndex = 0;
   Timer? _hintTimer;
-  late AnimationController _fadeCtrl;
-  late Animation<double> _fadeAnim;
 
   bool get _isEditing => widget.event != null;
 
@@ -71,17 +52,11 @@ class AddEventSheetState extends State<AddEventSheet>
         minute: localStart.minute,
       );
     } else {
-      _selectedType = EventType.school;
+      _selectedType = EventType.other;
       _selectedTime = const TimeOfDay(hour: 9, minute: 0);
     }
     _titleController.addListener(_onTitleChanged);
     _titleFocusNode.addListener(_onTitleFocusChanged);
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-      value: 1,
-    );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
     _startHintTimer();
   }
 
@@ -90,7 +65,12 @@ class AddEventSheetState extends State<AddEventSheet>
       return;
     }
     _hintTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      unawaited(_nextHint());
+      if (!mounted || !_showCyclingPlaceholder) {
+        return;
+      }
+      setState(() {
+        _hintIndex = (_hintIndex + 1) % AiTips.calendarPlaceholders.length;
+      });
     });
   }
 
@@ -106,24 +86,9 @@ class AddEventSheetState extends State<AddEventSheet>
     }
   }
 
-  Future<void> _nextHint() async {
-    if (!mounted || !_showCyclingPlaceholder) {
-      return;
-    }
-    await _fadeCtrl.reverse();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _hintIndex = (_hintIndex + 1) % AiTips.calendarPlaceholders.length;
-    });
-    _fadeCtrl.forward();
-  }
-
   @override
   void dispose() {
     _hintTimer?.cancel();
-    _fadeCtrl.dispose();
     _titleController.removeListener(_onTitleChanged);
     _titleFocusNode.removeListener(_onTitleFocusChanged);
     _titleController.dispose();
@@ -200,17 +165,17 @@ class AddEventSheetState extends State<AddEventSheet>
         }
       } else if (app.isDemoMode) {
         calendar.addLocalEvent(
-              title: title,
-              startDate: startDate,
-              type: _selectedType,
-              createdBy: app.currentUser?.id ?? 'demo',
-            );
+          title: title,
+          startDate: startDate,
+          type: _selectedType,
+          createdBy: app.currentUser?.id ?? 'demo',
+        );
       } else {
         await calendar.addEvent(
-              title: title,
-              startDate: startDate,
-              type: _selectedType,
-            );
+          title: title,
+          startDate: startDate,
+          type: _selectedType,
+        );
       }
       if (!mounted) return;
       Navigator.pop(context);
@@ -241,10 +206,10 @@ class AddEventSheetState extends State<AddEventSheet>
 
   @override
   Widget build(BuildContext context) {
-    final showCyclingPlaceholder = _showCyclingPlaceholder;
-    final hintStyle = Theme.of(context).inputDecorationTheme.hintStyle ??
-        const TextStyle(color: AppTheme.textHint);
-    const fieldPadding = EdgeInsets.fromLTRB(18, 28, 18, 12);
+    final hintText = _showCyclingPlaceholder
+        ? AiTips.calendarPlaceholders[
+            _hintIndex % AiTips.calendarPlaceholders.length]
+        : null;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -273,82 +238,25 @@ class AddEventSheetState extends State<AddEventSheet>
           const SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.access_time, color: AppTheme.textSecondary),
+            leading:
+                const Icon(Icons.access_time, color: AppTheme.textSecondary),
             title: const Text('Godzina'),
             subtitle: Text(_formatTime(_selectedTime)),
             trailing: const Icon(Icons.chevron_right),
             onTap: _pickTime,
           ),
           const SizedBox(height: 8),
-          Stack(
-            children: [
-              TextField(
-                controller: _titleController,
-                focusNode: _titleFocusNode,
-                decoration: InputDecoration(
-                  labelText: 'Tytuł zdarzenia',
-                  floatingLabelBehavior: FloatingLabelBehavior.always,
-                  hintText: showCyclingPlaceholder
-                      ? null
-                      : (!_isEditing &&
-                              _titleFocusNode.hasFocus &&
-                              _titleController.text.isEmpty)
-                          ? null
-                          : 'np. Angielski – Zosia',
-                ),
-              ),
-              if (showCyclingPlaceholder)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Padding(
-                      padding: fieldPadding,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: FadeTransition(
-                          opacity: _fadeAnim,
-                          child: Text(
-                            AiTips.calendarPlaceholders[_hintIndex %
-                                AiTips.calendarPlaceholders.length],
-                            style: hintStyle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Typ zdarzenia',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textSecondary,
+          TextField(
+            controller: _titleController,
+            focusNode: _titleFocusNode,
+            textAlignVertical: TextAlignVertical.center,
+            decoration: InputDecoration(
+              labelText: 'Tytuł zdarzenia',
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              hintText: hintText,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: EventType.values.map((type) {
-              final labels = {
-                EventType.school: 'Szkoła',
-                EventType.medical: 'Zdrowie',
-                EventType.activity: 'Zajęcia',
-                EventType.handover: 'Przekazanie',
-                EventType.holiday: 'Ferie',
-                EventType.other: 'Inne',
-              };
-              return ChoiceChip(
-                label: Text(labels[type]!),
-                selected: _selectedType == type,
-                onSelected: (_) => setState(() => _selectedType = type),
-                selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
-                checkmarkColor: AppTheme.primaryTeal,
-              );
-            }).toList(),
           ),
           const SizedBox(height: 20),
           SizedBox(
