@@ -533,6 +533,31 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Sends a one-time temporary password to [email] (if the account exists).
+  Future<bool> requestPasswordReset(String email) async {
+    try {
+      _authError = null;
+      await _authRepository.requestPasswordReset(email: email);
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _authError = switch (error.message) {
+        'otp_email_failed' =>
+          'Nie udało się wysłać e-maila z hasłem. Spróbuj ponownie za chwilę.',
+        'Too many requests, try again later' =>
+          'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
+        'invalid_request' => 'Podaj prawidłowy adres e-mail.',
+        _ => 'Nie udało się zresetować hasła.',
+      };
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _authError = 'Nie udało się zresetować hasła.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<EmailInviteSendResult?> sendEmailInvite(String email) async {
     try {
       _authError = null;

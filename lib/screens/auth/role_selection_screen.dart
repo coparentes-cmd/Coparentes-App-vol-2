@@ -347,6 +347,26 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _submitting ? null : _showForgotPasswordDialog,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Nie pamiętam hasła',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.accentColor,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
         ];
       case _AuthMode.register:
         return [
@@ -575,6 +595,130 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
     _submit();
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+    var sending = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Nie pamiętam hasła'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Podaj e-mail konta. Wyślemy jednorazowe hasło — '
+                    'zaloguj się nim, a potem zmień hasło w Ustawieniach.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autofocus: true,
+                    textInputAction: TextInputAction.send,
+                    decoration: const InputDecoration(
+                      labelText: 'E-mail',
+                      hintText: 'twoj@email.pl',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      sending ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Anuluj'),
+                ),
+                ElevatedButton(
+                  onPressed: sending
+                      ? null
+                      : () async {
+                          final email = emailController.text.trim();
+                          final messenger =
+                              ScaffoldMessenger.of(this.context);
+                          final appProvider =
+                              this.context.read<AppProvider>();
+                          if (email.isEmpty || !email.contains('@')) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Podaj prawidłowy adres e-mail.'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => sending = true);
+                          final ok =
+                              await appProvider.requestPasswordReset(email);
+                          if (!dialogContext.mounted) {
+                            return;
+                          }
+                          setDialogState(() => sending = false);
+
+                          if (ok) {
+                            Navigator.pop(dialogContext);
+                            if (!mounted) {
+                              return;
+                            }
+                            _emailController.text = email;
+                            _passwordController.clear();
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Jeśli konto istnieje, wysłaliśmy jednorazowe hasło. '
+                                  'Zaloguj się nim, potem zmień hasło w Ustawieniach.',
+                                ),
+                                backgroundColor: AppTheme.successColor,
+                                duration: Duration(seconds: 6),
+                              ),
+                            );
+                          } else {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  appProvider.authError ??
+                                      'Nie udało się wysłać hasła.',
+                                ),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryTeal,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Wyślij hasło'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    emailController.dispose();
   }
 
   Future<void> _submit() async {

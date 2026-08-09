@@ -305,6 +305,13 @@ class AuthRepository {
     });
   }
 
+  /// Requests a one-time temporary password by e-mail.
+  Future<void> requestPasswordReset({required String email}) async {
+    await _apiClient.postJson('/auth/forgot-password', {
+      'email': email.trim().toLowerCase(),
+    });
+  }
+
   Future<EmailInviteSendResult> sendEmailInvite({required String email}) async {
     final payload = await _apiClient.postJson('/invite/send', {
       'email': email.trim().toLowerCase(),
