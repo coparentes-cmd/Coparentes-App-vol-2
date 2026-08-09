@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +22,6 @@ class CustodyScheduleWizard extends StatefulWidget {
 }
 
 class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
-  int _step = 0;
   CustodySchedulePattern _pattern = CustodySchedulePattern.weekAlternating;
   DateTime _startDate = DateTime.now();
   late DateTime _endDate;
@@ -28,7 +29,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   late final TextEditingController _handoverLocationController;
   bool _isSubmitting = false;
   bool _calendarSaved = false;
-  bool _calendarInteracted = false;
 
   late Map<String, UserRole> _weekA;
   late Map<String, UserRole> _weekB;
@@ -65,7 +65,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       _pattern == CustodySchedulePattern.customWeek;
 
   bool get _showsDateSection =>
-      _step == 0 && (_usesTemplateDateRange || _usesCustomRecurrence);
+      _usesTemplateDateRange || _usesCustomRecurrence;
 
   DateTime get _normalizedStartDate =>
       DateTime(_startDate.year, _startDate.month, _startDate.day);
@@ -82,7 +82,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     setState(() {
       _pattern = pattern;
       _calendarSaved = false;
-      _calendarInteracted = false;
       _customWeekdays.clear();
       _customIntervalWeeks = 2;
       _customEndRule = _CustomEndRule.never;
@@ -103,8 +102,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       } else if (end != null) {
         _endDate = end;
       }
-      final hasFullRange = start != null && end != null;
-      _calendarInteracted = hasFullRange;
     });
   }
 
@@ -157,7 +154,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       } else {
         _customWeekdays.add(weekday);
       }
-      _calendarInteracted = _customWeekdays.isNotEmpty;
       _calendarSaved = false;
     });
   }
@@ -195,9 +191,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       return true;
     }
     if (_usesTemplateDateRange) {
-      if (!_calendarInteracted) {
-        return false;
-      }
+      // Default start/end are valid — no need to reopen the mini-calendar.
       return !_normalizedEndDate.isBefore(_normalizedStartDate);
     }
     if (_usesCustomRecurrence) {
@@ -226,7 +220,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Kliknij Początek lub Koniec i wybierz okres w mini-kalendarzu.',
+              'Data końca musi być taka sama lub późniejsza niż data startu.',
             ),
             backgroundColor: AppTheme.errorColor,
           ),
@@ -290,15 +284,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     }
   }
 
-  String get _stepTitle {
-    switch (_step) {
-      case 0:
-        return 'Krok 1: Szablon, kalendarz i przekazanie';
-      default:
-        return 'Krok 2: Wyślij do akceptacji';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final creatorRole =
@@ -320,7 +305,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _stepTitle,
+                'Szablon, kalendarz i przekazanie',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -330,36 +315,40 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
               const SizedBox(height: 16),
               Expanded(
                 child: SingleChildScrollView(
-                  child: switch (_step) {
-                    0 => _buildPatternStep(
-                        creatorColor: creatorColor,
-                        creatorLabel: creatorLabel,
-                      ),
-                    _ => _buildSummaryStep(creatorLabel: creatorLabel),
-                  },
+                  child: _buildPatternStep(
+                    creatorColor: creatorColor,
+                    creatorLabel: creatorLabel,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  if (_step > 0)
-                    TextButton(
-                      onPressed:
-                          _isSubmitting ? null : () => setState(() => _step--),
-                      child: const Text('Wstecz'),
-                    ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: _isSubmitting ? null : _onPrimaryAction,
-                    child: Text(
-                      _step == 0
-                          ? 'Dalej — podsumowanie'
-                          : (_isSubmitting
-                              ? 'Wysyłam...'
-                              : 'Wyślij do akceptacji'),
+              const SizedBox(height: 12),
+              const Text(
+                'Po wysłaniu drugi rodzic dostanie wiadomość z prośbą o akceptację. '
+                'Po zatwierdzeniu kolory opieki pojawią się automatycznie w obu kalendarzach.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: _isSubmitting ? null : _submitProposal,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: creatorColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(
+                    _isSubmitting ? 'Wysyłam…' : 'Wyślij propozycję',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -369,13 +358,88 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   }
 
   void _handleEnterKey() {
-    if (_step == 0) {
-      if (_applyCalendarIfReady()) {
-        setState(() => _step = 1);
-      }
+    if (_isSubmitting) {
       return;
     }
-    _onPrimaryAction();
+    unawaited(_submitProposal());
+  }
+
+  Future<void> _submitProposal() async {
+    if (!_validateStep0()) {
+      return;
+    }
+    await _sendProposal();
+  }
+
+  Future<void> _sendProposal() async {
+    setState(() => _isSubmitting = true);
+    try {
+      final app = context.read<AppProvider>();
+      final calendar = context.read<CalendarProvider>();
+      final messaging = context.read<MessagingProvider>();
+      final weekA = CustodyWeekPattern(_weekA);
+      final weekB = CustodyWeekPattern(_weekB);
+      final handoverTime = _handoverTimeController.text.trim().isEmpty
+          ? null
+          : _handoverTimeController.text.trim();
+      final handoverLocation = _handoverLocationController.text.trim().isEmpty
+          ? null
+          : _handoverLocationController.text.trim();
+      final endDate = _usesTemplateDateRange
+          ? _normalizedEndDate
+          : _resolveCustomEndDate();
+      final weekInterval =
+          _usesCustomRecurrence ? _customIntervalWeeks : null;
+
+      if (app.isDemoMode) {
+        final schedule = calendar.proposeScheduleDemo(
+          proposedById: app.currentUser?.id ?? 'demo_user',
+          patternType: _pattern,
+          startDate: _normalizedStartDate,
+          endDate: endDate,
+          weekA: weekA,
+          weekB: weekB,
+          weekInterval: weekInterval,
+          handoverTime: handoverTime,
+          handoverLocation: handoverLocation,
+        );
+        final user = app.currentUser;
+        if (user != null) {
+          messaging.appendDemoScheduleProposal(
+            schedule: schedule,
+            sender: user,
+          );
+        }
+      } else {
+        await calendar.proposeSchedule(
+          patternType: _pattern,
+          startDate: _normalizedStartDate,
+          endDate: endDate,
+          weekA: weekA,
+          weekB: weekB,
+          weekInterval: weekInterval,
+          handoverTime: handoverTime,
+          handoverLocation: handoverLocation,
+        );
+        await messaging.loadThreads(
+          viewerUserId: app.currentUser?.id,
+          notifyEnabled: app.notifyMessages,
+          silent: true,
+        );
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_scheduleErrorMessage(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   Widget _buildPatternStep({
@@ -523,7 +587,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                       if (_endDate.isBefore(date)) {
                         _endDate = date;
                       }
-                      _calendarInteracted = _customWeekdays.isNotEmpty;
                     }),
                   ),
                 ),
@@ -601,10 +664,9 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   ),
                 ),
                 const Divider(height: 1, indent: 16),
-                Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: const Align(
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Kończy się',
@@ -638,8 +700,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                         onPressed: _customEndRule == _CustomEndRule.onDate
                             ? () => _openSingleDatePicker(
                                   title: 'Data końca',
-                                  initial: _normalizedEndDate.isBefore(
-                                          _normalizedStartDate)
+                                  initial: _normalizedEndDate
+                                          .isBefore(_normalizedStartDate)
                                       ? _normalizedStartDate
                                       : _normalizedEndDate,
                                   onPicked: (date) => setState(() {
@@ -706,148 +768,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ],
       ],
     );
-  }
-
-  Widget _buildSummaryStep({required String creatorLabel}) {
-    final label = switch (_pattern) {
-      CustodySchedulePattern.weekAlternating => 'Co tydzień na zmianę',
-      CustodySchedulePattern.everyOtherWeekend => 'Co drugi weekend',
-      CustodySchedulePattern.customWeek => 'Własny tydzień',
-    };
-    final customEndLabel = switch (_customEndRule) {
-      _CustomEndRule.never => 'Nigdy',
-      _CustomEndRule.onDate => _formatDate(_normalizedEndDate),
-      _CustomEndRule.afterOccurrences =>
-        'Po $_customOccurrenceCount wystąpieniach (${_formatDate(_resolveCustomEndDate()!)})',
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SummaryRow(label: 'Szablon', value: label),
-        _SummaryRow(
-          label: 'Start',
-          value: _formatDate(_normalizedStartDate),
-        ),
-        if (_usesTemplateDateRange)
-          _SummaryRow(
-            label: 'Koniec',
-            value: _formatDate(_normalizedEndDate),
-          ),
-        if (_usesCustomRecurrence) ...[
-          _SummaryRow(
-            label: 'Powtarzanie',
-            value: customWeekSummary(
-              intervalWeeks: _customIntervalWeeks,
-              weekdays: _customWeekdays,
-              creatorLabel: creatorLabel,
-            ),
-          ),
-          _SummaryRow(label: 'Koniec', value: customEndLabel),
-        ],
-        _SummaryRow(
-          label: 'Twórca',
-          value: creatorLabel,
-        ),
-        _SummaryRow(
-          label: 'Przekazanie',
-          value: _handoverTimeController.text.trim().isEmpty
-              ? '—'
-              : _handoverTimeController.text.trim(),
-        ),
-        _SummaryRow(
-          label: 'Miejsce',
-          value: _handoverLocationController.text.trim().isEmpty
-              ? '—'
-              : _handoverLocationController.text.trim(),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Drugi rodzic musi zaakceptować grafik, zanim zacznie obowiązywać. '
-          'Po zatwierdzeniu każda kolejna zmiana wymaga ponownej akceptacji.',
-          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _onPrimaryAction() async {
-    if (_step == 0) {
-      if (!_validateStep0()) {
-        return;
-      }
-      setState(() => _step = 1);
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-    try {
-      final app = context.read<AppProvider>();
-      final calendar = context.read<CalendarProvider>();
-      final messaging = context.read<MessagingProvider>();
-      final weekA = CustodyWeekPattern(_weekA);
-      final weekB = CustodyWeekPattern(_weekB);
-      final handoverTime = _handoverTimeController.text.trim().isEmpty
-          ? null
-          : _handoverTimeController.text.trim();
-      final handoverLocation = _handoverLocationController.text.trim().isEmpty
-          ? null
-          : _handoverLocationController.text.trim();
-      final endDate = _usesTemplateDateRange
-          ? _normalizedEndDate
-          : _resolveCustomEndDate();
-      final weekInterval =
-          _usesCustomRecurrence ? _customIntervalWeeks : null;
-
-      if (app.isDemoMode) {
-        final schedule = calendar.proposeScheduleDemo(
-          proposedById: app.currentUser?.id ?? 'demo_user',
-          patternType: _pattern,
-          startDate: _normalizedStartDate,
-          endDate: endDate,
-          weekA: weekA,
-          weekB: weekB,
-          weekInterval: weekInterval,
-          handoverTime: handoverTime,
-          handoverLocation: handoverLocation,
-        );
-        final user = app.currentUser;
-        if (user != null) {
-          messaging.appendDemoScheduleProposal(
-            schedule: schedule,
-            sender: user,
-          );
-        }
-      } else {
-        await calendar.proposeSchedule(
-          patternType: _pattern,
-          startDate: _normalizedStartDate,
-          endDate: endDate,
-          weekA: weekA,
-          weekB: weekB,
-          weekInterval: weekInterval,
-          handoverTime: handoverTime,
-          handoverLocation: handoverLocation,
-        );
-        await messaging.loadThreads(
-          viewerUserId: app.currentUser?.id,
-          notifyEnabled: app.notifyMessages,
-          silent: true,
-        );
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_scheduleErrorMessage(error))),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
-    }
   }
 }
 
@@ -1015,36 +935,6 @@ class _PatternOption extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _SummaryRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
       ),
     );
   }

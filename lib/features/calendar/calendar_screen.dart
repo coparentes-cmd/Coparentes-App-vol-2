@@ -16,7 +16,6 @@ import 'widgets/swap_request_sheet.dart';
 import 'widgets/schedule_setup_banner.dart';
 import 'widgets/pending_schedule_banner.dart';
 import 'widgets/day_action_buttons.dart';
-import 'widgets/exception_request_sheet.dart';
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? focusDay;
@@ -365,12 +364,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           const SizedBox(height: 12),
           if (calendar.hasActiveSchedule && !isPending)
             DayActionButtons(
-              day: day,
-              slot: slot,
-              onChangeCustodian: () {
-                onBeforeAction?.call();
-                _showExceptionSheet(context, day, slot);
-              },
               onRequestSwap: () {
                 onBeforeAction?.call();
                 _requestSwapForDay(context, day);
@@ -388,7 +381,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             )
           else if (isPending)
             const Text(
-              'Ten dzień ma już oczekującą prośbę o zmianę opiekuna.',
+              'Ten dzień ma już oczekującą prośbę o zmianę opieki.',
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -554,24 +547,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       },
-    );
-  }
-
-  void _showExceptionSheet(
-    BuildContext context,
-    DateTime day,
-    CustodySlot? slot,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => ExceptionRequestSheet(
-        day: day,
-        currentCustodian: slot?.custodian,
-      ),
     );
   }
 

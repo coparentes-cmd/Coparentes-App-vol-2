@@ -107,7 +107,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(calendarActionError(error, 'wniosku o zamianę')),
+          content: Text(calendarActionError(error, 'zmiany opieki')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -132,7 +132,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Wniosek o zamianę',
+            'Zmiana opieki',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -141,13 +141,13 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Złóż wniosek o zamianę dnia opieki. Drugi rodzic otrzyma powiadomienie i będzie mógł zaakceptować lub odrzucić.',
+            'Zaproponuj zmianę dnia opieki. Drugi rodzic otrzyma powiadomienie i będzie mógł zaakceptować lub odrzucić.',
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Dzień do zamiany'),
+            title: const Text('Dzień do zmiany'),
             subtitle: Text(
               '${_originalDate.day}.${_originalDate.month}.${_originalDate.year}',
             ),
@@ -174,7 +174,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
             controller: _reasonController,
             maxLines: 2,
             decoration: const InputDecoration(
-              labelText: 'Powód zamiany (opcjonalnie)',
+              labelText: 'Powód zmiany (opcjonalnie)',
               hintText: 'np. Wyjazd służbowy, urodziny babci...',
             ),
           ),
@@ -189,7 +189,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Wyślij wniosek'),
+                  : const Text('Wyślij propozycję'),
             ),
           ),
         ],

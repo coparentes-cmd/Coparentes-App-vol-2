@@ -90,6 +90,7 @@ Future<MiniCalendarResult?> showMiniCalendarSheet({
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.white,
+    constraints: const BoxConstraints(maxWidth: 420),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -194,9 +195,8 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
 
   bool _canConfirm() {
     if (widget.mode == BookingCalendarMode.range) {
-      return _rangeStart != null &&
-          _rangeEnd != null &&
-          !_rangeEnd!.isBefore(_rangeStart!);
+      // Start alone is enough (end defaults to start on confirm).
+      return _rangeStart != null;
     }
     return _selectedDates.isNotEmpty;
   }
@@ -205,11 +205,13 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
     if (!_canConfirm()) {
       return;
     }
+    final start = _rangeStart;
+    final end = _rangeEnd ?? _rangeStart;
     Navigator.pop(
       context,
       MiniCalendarResult(
-        rangeStart: _rangeStart,
-        rangeEnd: _rangeEnd,
+        rangeStart: start,
+        rangeEnd: end,
         selectedDates: Set<String>.from(_selectedDates),
       ),
     );
@@ -335,13 +337,17 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                     child: const Text('Anuluj'),
                   ),
                   const Spacer(),
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: _canConfirm() ? _confirm : null,
-                    style: ElevatedButton.styleFrom(
+                    style: FilledButton.styleFrom(
                       backgroundColor: widget.accentColor,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          widget.accentColor.withValues(alpha: 0.35),
+                      disabledForegroundColor: Colors.white70,
+                      minimumSize: const Size(120, 40),
                     ),
-                    child: const Text('Gotowe'),
+                    child: const Text('Zatwierdź'),
                   ),
                 ],
               ),
