@@ -543,7 +543,13 @@ class AppProvider extends ChangeNotifier {
     } on ApiException catch (error) {
       _authError = switch (error.message) {
         'otp_email_failed' =>
-          'Nie udało się wysłać e-maila z hasłem. Spróbuj ponownie za chwilę.',
+          'Nie udało się wysłać e-maila z hasłem. Sprawdź folder Spam i spróbuj ponownie.',
+        'email_send_failed' =>
+          'Nie udało się wysłać e-maila z hasłem. Sprawdź folder Spam i spróbuj ponownie.',
+        'email_not_configured' =>
+          'Wysyłka e-mail jest tymczasowo niedostępna. Spróbuj później lub skontaktuj się z supportem.',
+        'email_send_timeout' =>
+          'Serwer poczty nie odpowiedział na czas. Spróbuj ponownie za chwilę.',
         'Too many requests, try again later' =>
           'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
         'invalid_request' => 'Podaj prawidłowy adres e-mail.',
