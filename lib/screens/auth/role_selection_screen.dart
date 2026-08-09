@@ -678,10 +678,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               const SnackBar(
                                 content: Text(
                                   'Jeśli konto istnieje, wysłaliśmy jednorazowe hasło. '
-                                  'Zaloguj się nim, potem zmień hasło w Ustawieniach.',
+                                  'Skopiuj je bez spacji, zaloguj się, potem zmień hasło w Ustawieniach.',
                                 ),
                                 backgroundColor: AppTheme.successColor,
-                                duration: Duration(seconds: 6),
+                                duration: Duration(seconds: 7),
                               ),
                             );
                           } else {
@@ -724,7 +724,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Future<void> _submit() async {
     final appProvider = context.read<AppProvider>();
     final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+    // Strip whitespace from paste (some mail clients insert spaces when copying).
+    final password = _passwordController.text.replaceAll(RegExp(r'\s+'), '');
 
     if (_mode != _AuthMode.joinChild) {
       if (email.isEmpty || password.isEmpty) {
