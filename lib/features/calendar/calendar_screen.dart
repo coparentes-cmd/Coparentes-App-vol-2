@@ -1,28 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../data/api/app_api_client.dart';
 import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
-import '../../../providers/calendar_provider.dart';
 import '../../../theme/app_theme.dart';
-import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/layout_utils.dart';
-import '../../../widgets/common_widgets.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
 import '../../../widgets/google_style_month_calendar.dart';
 import '../../../widgets/custody_schedule_wizard.dart';
 import 'calendar_helpers.dart';
 import 'widgets/legend_item.dart';
 import 'widgets/selected_day_card.dart';
-import 'widgets/swap_card.dart';
 import 'widgets/add_event_sheet.dart';
 import 'widgets/swap_request_sheet.dart';
-import 'widgets/swap_reject_sheet.dart';
 import 'widgets/schedule_setup_banner.dart';
 import 'widgets/pending_schedule_banner.dart';
-import 'widgets/schedule_request_card.dart';
-import 'widgets/exception_request_card.dart';
 import 'widgets/day_action_buttons.dart';
 import 'widgets/exception_request_sheet.dart';
 
@@ -42,11 +34,9 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen>
-    with SingleTickerProviderStateMixin {
+class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
-  late TabController _tabController;
   Timer? _liveRefreshTimer;
 
   static const _liveRefreshInterval = Duration(seconds: 12);
@@ -54,7 +44,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     if (widget.focusDay != null) {
       _jumpToDay(widget.focusDay!);
     }
@@ -105,7 +94,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   @override
   void dispose() {
     _liveRefreshTimer?.cancel();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -123,29 +111,13 @@ class _CalendarScreenState extends State<CalendarScreen>
       _ => AppTheme.primaryTeal,
     };
 
-    final pendingRequests = calendar.pendingRequestCount;
-    final hasActiveSchedule = calendar.hasActiveSchedule;
-
-    if (isChild) {
-      return ParentTabScaffold(
-        title: 'Kalendarz opieki',
-        body: _buildCalendarTab(
-          context,
-          calendar,
-          roleColor,
-          isReadOnly,
-          user?.id,
-        ),
-      );
-    }
-
     return ParentTabScaffold(
       title: 'Kalendarz opieki',
-      actions: isReadOnly
+      actions: isChild || isReadOnly
           ? null
           : [
               _CalendarHeaderIconButton(
-                tooltip: hasActiveSchedule ? 'Zmiana grafiku' : 'Grafik opieki',
+                tooltip: 'Grafik opieki',
                 icon: Icons.settings,
                 backgroundColor: AppTheme.primaryTeal,
                 onPressed: () => _openScheduleWizard(context),
@@ -157,49 +129,12 @@ class _CalendarScreenState extends State<CalendarScreen>
                 onPressed: () => _addEvent(context),
               ),
             ],
-      tabBar: TabBar(
-        controller: _tabController,
-        indicatorColor: Colors.white,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white70,
-        tabs: [
-          const Tab(text: 'Grafik'),
-          Tab(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Prośby'),
-                if (pendingRequests > 0) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$pendingRequests',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: roleColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildCalendarTab(context, calendar, roleColor, isReadOnly, user?.id),
-          _buildRequestsTab(context, calendar, user?.id),
-        ],
+      body: _buildCalendarTab(
+        context,
+        calendar,
+        roleColor,
+        isReadOnly,
+        user?.id,
       ),
     );
   }
@@ -481,7 +416,7 @@ class _CalendarScreenState extends State<CalendarScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Grafik wysłany do akceptacji. Drugi rodzic zobaczy go w Prośbach i w czacie.',
+            'Grafik wysłany do akceptacji. Drugi rodzic zobaczy go w banerze kalendarza i w czacie.',
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -636,152 +571,6 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  Widget _buildRequestsTab(
-    BuildContext context,
-    CalendarProvider calendar,
-    String? userId,
-  ) {
-    final schedule = calendar.custodySchedule;
-    final pendingExceptions = calendar.pendingExceptions;
-    final swaps = calendar.swapRequests
-        .where((item) => item.status == SwapStatus.pending)
-        .toList();
-
-    if (schedule?.status != CustodyScheduleStatus.pendingApproval &&
-        pendingExceptions.isEmpty &&
-        swaps.isEmpty) {
-      return const EmptyState(
-        icon: Icons.inbox_outlined,
-        title: 'Brak oczekujących próśb',
-        subtitle:
-            'Propozycje grafiku, wyjątki i zamiany dni pojawią się tutaj',
-      );
-    }
-
-    var assignedKeyboardAccept = false;
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (schedule?.status == CustodyScheduleStatus.pendingApproval) ...[
-          Builder(
-            builder: (context) {
-              final canRespond = calendar.canRespondToPendingSchedule(userId);
-              final autofocus = canRespond && !assignedKeyboardAccept;
-              if (autofocus) {
-                assignedKeyboardAccept = true;
-              }
-              return ScheduleRequestCard(
-                schedule: schedule!,
-                canRespond: canRespond,
-                keyboardAcceptAutofocus: autofocus,
-                onAccept: () => _respondToSchedule(context, approve: true),
-                onReject: () => _respondToSchedule(context, approve: false),
-              );
-            },
-          ),
-        ],
-        ...pendingExceptions.map(
-          (exception) {
-            final canRespond =
-                calendar.canRespondToException(exception, userId);
-            final autofocus = canRespond && !assignedKeyboardAccept;
-            if (autofocus) {
-              assignedKeyboardAccept = true;
-            }
-            return ExceptionRequestCard(
-              exception: exception,
-              canRespond: canRespond,
-              keyboardAcceptAutofocus: autofocus,
-              onAccept: () => _respondToException(context, exception, true),
-              onReject: () => _respondToException(context, exception, false),
-            );
-          },
-        ),
-        ...swaps.map(
-          (swap) {
-            final isMyRequest = swap.requesterId == userId;
-            final canRespond =
-                swap.status == SwapStatus.pending && !isMyRequest;
-            final autofocus = canRespond && !assignedKeyboardAccept;
-            if (autofocus) {
-              assignedKeyboardAccept = true;
-            }
-            return SwapCard(
-              swap: swap,
-              isMyRequest: isMyRequest,
-              canRespond: canRespond,
-              keyboardAcceptAutofocus: autofocus,
-              onAccept: () async {
-                try {
-                  await calendar.respondToSwap(
-                    swap.id,
-                    SwapStatus.accepted,
-                    note: 'Akceptuję',
-                  );
-                  if (!context.mounted) return;
-                  await _refreshSwapMessaging(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Zamiana zaakceptowana. Grafik opieki został zaktualizowany.',
-                      ),
-                      backgroundColor: AppTheme.successColor,
-                    ),
-                  );
-                } catch (error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        calendarActionError(error, 'akceptacji zamiany'),
-                      ),
-                      backgroundColor: AppTheme.errorColor,
-                    ),
-                  );
-                }
-              },
-              onReject: () => _showSwapRejectSheet(context, swap),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Future<void> _respondToException(
-    BuildContext context,
-    CustodyException exception,
-    bool approve,
-  ) async {
-    try {
-      await context.read<CalendarProvider>().respondToException(
-            exceptionId: exception.id,
-            approve: approve,
-          );
-      if (!context.mounted) return;
-      await _refreshSwapMessaging(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            approve
-                ? 'Wyjątek zaakceptowany — kalendarz zaktualizowany.'
-                : 'Wniosek o wyjątek został odrzucony.',
-          ),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(calendarActionError(error, 'odpowiedzi na wyjątek')),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-    }
-  }
-
   void _addEvent(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -822,20 +611,6 @@ class _CalendarScreenState extends State<CalendarScreen>
           notifyEnabled: context.read<AppProvider>().notifyMessages,
           silent: true,
         );
-  }
-
-  void _showSwapRejectSheet(BuildContext context, SwapRequest swap) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => SwapRejectSheet(
-        swap: swap,
-        onSubmitted: () => _refreshSwapMessaging(context),
-      ),
-    );
   }
 }
 

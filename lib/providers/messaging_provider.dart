@@ -653,7 +653,7 @@ class MessagingProvider extends ChangeNotifier {
       if (schedule.handoverLocation != null)
         'Miejsce: ${schedule.handoverLocation}',
       '',
-      'Zaakceptuj lub odrzuć w Kalendarz → Prośby.',
+      'Zaakceptuj lub odrzuć w Kalendarzu lub w czacie Zmiana grafiku.',
     ].join('\n');
 
     final now = DateTime.now();

@@ -543,9 +543,11 @@ class AppProvider extends ChangeNotifier {
     } on ApiException catch (error) {
       _authError = switch (error.message) {
         'otp_email_failed' =>
-          'Nie udało się wysłać e-maila z hasłem. Sprawdź folder Spam i spróbuj ponownie.',
+          _passwordResetMailHint(error.data) ??
+              'Nie udało się wysłać e-maila z hasłem. Sprawdź folder Spam i spróbuj ponownie.',
         'email_send_failed' =>
-          'Nie udało się wysłać e-maila z hasłem. Sprawdź folder Spam i spróbuj ponownie.',
+          _passwordResetMailHint(error.data) ??
+              'Nie udało się wysłać e-maila z hasłem. Sprawdź folder Spam i spróbuj ponownie.',
         'email_not_configured' =>
           'Wysyłka e-mail jest tymczasowo niedostępna. Spróbuj później lub skontaktuj się z supportem.',
         'email_send_timeout' =>
@@ -562,6 +564,20 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  static String? _passwordResetMailHint(Map<String, dynamic>? data) {
+    final reason = data?['reason'] as String?;
+    if (reason == null || reason.isEmpty) {
+      return null;
+    }
+    final lower = reason.toLowerCase();
+    if (lower.contains('domain is not verified') ||
+        lower.contains('not verified')) {
+      return 'Serwer poczty ma złą konfigurację nadawcy (domena niezweryfikowana w Resend). '
+          'Ustaw RESEND_FROM_EMAIL na adres @getcoparentes.app po weryfikacji domeny.';
+    }
+    return null;
   }
 
   Future<EmailInviteSendResult?> sendEmailInvite(String email) async {
