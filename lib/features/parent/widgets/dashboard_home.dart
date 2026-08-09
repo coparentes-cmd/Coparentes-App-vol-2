@@ -244,7 +244,6 @@ class _DashboardHomeState extends State<DashboardHome> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TodayCard(
                     date: today,
-                    pendingSwaps: pendingSwaps.length,
                     roleColor: roleColor,
                     custodyLabel:
                         todaySlots.isNotEmpty ? custodyText : null,

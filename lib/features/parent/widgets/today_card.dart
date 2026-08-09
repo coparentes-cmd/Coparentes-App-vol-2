@@ -5,7 +5,6 @@ import '../../../../theme/app_theme.dart';
 /// Compact Today header: date and custody — handover has its own bar below.
 class TodayCard extends StatelessWidget {
   final DateTime date;
-  final int pendingSwaps;
   final Color roleColor;
   final String? custodyLabel;
   final VoidCallback onTap;
@@ -13,7 +12,6 @@ class TodayCard extends StatelessWidget {
   const TodayCard({
     super.key,
     required this.date,
-    required this.pendingSwaps,
     required this.roleColor,
     this.custodyLabel,
     required this.onTap,
@@ -72,45 +70,19 @@ class TodayCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Icon(Icons.event, color: roleColor, size: 20),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Dziś · $_dateLabel',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: roleColor,
-                              ),
-                            ),
-                          ),
-                        ],
+                    Icon(Icons.event, color: roleColor, size: 20),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Dziś · $_dateLabel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: roleColor,
+                        ),
                       ),
                     ),
-                    if (pendingSwaps > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.warningColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$pendingSwaps zamiana',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.warningColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 if (custodyLabel != null) ...[

@@ -101,6 +101,14 @@ class AddEventSheetState extends State<AddEventSheet> {
       context: context,
       initialTime: _selectedTime,
       initialEntryMode: TimePickerEntryMode.inputOnly,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            alwaysUse24HourFormat: true,
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
     if (picked != null) {
       setState(() => _selectedTime = picked);
