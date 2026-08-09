@@ -1,24 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/country_profiles.dart';
-import '../../../../config/legal_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
-import '../../../screens/auth/child_onboarding_sheet.dart';
-import '../../../screens/settings/privacy_consents_section.dart';
-
-import 'edit_profile_sheet.dart';
-import 'change_password_sheet.dart';
-import 'section_header.dart';
-import 'settings_card.dart';
-import 'settings_divider.dart';
-import 'info_tile.dart';
-import 'action_tile.dart';
-import 'switch_tile.dart';
-import 'setup_pin_sheet.dart';
-import 'change_pin_sheet.dart';
 
 class EmailInviteSheet extends StatefulWidget {
   final Color color;
@@ -63,6 +50,98 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
     super.dispose();
   }
 
+  Future<bool> _openMailtoFallback({
+    required String email,
+    required String inviteCode,
+    required String workspaceName,
+  }) async {
+    final subject = Uri.encodeComponent('Zaproszenie do Coparentes');
+    final body = Uri.encodeComponent(
+      'Cześć!\n\n'
+      'Zapraszam Cię do wspólnej przestrzeni „$workspaceName” w Coparentes.\n\n'
+      'Kod dołączenia: $inviteCode\n\n'
+      '1. Otwórz https://getcoparentes.app\n'
+      '2. Wybierz zakładkę Dołączanie\n'
+      '3. Wpisz kod i załóż konto\n\n'
+      'Do zobaczenia w aplikacji!',
+    );
+    final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
+    return launchUrl(uri);
+  }
+
+  Future<void> _submit() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final ap = context.read<AppProvider>();
+    final result = await ap.sendEmailInvite(email);
+    if (!mounted) {
+      return;
+    }
+
+    var ok = result != null;
+    var message = ap.authError ?? 'Nie udało się wysłać zaproszenia.';
+    var successColor = false;
+
+    if (result != null) {
+      final code = result.inviteCode ??
+          ap.currentWorkspace?.inviteCode ??
+          '';
+      final workspaceName =
+          ap.currentWorkspace?.name ?? 'Coparentes';
+
+      if (result.emailSent) {
+        message = 'Zaproszenie z kodem wysłane na $email ✓';
+        successColor = true;
+        _emailController.clear();
+        await _loadInvites();
+      } else if (code.isNotEmpty) {
+        final launched = await _openMailtoFallback(
+          email: email,
+          inviteCode: code,
+          workspaceName: workspaceName,
+        );
+        await Clipboard.setData(ClipboardData(text: code));
+        if (!mounted) {
+          return;
+        }
+        if (launched) {
+          message =
+              'Otworzono e-mail z kodem $code. Wyślij wiadomość z klienta poczty.';
+          successColor = true;
+          _emailController.clear();
+          await _loadInvites();
+        } else {
+          message =
+              'Serwer e-mail niedostępny. Kod $code skopiowany do schowka — wyślij go partnerowi.';
+          successColor = true;
+          ok = true;
+          _emailController.clear();
+          await _loadInvites();
+        }
+      } else {
+        message = 'Zaproszenie zapisane, ale nie udało się wysłać e-maila.';
+        ok = false;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() => _submitting = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor:
+            successColor || ok ? AppTheme.successColor : AppTheme.errorColor,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -82,13 +161,19 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Wyślemy link akceptacji na podany adres. Partner musi mieć konto Coparentes, aby zaakceptować zaproszenie.',
+            'Wyślemy kod dołączenia na podany adres. Partner wybiera Dołączanie w aplikacji i wpisuje kod.',
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) {
+              if (!_submitting) {
+                _submit();
+              }
+            },
             decoration: const InputDecoration(
               labelText: 'E-mail partnera',
               prefixIcon: Icon(Icons.email_outlined),
@@ -98,35 +183,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _submitting
-                  ? null
-                  : () async {
-                      final email = _emailController.text.trim();
-                      if (email.isEmpty) return;
-
-                      setState(() => _submitting = true);
-                      final ap = context.read<AppProvider>();
-                      final ok = await ap.sendEmailInvite(email);
-                      if (!context.mounted) return;
-                      setState(() => _submitting = false);
-
-                      if (ok) {
-                        _emailController.clear();
-                        await _loadInvites();
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            ok
-                                ? 'Zaproszenie wysłane ✓'
-                                : (ap.authError ?? 'Nie udało się wysłać zaproszenia.'),
-                          ),
-                          backgroundColor:
-                              ok ? AppTheme.successColor : AppTheme.errorColor,
-                        ),
-                      );
-                    },
+              onPressed: _submitting ? null : _submit,
               style: ElevatedButton.styleFrom(backgroundColor: widget.color),
               child: _submitting
                   ? const SizedBox(
@@ -137,8 +194,10 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Wyślij zaproszenie',
-                      style: TextStyle(color: Colors.white)),
+                  : const Text(
+                      'Wyślij zaproszenie',
+                      style: TextStyle(color: Colors.white),
+                    ),
             ),
           ),
           const SizedBox(height: 20),
@@ -159,7 +218,8 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
                   (invite) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.mail_outline, size: 20),
-                    title: Text(invite.email, style: const TextStyle(fontSize: 14)),
+                    title:
+                        Text(invite.email, style: const TextStyle(fontSize: 14)),
                     subtitle: Text(
                       invite.status,
                       style: const TextStyle(fontSize: 12),

@@ -533,21 +533,26 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> sendEmailInvite(String email) async {
+  Future<EmailInviteSendResult?> sendEmailInvite(String email) async {
     try {
       _authError = null;
-      await _authRepository.sendEmailInvite(email: email);
-      return true;
-    } on ApiException catch (error) {
-      _authError = error.message == 'cannot_invite_self'
-          ? 'Nie możesz zaprosić samego siebie.'
-          : 'Nie udało się wysłać zaproszenia.';
+      final result = await _authRepository.sendEmailInvite(email: email);
       notifyListeners();
-      return false;
+      return result;
+    } on ApiException catch (error) {
+      _authError = switch (error.message) {
+        'cannot_invite_self' => 'Nie możesz zaprosić samego siebie.',
+        'Too many requests, try again later' =>
+          'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
+        'forbidden' => 'Tylko rodzic może wysłać zaproszenie.',
+        _ => 'Nie udało się wysłać zaproszenia.',
+      };
+      notifyListeners();
+      return null;
     } catch (_) {
       _authError = 'Nie udało się wysłać zaproszenia.';
       notifyListeners();
-      return false;
+      return null;
     }
   }
 

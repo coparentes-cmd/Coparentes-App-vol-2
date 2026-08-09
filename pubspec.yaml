@@ -28,6 +28,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   pdf: ^3.11.3
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

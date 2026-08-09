@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_environment.dart';
@@ -138,137 +139,155 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           width: narrow ? constraints.maxWidth : 520,
                           child: BrandCard(
                             padding: const EdgeInsets.all(26),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _ModeSelector(
-                                  mode: _mode == _AuthMode.joinChild
-                                      ? _AuthMode.join
-                                      : _mode,
-                                  onChanged: (mode) => setState(() {
-                                    _mode = mode;
-                                    _childJoinPreview = null;
-                                  }),
-                                ),
-                                const SizedBox(height: 22),
-                                if (_backendReachable == false) ...[
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.warningColor
-                                          .withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(
-                                        color: AppTheme.warningColor
-                                            .withValues(alpha: 0.35),
-                                      ),
+                            child: CallbackShortcuts(
+                              bindings: {
+                                const SingleActivator(LogicalKeyboardKey.enter):
+                                    _submitIfIdle,
+                                const SingleActivator(
+                                  LogicalKeyboardKey.numpadEnter,
+                                ): _submitIfIdle,
+                              },
+                              child: Focus(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _ModeSelector(
+                                      mode: _mode == _AuthMode.joinChild
+                                          ? _AuthMode.join
+                                          : _mode,
+                                      onChanged: (mode) => setState(() {
+                                        _mode = mode;
+                                        _childJoinPreview = null;
+                                      }),
                                     ),
-                                    child: Text(
-                                      'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). '
-                                      'Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
-                                      style: const TextStyle(
-                                        color: AppTheme.warningColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
-                                ..._buildModeFields(),
-                                if (authError != null) ...[
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.coralColor
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(
-                                        color: AppTheme.coralColor
-                                            .withValues(alpha: 0.18),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      authError,
-                                      style: const TextStyle(
-                                        color: AppTheme.errorColor,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 20),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: _submitting ? null : _submit,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.primaryTeal,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: _submitting
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : Text(
-                                            _buttonLabel(_mode),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 15,
-                                            ),
+                                    const SizedBox(height: 22),
+                                    if (_backendReachable == false) ...[
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.warningColor
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
+                                          border: Border.all(
+                                            color: AppTheme.warningColor
+                                                .withValues(alpha: 0.35),
                                           ),
-                                  ),
-                                ),
-                                if (_mode == _AuthMode.join) ...[
-                                  const SizedBox(height: 12),
-                                  Center(
-                                    child: TextButton(
-                                      onPressed: () => setState(() {
-                                        _mode = _AuthMode.joinChild;
-                                        _childJoinPreview = null;
-                                      }),
-                                      child: const Text('Wejście dziecka'),
-                                    ),
-                                  ),
-                                ],
-                                if (_mode == _AuthMode.joinChild) ...[
-                                  const SizedBox(height: 8),
-                                  Center(
-                                    child: TextButton(
-                                      onPressed: () => setState(() {
-                                        _mode = _AuthMode.join;
-                                        _childJoinPreview = null;
-                                      }),
-                                      child: const Text(
-                                        '← Powrót do dołączania rodzica',
+                                        ),
+                                        child: Text(
+                                          'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). '
+                                          'Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
+                                          style: const TextStyle(
+                                            color: AppTheme.warningColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+                                    ..._buildModeFields(),
+                                    if (authError != null) ...[
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.coralColor
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
+                                          border: Border.all(
+                                            color: AppTheme.coralColor
+                                                .withValues(alpha: 0.18),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          authError,
+                                          style: const TextStyle(
+                                            color: AppTheme.errorColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 20),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed:
+                                            _submitting ? null : _submit,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              AppTheme.primaryTeal,
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        child: _submitting
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : Text(
+                                                _buttonLabel(_mode),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                                const SizedBox(height: 14),
-                                if (_mode != _AuthMode.register)
-                                  Text(
-                                    'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną ${LegalConfig.websiteUrl}.',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
-                                  ),
-                              ],
+                                    if (_mode == _AuthMode.join) ...[
+                                      const SizedBox(height: 12),
+                                      Center(
+                                        child: TextButton(
+                                          onPressed: () => setState(() {
+                                            _mode = _AuthMode.joinChild;
+                                            _childJoinPreview = null;
+                                          }),
+                                          child: const Text('Wejście dziecka'),
+                                        ),
+                                      ),
+                                    ],
+                                    if (_mode == _AuthMode.joinChild) ...[
+                                      const SizedBox(height: 8),
+                                      Center(
+                                        child: TextButton(
+                                          onPressed: () => setState(() {
+                                            _mode = _AuthMode.join;
+                                            _childJoinPreview = null;
+                                          }),
+                                          child: const Text(
+                                            '← Powrót do dołączania rodzica',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 14),
+                                    if (_mode != _AuthMode.register)
+                                      Text(
+                                        'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną ${LegalConfig.websiteUrl}.',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -317,12 +336,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             label: 'E-mail',
             hint: 'twoj@email.pl',
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _passwordController,
             label: 'Hasło',
             hint: 'Minimum 10 znaków',
             obscureText: true,
+            textInputAction: TextInputAction.go,
+            onSubmitted: (_) => _submitIfIdle(),
           ),
         ];
       case _AuthMode.register:
@@ -331,11 +354,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             controller: _firstNameController,
             label: 'Imię',
             hint: 'np. Anna',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _lastNameController,
             label: 'Nazwisko',
             hint: 'np. Kowalska',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -361,20 +388,26 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           _Field(
             controller: _workspaceController,
-            label: 'Nazwa przestrzeni rodzinnej',
+            label: 'Nazwa przestrzeni',
             hint: 'np. Rodzina Kowalska',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _emailController,
             label: 'E-mail',
             hint: 'twoj@email.pl',
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _passwordController,
             label: 'Hasło',
             hint: 'Minimum 10 znaków',
             obscureText: true,
+            textInputAction: TextInputAction.go,
+            onSubmitted: (_) => _submitIfIdle(),
           ),
         ];
       case _AuthMode.join:
@@ -383,23 +416,31 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             controller: _inviteCodeController,
             label: 'Kod zaproszenia do przestrzeni',
             hint: 'np. RODZINA-AB12',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _nameController,
             label: 'Imię i nazwisko',
             hint: 'np. Marek Kowalski',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _emailController,
             label: 'E-mail',
             hint: 'twoj@email.pl',
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _passwordController,
             label: 'Hasło',
             hint: 'Minimum 10 znaków',
             obscureText: true,
+            textInputAction: TextInputAction.go,
+            onSubmitted: (_) => _submitIfIdle(),
           ),
         ];
       case _AuthMode.joinChild:
@@ -408,6 +449,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             controller: _childInviteCodeController,
             label: 'Kod zaproszenia dziecka',
             hint: 'np. DZIECIKOWAL2026',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -466,12 +509,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             controller: _nameController,
             label: 'Imię (przy pierwszym logowaniu)',
             hint: 'np. Zosia',
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _passwordController,
             label: 'Hasło',
             hint: 'Minimum 10 znaków',
             obscureText: true,
+            textInputAction: TextInputAction.go,
+            onSubmitted: (_) => _submitIfIdle(),
           ),
         ];
     }
@@ -521,6 +568,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         'Brak profili dzieci. Poproś rodzica o dodanie Twojego profilu.',
       );
     }
+  }
+
+  void _submitIfIdle() {
+    if (_submitting) {
+      return;
+    }
+    _submit();
   }
 
   Future<void> _submit() async {
@@ -736,10 +790,16 @@ class _BrandIntroCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.toys_outlined,
-                      color: AppTheme.primaryTeal,
-                      size: 28,
+                    Image.asset(
+                      'assets/branding/demo-horse.png',
+                      width: 36,
+                      height: 29,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.toys_outlined,
+                        color: AppTheme.primaryTeal,
+                        size: 28,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1005,6 +1065,8 @@ class _Field extends StatelessWidget {
   final String hint;
   final bool obscureText;
   final TextInputType keyboardType;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   const _Field({
     required this.controller,
@@ -1012,6 +1074,8 @@ class _Field extends StatelessWidget {
     required this.hint,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
+    this.textInputAction = TextInputAction.next,
+    this.onSubmitted,
   });
 
   @override
@@ -1022,6 +1086,8 @@ class _Field extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
         decoration: InputDecoration(labelText: label, hintText: hint),
       ),
     );

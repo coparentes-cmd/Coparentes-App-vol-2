@@ -305,12 +305,16 @@ class AuthRepository {
     });
   }
 
-  Future<EmailInvite> sendEmailInvite({required String email}) async {
+  Future<EmailInviteSendResult> sendEmailInvite({required String email}) async {
     final payload = await _apiClient.postJson('/invite/send', {
       'email': email.trim().toLowerCase(),
     });
-    return emailInviteFromJson(
-      Map<String, dynamic>.from(payload['invite'] as Map),
+    return EmailInviteSendResult(
+      invite: emailInviteFromJson(
+        Map<String, dynamic>.from(payload['invite'] as Map),
+      ),
+      emailSent: payload['emailSent'] == true,
+      inviteCode: payload['inviteCode'] as String?,
     );
   }
 

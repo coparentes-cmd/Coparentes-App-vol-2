@@ -51,3 +51,15 @@ class EmailInvite {
     this.acceptedAt,
   });
 }
+
+class EmailInviteSendResult {
+  final EmailInvite invite;
+  final bool emailSent;
+  final String? inviteCode;
+
+  EmailInviteSendResult({
+    required this.invite,
+    required this.emailSent,
+    this.inviteCode,
+  });
+}
