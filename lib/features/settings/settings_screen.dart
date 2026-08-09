@@ -170,7 +170,7 @@ class SettingsScreen extends StatelessWidget {
                     SettingsDivider(),
                     InfoTile(
                       icon: Icons.group_outlined,
-                      label: 'Workspace',
+                      label: 'Nazwa przestrzeni',
                       value: workspace?.name ?? '—',
                       isDark: isDark,
                     ),
@@ -178,7 +178,7 @@ class SettingsScreen extends StatelessWidget {
                       SettingsDivider(),
                       InfoTile(
                         icon: Icons.people_outline,
-                        label: 'Członkowie rodziny',
+                        label: 'Członkowie',
                         value:
                             '${workspace.members.length} (${workspace.members.map((m) => m.name.split(' ').first).join(', ')})',
                         isDark: isDark,

@@ -26,12 +26,15 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   _AuthMode _mode = _AuthMode.login;
   final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _workspaceController = TextEditingController();
   final _inviteCodeController = TextEditingController();
   final _childInviteCodeController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
+  bool _registerIsMama = true;
   bool? _backendReachable;
   ChildJoinPreview? _childJoinPreview;
   bool _loadingChildPreview = false;
@@ -40,7 +43,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBackendReachability());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _checkBackendReachability());
   }
 
   Future<void> _checkBackendReachability() async {
@@ -65,12 +69,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _workspaceController.dispose();
     _inviteCodeController.dispose();
     _childInviteCodeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  String get _composedRegisterName {
+    final first = _firstNameController.text.trim();
+    final last = _lastNameController.text.trim();
+    return '$first $last'.trim();
   }
 
   @override
@@ -95,7 +107,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 maxWidth: LayoutTokens.authMarketingMax,
               ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final narrow =
@@ -108,7 +121,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       children: [
                         SizedBox(
                           width: narrow ? constraints.maxWidth : 420,
-                          child: _BrandIntroCard(mode: _mode),
+                          child: _BrandIntroCard(
+                            onDemoHorseTap: _submitting
+                                ? null
+                                : () => _showDemoPicker(context),
+                          ),
                         ),
                         SizedBox(
                           width: narrow ? constraints.maxWidth : 520,
@@ -118,29 +135,26 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _ModeSelector(
-                                  mode: _mode,
-                                  onChanged: (mode) => setState(() => _mode = mode),
+                                  mode: _mode == _AuthMode.joinChild
+                                      ? _AuthMode.join
+                                      : _mode,
+                                  onChanged: (mode) => setState(() {
+                                    _mode = mode;
+                                    _childJoinPreview = null;
+                                  }),
                                 ),
                                 const SizedBox(height: 22),
-                                Text(
-                                  _titleForMode(_mode),
-                                  style: Theme.of(context).textTheme.headlineSmall,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _subtitleForMode(_mode),
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                                const SizedBox(height: 20),
                                 if (_backendReachable == false) ...[
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.warningColor.withValues(alpha: 0.12),
+                                      color: AppTheme.warningColor
+                                          .withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
-                                        color: AppTheme.warningColor.withValues(alpha: 0.35),
+                                        color: AppTheme.warningColor
+                                            .withValues(alpha: 0.35),
                                       ),
                                     ),
                                     child: Text(
@@ -155,111 +169,19 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                   ),
                                   const SizedBox(height: 12),
                                 ],
-                                if (_mode != _AuthMode.login)
-                                  _Field(
-                                    controller: _nameController,
-                                    label: _mode == _AuthMode.joinChild
-                                        ? 'Imię (przy pierwszym logowaniu)'
-                                        : 'Imię i nazwisko',
-                                    hint: _mode == _AuthMode.joinChild
-                                        ? 'np. Zosia'
-                                        : 'np. Anna Kowalska',
-                                  ),
-                                if (_mode == _AuthMode.register)
-                                  _Field(
-                                    controller: _workspaceController,
-                                    label: 'Nazwa przestrzeni rodzinnej',
-                                    hint: 'np. Rodzina Kowalska',
-                                  ),
-                                if (_mode == _AuthMode.join)
-                                  _Field(
-                                    controller: _inviteCodeController,
-                                    label: 'Kod zaproszenia rodzica',
-                                    hint: 'np. RODZINA-AB12',
-                                  ),
-                                if (_mode == _AuthMode.joinChild) ...[
-                                  _Field(
-                                    controller: _childInviteCodeController,
-                                    label: 'Kod zaproszenia dziecka',
-                                    hint: 'np. DZIECIKOWAL2026',
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: _loadingChildPreview ? null : _loadChildPreview,
-                                      child: _loadingChildPreview
-                                          ? const SizedBox(
-                                              width: 18,
-                                              height: 18,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            )
-                                          : const Text('Sprawdź kod'),
-                                    ),
-                                  ),
-                                  if (_childJoinPreview != null) ...[
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.childColor.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: AppTheme.childColor.withValues(alpha: 0.2),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Rodzina: ${_childJoinPreview!.workspaceName}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Podaj datę urodzenia z profilu dodanego przez rodzica.',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 12),
-                                  ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text('Data urodzenia'),
-                                    subtitle: Text(
-                                      '${_childDateOfBirth.day.toString().padLeft(2, '0')}.'
-                                      '${_childDateOfBirth.month.toString().padLeft(2, '0')}.'
-                                      '${_childDateOfBirth.year}',
-                                    ),
-                                    trailing: const Icon(Icons.calendar_today_outlined),
-                                    onTap: _pickChildDateOfBirth,
-                                  ),
-                                ],
-                                if (_mode != _AuthMode.joinChild)
-                                  _Field(
-                                    controller: _emailController,
-                                    label: 'E-mail',
-                                    hint: 'twoj@email.pl',
-                                    keyboardType: TextInputType.emailAddress,
-                                  ),
-                                _Field(
-                                  controller: _passwordController,
-                                  label: 'Hasło',
-                                  hint: 'Minimum 10 znaków',
-                                  obscureText: true,
-                                ),
+                                ..._buildModeFields(),
                                 if (authError != null) ...[
                                   const SizedBox(height: 6),
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
-                                      color: AppTheme.coralColor.withValues(alpha: 0.1),
+                                      color: AppTheme.coralColor
+                                          .withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
-                                        color: AppTheme.coralColor.withValues(alpha: 0.18),
+                                        color: AppTheme.coralColor
+                                            .withValues(alpha: 0.18),
                                       ),
                                     ),
                                     child: Text(
@@ -275,124 +197,69 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                 const SizedBox(height: 20),
                                 SizedBox(
                                   width: double.infinity,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      gradient: AppTheme.brandGradient,
-                                      borderRadius: BorderRadius.circular(999),
-                                      boxShadow: AppTheme.softShadow,
-                                    ),
-                                    child: ElevatedButton(
-                                      onPressed: _submitting ? null : _submit,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.transparent,
-                                        shadowColor: Colors.transparent,
+                                  child: ElevatedButton(
+                                    onPressed: _submitting ? null : _submit,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryTeal,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
                                       ),
-                                      child: _submitting
-                                          ? const SizedBox(
-                                              width: 18,
-                                              height: 18,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                            )
-                                          : Text(_buttonLabel(_mode)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(height: 18),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(22),
-                                    border: Border.all(color: AppTheme.dividerColor),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 36,
-                                            height: 36,
-                                            decoration: BoxDecoration(
-                                              gradient: AppTheme.brandGradient,
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: const Icon(
-                                              Icons.visibility_outlined,
+                                    child: _submitting
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
                                               color: Colors.white,
-                                              size: 18,
+                                            ),
+                                          )
+                                        : Text(
+                                            _buttonLabel(_mode),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Tryb demo — obejrzyj wszystkie role',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  'Wejście bez hasła i bez kodu zaproszenia. Idealne do prezentacji MVP.',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodySmall,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 14),
-                                      Wrap(
-                                        spacing: 10,
-                                        runSpacing: 10,
-                                        children: [
-                                          _DemoRoleButton(
-                                            icon: Icons.family_restroom,
-                                            label: 'Rodzic A',
-                                            onTap: _submitting
-                                                ? null
-                                                : () => _enterDemoRole(UserRole.parentA),
-                                          ),
-                                          _DemoRoleButton(
-                                            icon: Icons.family_restroom,
-                                            label: 'Rodzic B',
-                                            onTap: _submitting
-                                                ? null
-                                                : () => _enterDemoRole(UserRole.parentB),
-                                          ),
-                                          _DemoRoleButton(
-                                            icon: Icons.child_care,
-                                            label: 'Dziecko',
-                                            onTap: _submitting
-                                                ? null
-                                                : () => _enterDemoRole(UserRole.child),
-                                          ),
-                                          _DemoRoleButton(
-                                            icon: Icons.visibility,
-                                            label: 'Observer',
-                                            onTap: _submitting
-                                                ? null
-                                                : () => _enterDemoRole(UserRole.observer),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
                                   ),
                                 ),
+                                if (_mode == _AuthMode.join) ...[
+                                  const SizedBox(height: 12),
+                                  Center(
+                                    child: TextButton(
+                                      onPressed: () => setState(() {
+                                        _mode = _AuthMode.joinChild;
+                                        _childJoinPreview = null;
+                                      }),
+                                      child: const Text('Wejście dziecka'),
+                                    ),
+                                  ),
+                                ],
+                                if (_mode == _AuthMode.joinChild) ...[
+                                  const SizedBox(height: 8),
+                                  Center(
+                                    child: TextButton(
+                                      onPressed: () => setState(() {
+                                        _mode = _AuthMode.join;
+                                        _childJoinPreview = null;
+                                      }),
+                                      child: const Text(
+                                        '← Powrót do dołączania rodzica',
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 14),
                                 if (_mode != _AuthMode.register)
                                   Text(
                                     'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną ${LegalConfig.websiteUrl}.',
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
                                   ),
                               ],
                             ),
@@ -404,10 +271,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppTheme.yellowColor.withValues(alpha: 0.18),
+                                color: AppTheme.yellowColor
+                                    .withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: AppTheme.yellowColor.withValues(alpha: 0.45),
+                                  color: AppTheme.yellowColor
+                                      .withValues(alpha: 0.45),
                                 ),
                               ),
                               child: const Text(
@@ -430,6 +299,213 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildModeFields() {
+    switch (_mode) {
+      case _AuthMode.login:
+        return [
+          _Field(
+            controller: _emailController,
+            label: 'E-mail',
+            hint: 'twoj@email.pl',
+            keyboardType: TextInputType.emailAddress,
+          ),
+          _Field(
+            controller: _passwordController,
+            label: 'Hasło',
+            hint: 'Minimum 10 znaków',
+            obscureText: true,
+          ),
+        ];
+      case _AuthMode.register:
+        return [
+          _Field(
+            controller: _firstNameController,
+            label: 'Imię',
+            hint: 'np. Anna',
+          ),
+          _Field(
+            controller: _lastNameController,
+            label: 'Nazwisko',
+            hint: 'np. Kowalska',
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _RoleChoiceChip(
+                    label: 'Mama',
+                    selected: _registerIsMama,
+                    onTap: () => setState(() => _registerIsMama = true),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _RoleChoiceChip(
+                    label: 'Tata',
+                    selected: !_registerIsMama,
+                    onTap: () => setState(() => _registerIsMama = false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _Field(
+            controller: _workspaceController,
+            label: 'Nazwa przestrzeni rodzinnej',
+            hint: 'np. Rodzina Kowalska',
+          ),
+          _Field(
+            controller: _emailController,
+            label: 'E-mail',
+            hint: 'twoj@email.pl',
+            keyboardType: TextInputType.emailAddress,
+          ),
+          _Field(
+            controller: _passwordController,
+            label: 'Hasło',
+            hint: 'Minimum 10 znaków',
+            obscureText: true,
+          ),
+        ];
+      case _AuthMode.join:
+        return [
+          _Field(
+            controller: _inviteCodeController,
+            label: 'Kod zaproszenia do przestrzeni',
+            hint: 'np. RODZINA-AB12',
+          ),
+          _Field(
+            controller: _nameController,
+            label: 'Imię i nazwisko',
+            hint: 'np. Marek Kowalski',
+          ),
+          _Field(
+            controller: _emailController,
+            label: 'E-mail',
+            hint: 'twoj@email.pl',
+            keyboardType: TextInputType.emailAddress,
+          ),
+          _Field(
+            controller: _passwordController,
+            label: 'Hasło',
+            hint: 'Minimum 10 znaków',
+            obscureText: true,
+          ),
+        ];
+      case _AuthMode.joinChild:
+        return [
+          _Field(
+            controller: _childInviteCodeController,
+            label: 'Kod zaproszenia dziecka',
+            hint: 'np. DZIECIKOWAL2026',
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _loadingChildPreview ? null : _loadChildPreview,
+              child: _loadingChildPreview
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Sprawdź kod'),
+            ),
+          ),
+          if (_childJoinPreview != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.childColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.childColor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Text(
+                'Rodzina: ${_childJoinPreview!.workspaceName}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Podaj datę urodzenia z profilu dodanego przez rodzica.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Data urodzenia'),
+              subtitle: Text(
+                '${_childDateOfBirth.day.toString().padLeft(2, '0')}.'
+                '${_childDateOfBirth.month.toString().padLeft(2, '0')}.'
+                '${_childDateOfBirth.year}',
+              ),
+              trailing: const Icon(Icons.calendar_today_outlined),
+              onTap: _pickChildDateOfBirth,
+            ),
+          ],
+          _Field(
+            controller: _nameController,
+            label: 'Imię (przy pierwszym logowaniu)',
+            hint: 'np. Zosia',
+          ),
+          _Field(
+            controller: _passwordController,
+            label: 'Hasło',
+            hint: 'Minimum 10 znaków',
+            obscureText: true,
+          ),
+        ];
+    }
+  }
+
+  Future<void> _showDemoPicker(BuildContext context) async {
+    final role = await showDialog<UserRole>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Wybierz tryb wersji demo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _DemoRoleTile(
+              label: 'Anna — matka',
+              icon: Icons.person_outline,
+              onTap: () => Navigator.pop(context, UserRole.parentA),
+            ),
+            _DemoRoleTile(
+              label: 'Marek — ojciec',
+              icon: Icons.person,
+              onTap: () => Navigator.pop(context, UserRole.parentB),
+            ),
+            _DemoRoleTile(
+              label: 'Franek — dziecko',
+              icon: Icons.child_care,
+              onTap: () => Navigator.pop(context, UserRole.child),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+        ],
+      ),
+    );
+    if (role != null && mounted) {
+      await _enterDemoRole(role);
+    }
   }
 
   Future<void> _pickChildDateOfBirth() async {
@@ -472,7 +548,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     if (preview == null) {
       _showMessage('Nie znaleziono rodziny dla tego kodu.');
     } else if (preview.children.isEmpty) {
-      _showMessage('Brak profili dzieci. Poproś rodzica o dodanie Twojego profilu.');
+      _showMessage(
+        'Brak profili dzieci. Poproś rodzica o dodanie Twojego profilu.',
+      );
     }
   }
 
@@ -496,23 +574,44 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
-    if (_mode == _AuthMode.register || _mode == _AuthMode.join) {
-      final name = _nameController.text.trim();
+    if (_mode == _AuthMode.register) {
+      final name = _composedRegisterName;
+      if (_firstNameController.text.trim().length < 2 ||
+          _lastNameController.text.trim().length < 2) {
+        _showMessage('Uzupełnij imię i nazwisko (min. 2 znaki każde).');
+        return;
+      }
       if (name.length < 2) {
         _showMessage('Imię i nazwisko musi mieć co najmniej 2 znaki.');
         return;
       }
-    }
-
-    if (_mode == _AuthMode.register) {
       final workspaceName = _workspaceController.text.trim();
       if (workspaceName.length < 2) {
         _showMessage('Nazwa przestrzeni musi mieć co najmniej 2 znaki.');
         return;
       }
+      // Mama/Tata is UX-only — first registrant remains parentA on API.
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ConsentRegistrationScreen(
+            draft: RegistrationDraft(
+              name: name,
+              email: email,
+              password: password,
+              workspaceName: workspaceName,
+            ),
+          ),
+        ),
+      );
+      return;
     }
 
     if (_mode == _AuthMode.join) {
+      final name = _nameController.text.trim();
+      if (name.length < 2) {
+        _showMessage('Imię i nazwisko musi mieć co najmniej 2 znaki.');
+        return;
+      }
       final inviteCode = _inviteCodeController.text.trim();
       if (inviteCode.length < 6) {
         _showMessage('Kod zaproszenia musi mieć co najmniej 6 znaków.');
@@ -534,22 +633,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         _showMessage('Data urodzenia nie może być w przyszłości.');
         return;
       }
-    }
-
-    if (_mode == _AuthMode.register) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ConsentRegistrationScreen(
-            draft: RegistrationDraft(
-              name: _nameController.text.trim(),
-              email: email,
-              password: password,
-              workspaceName: _workspaceController.text.trim(),
-            ),
-          ),
-        ),
-      );
-      return;
     }
 
     setState(() => _submitting = true);
@@ -606,38 +689,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _titleForMode(_AuthMode mode) {
-    switch (mode) {
-      case _AuthMode.login:
-        return 'Zaloguj się';
-      case _AuthMode.register:
-        return 'Utwórz konto i przestrzeń';
-      case _AuthMode.join:
-        return 'Dołącz do istniejącej przestrzeni';
-      case _AuthMode.joinChild:
-        return 'Panel dziecka';
-    }
-  }
-
-  String _subtitleForMode(_AuthMode mode) {
-    switch (mode) {
-      case _AuthMode.login:
-        return 'Wejdź do wspólnej przestrzeni rodzicielskiej i zarządzaj codziennością dziecka spokojniej.';
-      case _AuthMode.register:
-        return 'Załóż pierwsze konto rodzica, skonfiguruj rodzinę i zaproś drugiego opiekuna.';
-      case _AuthMode.join:
-        return 'Wpisz kod zaproszenia rodzica (ważny 24 godziny), aby dołączyć jako drugi opiekun.';
-      case _AuthMode.joinChild:
-        return 'Wpisz kod od rodzica i datę urodzenia, aby wejść do panelu dziecka.';
-    }
-  }
-
   String _buttonLabel(_AuthMode mode) {
     switch (mode) {
       case _AuthMode.login:
         return 'Zaloguj';
       case _AuthMode.register:
-        return 'Utwórz konto';
+        return 'Zarejestruj';
       case _AuthMode.join:
         return 'Dołącz';
       case _AuthMode.joinChild:
@@ -647,19 +704,16 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 }
 
 class _BrandIntroCard extends StatelessWidget {
-  final _AuthMode mode;
-  const _BrandIntroCard({required this.mode});
+  final VoidCallback? onDemoHorseTap;
+
+  const _BrandIntroCard({required this.onDemoHorseTap});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFFFFF), Color(0xFFF7FAFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(color: AppTheme.dividerColor),
         boxShadow: AppTheme.softShadow,
@@ -667,53 +721,67 @@ class _BrandIntroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const BrandLogo(width: 186, height: 74),
-          const SizedBox(height: 18),
-          BrandGradientPill(
-            child: Text(
-              _pillText(mode),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(height: 20),
+          const BrandLogo(width: 220, height: 56),
+          const SizedBox(height: 14),
           Text(
-            'Spokojne rodzicielstwo po rozstaniu — teraz także w aplikacji.',
-            style: Theme.of(context).textTheme.headlineMedium,
+            'Spokojne rodzicielstwo po rozstaniu',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
           const _FeatureBullet(
             icon: Icons.chat_bubble_outline,
             title: 'Komunikacja',
-            subtitle: 'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.',
+            subtitle:
+                'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.',
           ),
           const SizedBox(height: 14),
           const _FeatureBullet(
             icon: Icons.calendar_month_outlined,
             title: 'Organizacja',
-            subtitle: 'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
+            subtitle:
+                'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
           ),
           const SizedBox(height: 14),
           const _FeatureBullet(
             icon: Icons.account_balance_wallet_outlined,
             title: 'Finanse',
-            subtitle: 'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
+            subtitle:
+                'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
+          ),
+          const SizedBox(height: 28),
+          InkWell(
+            onTap: onDemoHorseTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.toys_outlined,
+                    color: AppTheme.primaryTeal,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tryb demo — sprawdź czy aplikacja Ci pomoże',
+                      style: TextStyle(
+                        color: AppTheme.primaryTeal,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
-  }
-
-  String _pillText(_AuthMode mode) {
-    switch (mode) {
-      case _AuthMode.login:
-        return 'Powrót do aplikacji';
-      case _AuthMode.register:
-        return 'Nowa przestrzeń rodzinna';
-      case _AuthMode.join:
-        return 'Dołączanie do rodziny';
-      case _AuthMode.joinChild:
-        return 'Panel dziecka';
-    }
   }
 }
 
@@ -736,10 +804,10 @@ class _FeatureBullet extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            gradient: AppTheme.brandGradient,
+            color: AppTheme.primaryTeal.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(icon, color: Colors.white, size: 22),
+          child: Icon(icon, color: AppTheme.primaryTeal, size: 22),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -765,64 +833,126 @@ class _ModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<_AuthMode>(
-      style: ButtonStyle(
-        backgroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return AppTheme.primaryTeal.withValues(alpha: 0.12);
-          }
-          return Colors.white;
-        }),
-        side: WidgetStateProperty.resolveWith((states) {
-          final color = states.contains(WidgetState.selected)
-              ? AppTheme.primaryTeal.withValues(alpha: 0.24)
-              : AppTheme.dividerColor;
-          return BorderSide(color: color);
-        }),
-        shape: WidgetStateProperty.all(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          return states.contains(WidgetState.selected)
-              ? AppTheme.textPrimary
-              : AppTheme.textSecondary;
-        }),
+    final items = <(_AuthMode, String)>[
+      (_AuthMode.login, 'Logowanie'),
+      (_AuthMode.register, 'Rejestracja'),
+      (_AuthMode.join, 'Dołączanie'),
+    ];
+
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: items.map((item) {
+          final selected = mode == item.$1;
+          return Expanded(
+            child: InkWell(
+              onTap: () => onChanged(item.$1),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: selected
+                          ? AppTheme.accentColor
+                          : AppTheme.dividerColor,
+                      width: selected ? 2.5 : 1,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  item.$2,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? AppTheme.textPrimary
+                        : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
-      segments: const [
-        ButtonSegment(value: _AuthMode.login, label: Text('Logowanie')),
-        ButtonSegment(value: _AuthMode.register, label: Text('Nowa rodzina')),
-        ButtonSegment(value: _AuthMode.join, label: Text('Rodzic')),
-        ButtonSegment(value: _AuthMode.joinChild, label: Text('Dziecko')),
-      ],
-      selected: {mode},
-      onSelectionChanged: (selection) => onChanged(selection.first),
     );
   }
 }
 
-class _DemoRoleButton extends StatelessWidget {
-  final IconData icon;
+class _RoleChoiceChip extends StatelessWidget {
   final String label;
-  final VoidCallback? onTap;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _DemoRoleButton({
-    required this.icon,
+  const _RoleChoiceChip({
     required this.label,
+    required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.textPrimary,
-        side: const BorderSide(color: AppTheme.dividerColor),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Material(
+      color: selected
+          ? AppTheme.primaryTeal.withValues(alpha: 0.12)
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: selected ? AppTheme.primaryTeal : AppTheme.dividerColor,
+          width: selected ? 1.5 : 1,
+        ),
       ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                size: 18,
+                color: selected ? AppTheme.primaryTeal : AppTheme.textHint,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? AppTheme.textPrimary
+                      : AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DemoRoleTile extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _DemoRoleTile({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: AppTheme.primaryTeal),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      onTap: onTap,
     );
   }
 }
