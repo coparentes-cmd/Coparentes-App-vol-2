@@ -305,10 +305,9 @@ class _AppGateState extends State<_AppGate> {
         financeProvider.initializeSampleData();
         exportsProvider.initializeSampleData();
 
-        final loadedDemo = await calendarProvider.loadPersistedDemoIfAvailable();
-        if (!loadedDemo) {
-          calendarProvider.initializeSampleData();
-        }
+        // Always re-seed demo calendar so the fixed day (10.08.2026) and
+        // sample events are not replaced by a stale offline snapshot.
+        calendarProvider.initializeSampleData();
       } else {
         final appProvider = context.read<AppProvider>();
         final role = appProvider.currentUser?.role;

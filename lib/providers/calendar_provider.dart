@@ -187,16 +187,17 @@ class CalendarProvider extends ChangeNotifier {
     _loadedFromApi = false;
     _error = null;
 
+    // Demo clock must be active so custody slots align with 10.08.2026.
+    DemoTime.activate();
     _seedDemoCustodySlots();
 
-    // Demo is always pinned to 10.08.2026 (see DemoTime).
+    // Exactly five events on the fixed demo day (10.08.2026).
     final day = DemoTime.demoDay;
-
     _events.addAll([
       CalendarEvent(
         id: 'evt_demo_1',
         title: 'Śniadanie',
-        startDate: DateTime(day.year, day.month, day.day, 9),
+        startDate: DateTime(day.year, day.month, day.day, 9, 0),
         type: EventType.other,
         childId: 'child_001',
         createdBy: 'user_001',
@@ -205,7 +206,7 @@ class CalendarProvider extends ChangeNotifier {
       CalendarEvent(
         id: 'evt_demo_2',
         title: 'Angielski – Zosia',
-        startDate: DateTime(day.year, day.month, day.day, 11),
+        startDate: DateTime(day.year, day.month, day.day, 11, 0),
         type: EventType.school,
         childId: 'child_001',
         createdBy: 'user_001',
@@ -214,7 +215,7 @@ class CalendarProvider extends ChangeNotifier {
       CalendarEvent(
         id: 'evt_demo_3',
         title: 'Dentysta – Tomek',
-        startDate: DateTime(day.year, day.month, day.day, 14),
+        startDate: DateTime(day.year, day.month, day.day, 14, 0),
         type: EventType.medical,
         childId: 'child_002',
         createdBy: 'user_001',
@@ -232,7 +233,7 @@ class CalendarProvider extends ChangeNotifier {
       CalendarEvent(
         id: 'evt_demo_5',
         title: 'Kolacja rodzinna',
-        startDate: DateTime(day.year, day.month, day.day, 19),
+        startDate: DateTime(day.year, day.month, day.day, 19, 0),
         type: EventType.other,
         childId: 'child_001',
         createdBy: 'user_001',
