@@ -5,6 +5,7 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../config/feature_flags.dart';
 import '../../../config/messaging_categories.dart';
 import '../../../utils/app_browser_back.dart';
 import '../../../utils/layout_utils.dart';
@@ -192,11 +193,110 @@ class _ParentDashboardState extends State<ParentDashboard> {
         openExpenseRequestId: _openExpenseRequestId,
       ),
       const DocumentsScreen(),
-      const ExportsScreen(),
+      if (FeatureFlags.showExportsTab) const ExportsScreen(),
+    ];
+
+    final railDestinations = <NavigationRailDestination>[
+      const NavigationRailDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: Text('Start'),
+      ),
+      NavigationRailDestination(
+        icon: _ChatRailIcon(),
+        selectedIcon: const Icon(Icons.chat_bubble),
+        label: const Text('Czat'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.calendar_month_outlined),
+        selectedIcon: Icon(Icons.calendar_month),
+        label: Text('Kalendarz'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.account_balance_wallet_outlined),
+        selectedIcon: Icon(Icons.account_balance_wallet),
+        label: Text('Finanse'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.folder_open_outlined),
+        selectedIcon: Icon(Icons.folder_open),
+        label: Text('Dokumenty'),
+      ),
+      if (FeatureFlags.showExportsTab)
+        const NavigationRailDestination(
+          icon: Icon(Icons.folder_special_outlined),
+          selectedIcon: Icon(Icons.folder_special),
+          label: Text('Eksporty'),
+        ),
+    ];
+
+    final bottomItems = <BottomNavigationBarItem>[
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.dashboard_outlined),
+        activeIcon: Icon(Icons.dashboard),
+        label: 'Start',
+      ),
+      BottomNavigationBarItem(
+        icon: Stack(
+          children: [
+            const Icon(Icons.chat_bubble_outline),
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Consumer2<MessagingProvider, AppProvider>(
+                builder: (_, mp, ap, __) {
+                  final userId = ap.currentUser?.id;
+                  if (userId == null) {
+                    return const SizedBox.shrink();
+                  }
+                  final unread = countUnreadThreadsForViewer(
+                    mp.threads,
+                    userId,
+                  );
+                  if (unread == 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.errorColor,
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        activeIcon: const Icon(Icons.chat_bubble),
+        label: 'Czat',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.calendar_month_outlined),
+        activeIcon: Icon(Icons.calendar_month),
+        label: 'Kalendarz',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.account_balance_wallet_outlined),
+        activeIcon: Icon(Icons.account_balance_wallet),
+        label: 'Finanse',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.folder_open_outlined),
+        activeIcon: Icon(Icons.folder_open),
+        label: 'Dokumenty',
+      ),
+      if (FeatureFlags.showExportsTab)
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.folder_special_outlined),
+          activeIcon: Icon(Icons.folder_special),
+          label: 'Eksporty',
+        ),
     ];
 
     final content = IndexedStack(
-      index: _selectedIndex,
+      index: _selectedIndex.clamp(0, screens.length - 1),
       children: screens,
     );
 
@@ -228,38 +328,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                       fontSize: 12,
                     ),
                     labelType: NavigationRailLabelType.all,
-                    destinations: [
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.dashboard_outlined),
-                        selectedIcon: Icon(Icons.dashboard),
-                        label: Text('Start'),
-                      ),
-                      NavigationRailDestination(
-                        icon: _ChatRailIcon(),
-                        selectedIcon: const Icon(Icons.chat_bubble),
-                        label: const Text('Czat'),
-                      ),
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.calendar_month_outlined),
-                        selectedIcon: Icon(Icons.calendar_month),
-                        label: Text('Kalendarz'),
-                      ),
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.account_balance_wallet_outlined),
-                        selectedIcon: Icon(Icons.account_balance_wallet),
-                        label: Text('Finanse'),
-                      ),
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.folder_open_outlined),
-                        selectedIcon: Icon(Icons.folder_open),
-                        label: Text('Dokumenty'),
-                      ),
-                      const NavigationRailDestination(
-                        icon: Icon(Icons.folder_special_outlined),
-                        selectedIcon: Icon(Icons.folder_special),
-                        label: Text('Eksporty'),
-                      ),
-                    ],
+                    destinations: railDestinations,
                   ),
                   const VerticalDivider(width: 1),
                   Expanded(child: content),
@@ -289,69 +358,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   showSelectedLabels: false,
                   showUnselectedLabels: false,
                   elevation: 0,
-                  items: [
-                    const BottomNavigationBarItem(
-                      icon: Icon(Icons.dashboard_outlined),
-                      activeIcon: Icon(Icons.dashboard),
-                      label: 'Start',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Stack(
-                        children: [
-                          const Icon(Icons.chat_bubble_outline),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Consumer2<MessagingProvider, AppProvider>(
-                              builder: (_, mp, ap, __) {
-                                final userId = ap.currentUser?.id;
-                                if (userId == null) {
-                                  return const SizedBox.shrink();
-                                }
-                                final unread = countUnreadThreadsForViewer(
-                                  mp.threads,
-                                  userId,
-                                );
-                                if (unread == 0) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: AppTheme.errorColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      activeIcon: const Icon(Icons.chat_bubble),
-                      label: 'Czat',
-                    ),
-                    const BottomNavigationBarItem(
-                      icon: Icon(Icons.calendar_month_outlined),
-                      activeIcon: Icon(Icons.calendar_month),
-                      label: 'Kalendarz',
-                    ),
-                    const BottomNavigationBarItem(
-                      icon: Icon(Icons.account_balance_wallet_outlined),
-                      activeIcon: Icon(Icons.account_balance_wallet),
-                      label: 'Finanse',
-                    ),
-                    const BottomNavigationBarItem(
-                      icon: Icon(Icons.folder_open_outlined),
-                      activeIcon: Icon(Icons.folder_open),
-                      label: 'Dokumenty',
-                    ),
-                    const BottomNavigationBarItem(
-                      icon: Icon(Icons.folder_special_outlined),
-                      activeIcon: Icon(Icons.folder_special),
-                      label: 'Eksporty',
-                    ),
-                  ],
+                  items: bottomItems,
                 ),
               ),
       ),

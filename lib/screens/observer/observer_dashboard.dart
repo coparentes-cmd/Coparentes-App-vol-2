@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../config/feature_flags.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
@@ -23,27 +24,98 @@ class ObserverDashboard extends StatefulWidget {
 class _ObserverDashboardState extends State<ObserverDashboard> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
-    _ObserverHome(),
-    MessagingScreen(),
-    CalendarScreen(),
-    FinanceScreen(),
-    DocumentsScreen(),
-    ExportsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final useRail = isExpandedBreakpoint(context);
 
-    final content = IndexedStack(index: _selectedIndex, children: _screens);
+    final screens = <Widget>[
+      const _ObserverHome(),
+      const MessagingScreen(),
+      const CalendarScreen(),
+      const FinanceScreen(),
+      const DocumentsScreen(),
+      if (FeatureFlags.showExportsTab) const ExportsScreen(),
+    ];
+
+    final railDestinations = <NavigationRailDestination>[
+      const NavigationRailDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: Text('Przegląd'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.chat_bubble_outline),
+        selectedIcon: Icon(Icons.chat_bubble),
+        label: Text('Wiadomości'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.calendar_month_outlined),
+        selectedIcon: Icon(Icons.calendar_month),
+        label: Text('Kalendarz'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.account_balance_wallet_outlined),
+        selectedIcon: Icon(Icons.account_balance_wallet),
+        label: Text('Finanse'),
+      ),
+      const NavigationRailDestination(
+        icon: Icon(Icons.folder_open_outlined),
+        selectedIcon: Icon(Icons.folder_open),
+        label: Text('Dokumenty'),
+      ),
+      if (FeatureFlags.showExportsTab)
+        const NavigationRailDestination(
+          icon: Icon(Icons.folder_special_outlined),
+          selectedIcon: Icon(Icons.folder_special),
+          label: Text('Eksporty'),
+        ),
+    ];
+
+    final bottomItems = <BottomNavigationBarItem>[
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.dashboard_outlined),
+        activeIcon: Icon(Icons.dashboard),
+        label: 'Przegląd',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.chat_bubble_outline),
+        activeIcon: Icon(Icons.chat_bubble),
+        label: 'Wiadomości',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.calendar_month_outlined),
+        activeIcon: Icon(Icons.calendar_month),
+        label: 'Kalendarz',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.account_balance_wallet_outlined),
+        activeIcon: Icon(Icons.account_balance_wallet),
+        label: 'Finanse',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.folder_open_outlined),
+        activeIcon: Icon(Icons.folder_open),
+        label: 'Dokumenty',
+      ),
+      if (FeatureFlags.showExportsTab)
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.folder_special_outlined),
+          activeIcon: Icon(Icons.folder_special),
+          label: 'Eksporty',
+        ),
+    ];
+
+    final content = IndexedStack(
+      index: _selectedIndex.clamp(0, screens.length - 1),
+      children: screens,
+    );
 
     return Scaffold(
       body: useRail
           ? Row(
               children: [
                 NavigationRail(
-                  selectedIndex: _selectedIndex,
+                  selectedIndex: _selectedIndex.clamp(0, screens.length - 1),
                   onDestinationSelected: (i) =>
                       setState(() => _selectedIndex = i),
                   backgroundColor: Colors.white,
@@ -61,38 +133,7 @@ class _ObserverDashboardState extends State<ObserverDashboard> {
                     fontSize: 12,
                   ),
                   labelType: NavigationRailLabelType.all,
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard),
-                      label: Text('Przegląd'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.chat_bubble_outline),
-                      selectedIcon: Icon(Icons.chat_bubble),
-                      label: Text('Wiadomości'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.calendar_month_outlined),
-                      selectedIcon: Icon(Icons.calendar_month),
-                      label: Text('Kalendarz'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.account_balance_wallet_outlined),
-                      selectedIcon: Icon(Icons.account_balance_wallet),
-                      label: Text('Finanse'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.folder_open_outlined),
-                      selectedIcon: Icon(Icons.folder_open),
-                      label: Text('Dokumenty'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.folder_special_outlined),
-                      selectedIcon: Icon(Icons.folder_special),
-                      label: Text('Eksporty'),
-                    ),
-                  ],
+                  destinations: railDestinations,
                 ),
                 const VerticalDivider(width: 1),
                 Expanded(child: content),
@@ -102,7 +143,7 @@ class _ObserverDashboardState extends State<ObserverDashboard> {
       bottomNavigationBar: useRail
           ? null
           : BottomNavigationBar(
-              currentIndex: _selectedIndex,
+              currentIndex: _selectedIndex.clamp(0, screens.length - 1),
               onTap: (i) => setState(() => _selectedIndex = i),
               backgroundColor: Colors.white,
               selectedItemColor: AppTheme.observerColor,
@@ -113,38 +154,7 @@ class _ObserverDashboardState extends State<ObserverDashboard> {
                 fontWeight: FontWeight.w600,
               ),
               unselectedLabelStyle: const TextStyle(fontSize: 11),
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard_outlined),
-                  activeIcon: Icon(Icons.dashboard),
-                  label: 'Przegląd',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble_outline),
-                  activeIcon: Icon(Icons.chat_bubble),
-                  label: 'Wiadomości',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_month_outlined),
-                  activeIcon: Icon(Icons.calendar_month),
-                  label: 'Kalendarz',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.account_balance_wallet_outlined),
-                  activeIcon: Icon(Icons.account_balance_wallet),
-                  label: 'Finanse',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.folder_open_outlined),
-                  activeIcon: Icon(Icons.folder_open),
-                  label: 'Dokumenty',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.folder_special_outlined),
-                  activeIcon: Icon(Icons.folder_special),
-                  label: 'Eksporty',
-                ),
-              ],
+              items: bottomItems,
             ),
     );
   }
