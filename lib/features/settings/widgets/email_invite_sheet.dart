@@ -104,7 +104,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
       final workspaceName = ap.currentWorkspace?.name ?? 'Coparentes';
 
       if (result.emailSent) {
-        message = 'Zaproszenie z kodem wysłane na $email ✓';
+        message = 'Wysłane ✓ Zaproszenie z kodem poszło na $email';
         success = true;
         _emailController.clear();
       } else if (code.isNotEmpty) {
@@ -116,7 +116,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
           workspaceName: workspaceName,
         );
         message =
-            'Kod $code skopiowany do schowka. Wklej go w e-mailu do partnera '
+            'Wysłane ✓ Kod $code skopiowany — wklej go w e-mailu do partnera '
             '(lub wyślij z otwartego klienta poczty).';
         success = true;
         _emailController.clear();
@@ -224,17 +224,66 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
             ..._invites.take(5).map(
                   (invite) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.mail_outline, size: 20),
-                    title:
-                        Text(invite.email, style: const TextStyle(fontSize: 14)),
+                    leading: Icon(
+                      _inviteStatusIcon(invite.status),
+                      size: 20,
+                      color: _inviteStatusColor(invite.status),
+                    ),
+                    title: Text(
+                      invite.email,
+                      style: const TextStyle(fontSize: 14),
+                    ),
                     subtitle: Text(
-                      invite.status,
-                      style: const TextStyle(fontSize: 12),
+                      _inviteStatusLabel(invite.status),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _inviteStatusColor(invite.status),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
         ],
       ),
     );
+  }
+}
+
+String _inviteStatusLabel(String status) {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+      return 'Wysłane — oczekuje na dołączenie';
+    case 'ACCEPTED':
+      return 'Zaakceptowane';
+    case 'EXPIRED':
+      return 'Wygasłe';
+    default:
+      return status;
+  }
+}
+
+IconData _inviteStatusIcon(String status) {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+      return Icons.mark_email_read_outlined;
+    case 'ACCEPTED':
+      return Icons.check_circle_outline;
+    case 'EXPIRED':
+      return Icons.timer_off_outlined;
+    default:
+      return Icons.mail_outline;
+  }
+}
+
+Color _inviteStatusColor(String status) {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+      return AppTheme.successColor;
+    case 'ACCEPTED':
+      return AppTheme.primaryTeal;
+    case 'EXPIRED':
+      return AppTheme.warningColor;
+    default:
+      return AppTheme.textSecondary;
   }
 }

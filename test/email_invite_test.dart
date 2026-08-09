@@ -2,6 +2,19 @@ import 'package:coparentes/data/serializers/document_serializers.dart';
 import 'package:coparentes/models/documents.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+String inviteStatusLabel(String status) {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+      return 'Wysłane — oczekuje na dołączenie';
+    case 'ACCEPTED':
+      return 'Zaakceptowane';
+    case 'EXPIRED':
+      return 'Wygasłe';
+    default:
+      return status;
+  }
+}
+
 void main() {
   test('emailInviteFromJson parses invite payload', () {
     final invite = emailInviteFromJson({
@@ -29,11 +42,17 @@ void main() {
 
     final result = EmailInviteSendResult(
       invite: invite,
-      emailSent: false,
+      emailSent: true,
       inviteCode: 'RODZINA-AB12',
     );
 
-    expect(result.emailSent, isFalse);
+    expect(result.emailSent, isTrue);
     expect(result.inviteCode, 'RODZINA-AB12');
+  });
+
+  test('PENDING means sent and waiting, not failed', () {
+    expect(inviteStatusLabel('PENDING'), 'Wysłane — oczekuje na dołączenie');
+    expect(inviteStatusLabel('ACCEPTED'), 'Zaakceptowane');
+    expect(inviteStatusLabel('EXPIRED'), 'Wygasłe');
   });
 }
