@@ -312,7 +312,7 @@ class AuthRepository {
       {
         'email': email.trim().toLowerCase(),
       },
-      timeout: const Duration(seconds: 25),
+      timeout: const Duration(seconds: 35),
     );
   }
 

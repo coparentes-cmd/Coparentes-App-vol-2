@@ -42,6 +42,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool _loadingChildPreview = false;
   DateTime _childDateOfBirth = DateTime(DateTime.now().year - 8, 6, 1);
 
+  bool _obscureLoginPassword = true;
+
   @override
   void initState() {
     super.initState();
@@ -342,10 +344,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: 'Hasło',
-            hint: 'Minimum 10 znaków',
-            obscureText: true,
+            hint: 'Hasło lub 12 cyfr z maila',
+            obscureText: _obscureLoginPassword,
+            keyboardType: TextInputType.visiblePassword,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
+            onToggleObscure: () => setState(
+              () => _obscureLoginPassword = !_obscureLoginPassword,
+            ),
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -674,14 +680,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             }
                             _emailController.text = email;
                             _passwordController.clear();
+                            setState(() => _obscureLoginPassword = false);
                             messenger.showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Jeśli konto istnieje, wysłaliśmy jednorazowe hasło. '
-                                  'Skopiuj je bez spacji, zaloguj się, potem zmień hasło w Ustawieniach.',
+                                  'Wysłaliśmy 12-cyfrowe hasło. Użyj TYLKO najnowszego maila, '
+                                  'wklej same cyfry (oko przy haśle pokazuje je jawnie), potem zmień hasło w Ustawieniach.',
                                 ),
                                 backgroundColor: AppTheme.successColor,
-                                duration: Duration(seconds: 7),
+                                duration: Duration(seconds: 8),
                               ),
                             );
                           } else {
@@ -724,8 +731,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Future<void> _submit() async {
     final appProvider = context.read<AppProvider>();
     final email = _emailController.text.trim();
-    // Strip whitespace from paste (some mail clients insert spaces when copying).
-    final password = _passwordController.text.replaceAll(RegExp(r'\s+'), '');
+    // Strip whitespace/separators from paste (mail clients often insert them).
+    final password = _passwordController.text.replaceAll(RegExp(r'[\s\-_.]+'), '');
 
     if (_mode != _AuthMode.joinChild) {
       if (email.isEmpty || password.isEmpty) {
@@ -1212,6 +1219,7 @@ class _Field extends StatelessWidget {
   final TextInputType keyboardType;
   final TextInputAction textInputAction;
   final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onToggleObscure;
 
   const _Field({
     required this.controller,
@@ -1221,6 +1229,7 @@ class _Field extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.textInputAction = TextInputAction.next,
     this.onSubmitted,
+    this.onToggleObscure,
   });
 
   @override
@@ -1233,7 +1242,23 @@ class _Field extends StatelessWidget {
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         onSubmitted: onSubmitted,
-        decoration: InputDecoration(labelText: label, hintText: hint),
+        autocorrect: false,
+        enableSuggestions: false,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          suffixIcon: onToggleObscure == null
+              ? null
+              : IconButton(
+                  tooltip: obscureText ? 'Pokaż hasło' : 'Ukryj hasło',
+                  onPressed: onToggleObscure,
+                  icon: Icon(
+                    obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                ),
+        ),
       ),
     );
   }
