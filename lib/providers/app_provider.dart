@@ -617,7 +617,12 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> enterDemoRole(UserRole role) async {
     _authError = null;
+    _pendingLoginChallenge = null;
+    _otpAttemptsRemaining = null;
+    _otpLocked = false;
     _isDemoMode = true;
+    _isPinLocked = false;
+    _isInitializing = false;
 
     final workspace = _buildDemoWorkspace();
     _currentWorkspace = workspace;

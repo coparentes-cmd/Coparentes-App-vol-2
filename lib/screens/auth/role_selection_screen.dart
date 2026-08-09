@@ -35,6 +35,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   final _passwordController = TextEditingController();
   bool _submitting = false;
   bool _registerIsMama = true;
+  bool _demoPickerOpen = false;
   bool? _backendReachable;
   ChildJoinPreview? _childJoinPreview;
   bool _loadingChildPreview = false;
@@ -122,9 +123,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         SizedBox(
                           width: narrow ? constraints.maxWidth : 420,
                           child: _BrandIntroCard(
+                            demoPickerOpen: _demoPickerOpen,
                             onDemoHorseTap: _submitting
                                 ? null
-                                : () => _showDemoPicker(context),
+                                : () => setState(
+                                      () => _demoPickerOpen = !_demoPickerOpen,
+                                    ),
+                            onDemoRoleSelected: _submitting
+                                ? null
+                                : _enterDemoRole,
                           ),
                         ),
                         SizedBox(
@@ -470,44 +477,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     }
   }
 
-  Future<void> _showDemoPicker(BuildContext context) async {
-    final role = await showDialog<UserRole>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Wybierz tryb wersji demo'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _DemoRoleTile(
-              label: 'Anna — matka',
-              icon: Icons.person_outline,
-              onTap: () => Navigator.pop(context, UserRole.parentA),
-            ),
-            _DemoRoleTile(
-              label: 'Marek — ojciec',
-              icon: Icons.person,
-              onTap: () => Navigator.pop(context, UserRole.parentB),
-            ),
-            _DemoRoleTile(
-              label: 'Franek — dziecko',
-              icon: Icons.child_care,
-              onTap: () => Navigator.pop(context, UserRole.child),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
-          ),
-        ],
-      ),
-    );
-    if (role != null && mounted) {
-      await _enterDemoRole(role);
-    }
-  }
-
   Future<void> _pickChildDateOfBirth() async {
     final picked = await showDatePicker(
       context: context,
@@ -704,9 +673,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 }
 
 class _BrandIntroCard extends StatelessWidget {
+  final bool demoPickerOpen;
   final VoidCallback? onDemoHorseTap;
+  final Future<void> Function(UserRole role)? onDemoRoleSelected;
 
-  const _BrandIntroCard({required this.onDemoHorseTap});
+  const _BrandIntroCard({
+    required this.demoPickerOpen,
+    required this.onDemoHorseTap,
+    required this.onDemoRoleSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -752,33 +727,75 @@ class _BrandIntroCard extends StatelessWidget {
                 'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
           ),
           const SizedBox(height: 28),
-          InkWell(
-            onTap: onDemoHorseTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.toys_outlined,
-                    color: AppTheme.primaryTeal,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Tryb demo — sprawdź czy aplikacja Ci pomoże',
-                      style: TextStyle(
-                        color: AppTheme.primaryTeal,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onDemoHorseTap,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.toys_outlined,
+                      color: AppTheme.primaryTeal,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Tryb demo — sprawdź czy aplikacja Ci pomoże',
+                        style: TextStyle(
+                          color: AppTheme.primaryTeal,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    Icon(
+                      demoPickerOpen
+                          ? Icons.expand_less
+                          : Icons.expand_more,
+                      color: AppTheme.primaryTeal,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
+          if (demoPickerOpen) ...[
+            const SizedBox(height: 14),
+            Text(
+              'Wybierz tryb wersji demo',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            _DemoRoleButton(
+              label: 'Anna — matka',
+              icon: Icons.person_outline,
+              onTap: onDemoRoleSelected == null
+                  ? null
+                  : () => onDemoRoleSelected!(UserRole.parentA),
+            ),
+            const SizedBox(height: 8),
+            _DemoRoleButton(
+              label: 'Marek — ojciec',
+              icon: Icons.person,
+              onTap: onDemoRoleSelected == null
+                  ? null
+                  : () => onDemoRoleSelected!(UserRole.parentB),
+            ),
+            const SizedBox(height: 8),
+            _DemoRoleButton(
+              label: 'Franek — dziecko',
+              icon: Icons.child_care,
+              onTap: onDemoRoleSelected == null
+                  ? null
+                  : () => onDemoRoleSelected!(UserRole.child),
+            ),
+          ],
         ],
       ),
     );
@@ -935,12 +952,12 @@ class _RoleChoiceChip extends StatelessWidget {
   }
 }
 
-class _DemoRoleTile extends StatelessWidget {
+class _DemoRoleButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _DemoRoleTile({
+  const _DemoRoleButton({
     required this.label,
     required this.icon,
     required this.onTap,
@@ -948,11 +965,36 @@ class _DemoRoleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AppTheme.primaryTeal),
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-      onTap: onTap,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppTheme.dividerColor),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, color: AppTheme.primaryTeal, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: AppTheme.textHint,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
