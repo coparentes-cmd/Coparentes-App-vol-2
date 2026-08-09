@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -50,11 +52,12 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
     super.dispose();
   }
 
-  Future<bool> _openMailtoFallback({
+  /// Best-effort only — never block the UI on mailto (Safari/web can hang).
+  void _tryOpenMailto({
     required String email,
     required String inviteCode,
     required String workspaceName,
-  }) async {
+  }) {
     final subject = Uri.encodeComponent('Zaproszenie do Coparentes');
     final body = Uri.encodeComponent(
       'Cześć!\n\n'
@@ -66,78 +69,82 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
       'Do zobaczenia w aplikacji!',
     );
     final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
-    return launchUrl(uri);
+    unawaited(
+      launchUrl(uri, mode: LaunchMode.externalApplication).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => false,
+      ).catchError((_) => false),
+    );
   }
 
   Future<void> _submit() async {
     final email = _emailController.text.trim();
-    if (email.isEmpty) {
+    if (email.isEmpty || _submitting) {
       return;
     }
 
     setState(() => _submitting = true);
+
+    var message = 'Nie udało się wysłać zaproszenia.';
+    var success = false;
     final ap = context.read<AppProvider>();
-    final result = await ap.sendEmailInvite(email);
-    if (!mounted) {
-      return;
-    }
 
-    var ok = result != null;
-    var message = ap.authError ?? 'Nie udało się wysłać zaproszenia.';
-    var successColor = false;
+    try {
+      final result = await ap.sendEmailInvite(email).timeout(
+            const Duration(seconds: 20),
+          );
 
-    if (result != null) {
-      final code = result.inviteCode ??
-          ap.currentWorkspace?.inviteCode ??
-          '';
-      final workspaceName =
-          ap.currentWorkspace?.name ?? 'Coparentes';
+      if (result == null) {
+        message = ap.authError ?? message;
+        return;
+      }
+
+      final code = (result.inviteCode ?? ap.currentWorkspace?.inviteCode ?? '')
+          .trim();
+      final workspaceName = ap.currentWorkspace?.name ?? 'Coparentes';
 
       if (result.emailSent) {
         message = 'Zaproszenie z kodem wysłane na $email ✓';
-        successColor = true;
+        success = true;
         _emailController.clear();
-        await _loadInvites();
       } else if (code.isNotEmpty) {
-        final launched = await _openMailtoFallback(
+        await Clipboard.setData(ClipboardData(text: code));
+        // Never await mailto — on Safari/Flutter web it can hang forever.
+        _tryOpenMailto(
           email: email,
           inviteCode: code,
           workspaceName: workspaceName,
         );
-        await Clipboard.setData(ClipboardData(text: code));
-        if (!mounted) {
-          return;
-        }
-        if (launched) {
-          message =
-              'Otworzono e-mail z kodem $code. Wyślij wiadomość z klienta poczty.';
-          successColor = true;
-          _emailController.clear();
-          await _loadInvites();
-        } else {
-          message =
-              'Serwer e-mail niedostępny. Kod $code skopiowany do schowka — wyślij go partnerowi.';
-          successColor = true;
-          ok = true;
-          _emailController.clear();
-          await _loadInvites();
-        }
+        message =
+            'Kod $code skopiowany do schowka. Wklej go w e-mailu do partnera '
+            '(lub wyślij z otwartego klienta poczty).';
+        success = true;
+        _emailController.clear();
       } else {
-        message = 'Zaproszenie zapisane, ale nie udało się wysłać e-maila.';
-        ok = false;
+        message = 'Zaproszenie zapisane, ale brak kodu do wysłania.';
+      }
+
+      await _loadInvites();
+    } on TimeoutException {
+      message = 'Serwer nie odpowiedział na czas. Spróbuj ponownie.';
+    } catch (_) {
+      message = ap.authError ?? message;
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
       }
     }
 
     if (!mounted) {
       return;
     }
-    setState(() => _submitting = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor:
-            successColor || ok ? AppTheme.successColor : AppTheme.errorColor,
+            success ? AppTheme.successColor : AppTheme.errorColor,
+        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -161,7 +168,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Wyślemy kod dołączenia na podany adres. Partner wybiera Dołączanie w aplikacji i wpisuje kod.',
+            'Wyślemy kod dołączenia na podany adres. Jeśli automatyczna wysyłka nie zadziała, kod trafi do schowka — wklej go w mailu.',
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 16),
