@@ -1,4 +1,5 @@
 import '../models/models.dart';
+import 'demo_time.dart';
 
 const _dayKeys = [
   'monday',
@@ -203,7 +204,7 @@ CustodySlot? findNextCustodyHandover({
     return null;
   }
 
-  final base = after ?? DateTime.now();
+  final base = after ?? DemoTime.now();
   final today = _dateOnly(base);
   final sorted = [...slots]..sort((a, b) => a.date.compareTo(b.date));
 
@@ -256,7 +257,7 @@ const _polishMonthsGenitive = [
 /// Label for Start handover strip, e.g. `piątek, 7 sierpnia (jutro) 17:00`.
 /// Relative day only for dzisiaj / jutro / pojutrze.
 String formatNextHandoverLabel(CustodySlot slot, {DateTime? now}) {
-  final base = now ?? DateTime.now();
+  final base = now ?? DemoTime.now();
   final day = _dateOnly(slot.date);
   final today = _dateOnly(base);
   final weekday = _polishWeekdays[day.weekday - 1];

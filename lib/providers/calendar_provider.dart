@@ -8,6 +8,7 @@ import '../data/repositories/calendar_repository.dart';
 import '../models/models.dart';
 import '../utils/calendar_date_utils.dart';
 import '../utils/custody_schedule_utils.dart';
+import '../utils/demo_time.dart';
 
 class CalendarProvider extends ChangeNotifier {
   final CalendarRepository _repository;
@@ -188,106 +189,54 @@ class CalendarProvider extends ChangeNotifier {
 
     _seedDemoCustodySlots();
 
-    final now = DateTime.now();
+    // Demo is always pinned to 10.08.2026 (see DemoTime).
+    final day = DemoTime.demoDay;
 
     _events.addAll([
       CalendarEvent(
-        id: 'evt_001',
+        id: 'evt_demo_1',
+        title: 'Śniadanie',
+        startDate: DateTime(day.year, day.month, day.day, 9),
+        type: EventType.other,
+        childId: 'child_001',
+        createdBy: 'user_001',
+        location: 'Dom',
+      ),
+      CalendarEvent(
+        id: 'evt_demo_2',
         title: 'Angielski – Zosia',
-        startDate: DateTime(
-          now.add(const Duration(days: 2)).year,
-          now.add(const Duration(days: 2)).month,
-          now.add(const Duration(days: 2)).day,
-          17,
-        ),
+        startDate: DateTime(day.year, day.month, day.day, 11),
         type: EventType.school,
         childId: 'child_001',
         createdBy: 'user_001',
         location: 'ul. Mokotowska 12',
-        description: 'Zajęcia o 17:00',
       ),
       CalendarEvent(
-        id: 'evt_001b',
-        title: 'Piłka nożna',
-        startDate: DateTime(
-          now.add(const Duration(days: 2)).year,
-          now.add(const Duration(days: 2)).month,
-          now.add(const Duration(days: 2)).day,
-          18,
-          30,
-        ),
-        type: EventType.activity,
-        childId: 'child_001',
-        createdBy: 'user_002',
-      ),
-      CalendarEvent(
-        id: 'evt_001c',
-        title: 'Korepetycje matma',
-        startDate: DateTime(
-          now.add(const Duration(days: 2)).year,
-          now.add(const Duration(days: 2)).month,
-          now.add(const Duration(days: 2)).day,
-          19,
-        ),
-        type: EventType.school,
-        childId: 'child_001',
-        createdBy: 'user_001',
-      ),
-      CalendarEvent(
-        id: 'evt_001d',
-        title: 'Kino',
-        startDate: DateTime(
-          now.add(const Duration(days: 2)).year,
-          now.add(const Duration(days: 2)).month,
-          now.add(const Duration(days: 2)).day,
-          20,
-        ),
-        type: EventType.other,
-        childId: 'child_001',
-        createdBy: 'user_001',
-      ),
-      CalendarEvent(
-        id: 'evt_002',
+        id: 'evt_demo_3',
         title: 'Dentysta – Tomek',
-        startDate: DateTime(
-          now.add(const Duration(days: 5)).year,
-          now.add(const Duration(days: 5)).month,
-          now.add(const Duration(days: 5)).day,
-          10,
-          30,
-        ),
+        startDate: DateTime(day.year, day.month, day.day, 14),
         type: EventType.medical,
         childId: 'child_002',
         createdBy: 'user_001',
         location: 'Przychodnia Centrum',
-        description: 'Wizyta o 10:30',
       ),
       CalendarEvent(
-        id: 'evt_003',
-        title: 'Basen – Tomek',
-        startDate: now.add(const Duration(days: 3)),
+        id: 'evt_demo_4',
+        title: 'Trening piłki',
+        startDate: DateTime(day.year, day.month, day.day, 16, 30),
         type: EventType.activity,
-        childId: 'child_002',
+        childId: 'child_001',
         createdBy: 'user_002',
-        location: 'Wodny Park',
-        description: 'Trening o 15:00',
+        location: 'Boisko szkolne',
       ),
       CalendarEvent(
-        id: 'evt_004',
-        title: 'Przekazanie dzieci',
-        startDate: now.add(const Duration(days: 7)),
-        type: EventType.handover,
-        createdBy: 'system',
-        location: 'Szkoła SP nr 15',
-        description: 'Godz. 16:00',
-      ),
-      CalendarEvent(
-        id: 'evt_005',
-        title: 'Ferie zimowe',
-        startDate: now.add(const Duration(days: 10)),
-        endDate: now.add(const Duration(days: 17)),
-        type: EventType.holiday,
-        createdBy: 'system',
+        id: 'evt_demo_5',
+        title: 'Kolacja rodzinna',
+        startDate: DateTime(day.year, day.month, day.day, 19),
+        type: EventType.other,
+        childId: 'child_001',
+        createdBy: 'user_001',
+        location: 'Dom',
       ),
     ]);
 
@@ -296,21 +245,21 @@ class CalendarProvider extends ChangeNotifier {
         id: 'swap_001',
         requesterId: 'user_002',
         requesterName: 'Marek',
-        originalDate: now.add(const Duration(days: 11)),
-        proposedDate: now.add(const Duration(days: 18)),
+        originalDate: day.add(const Duration(days: 11)),
+        proposedDate: day.add(const Duration(days: 18)),
         reason: 'Wyjazd służbowy do Krakowa',
         status: SwapStatus.pending,
-        createdAt: now.subtract(const Duration(hours: 5)),
+        createdAt: day.subtract(const Duration(hours: 5)),
       ),
       SwapRequest(
         id: 'swap_002',
         requesterId: 'user_001',
         requesterName: 'Anna',
-        originalDate: now.subtract(const Duration(days: 5)),
-        proposedDate: now.subtract(const Duration(days: 3)),
+        originalDate: day.subtract(const Duration(days: 5)),
+        proposedDate: day.subtract(const Duration(days: 3)),
         reason: 'Urodziny babci',
         status: SwapStatus.accepted,
-        createdAt: now.subtract(const Duration(days: 10)),
+        createdAt: day.subtract(const Duration(days: 10)),
         responseNote: 'Oczywiście, bez problemu.',
       ),
     ]);
@@ -341,7 +290,7 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   void _seedDemoCustodySlots() {
-    final now = DateTime.now();
+    final now = DemoTime.now();
     for (int i = -14; i <= 30; i++) {
       final date = now.add(Duration(days: i));
       final weekOfYear =

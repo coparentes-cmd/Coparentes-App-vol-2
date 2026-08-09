@@ -13,6 +13,7 @@ import '../data/repositories/auth_repository.dart';
 import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../models/models.dart';
+import '../utils/demo_time.dart';
 
 export 'calendar_provider.dart';
 export 'finance_provider.dart';
@@ -168,6 +169,15 @@ class AppProvider extends ChangeNotifier {
   String get language => _language;
   bool get isInitializing => _isInitializing;
   bool get isDemoMode => _isDemoMode;
+
+  void _setDemoMode(bool enabled) {
+    _isDemoMode = enabled;
+    if (enabled) {
+      DemoTime.activate();
+    } else {
+      DemoTime.deactivate();
+    }
+  }
   bool get needsChildOnboarding => _needsChildOnboarding;
   String? get authError => _authError;
   LoginChallenge? get pendingLoginChallenge => _pendingLoginChallenge;
@@ -284,12 +294,12 @@ class AppProvider extends ChangeNotifier {
       );
       if (response.requiresOtp) {
         _pendingLoginChallenge = response.challenge;
-        _isDemoMode = false;
+        _setDemoMode(false);
         notifyListeners();
         return true;
       }
       _pendingLoginChallenge = null;
-      _isDemoMode = false;
+      _setDemoMode(false);
       _applySession(response.session!);
       notifyListeners();
       return true;
@@ -322,7 +332,7 @@ class AppProvider extends ChangeNotifier {
       _pendingLoginChallenge = null;
       _otpAttemptsRemaining = null;
       _otpLocked = false;
-      _isDemoMode = false;
+      _setDemoMode(false);
       _applySession(session);
       notifyListeners();
       return true;
@@ -388,7 +398,7 @@ class AppProvider extends ChangeNotifier {
         workspaceName: workspaceName,
         consents: consents,
       );
-      _isDemoMode = false;
+      _setDemoMode(false);
       _needsChildOnboarding = true;
       _applySession(session);
       await loadUserConsents();
@@ -621,7 +631,7 @@ class AppProvider extends ChangeNotifier {
         password: password,
         inviteCode: inviteCode,
       );
-      _isDemoMode = false;
+      _setDemoMode(false);
       _applySession(session);
       notifyListeners();
       return true;
@@ -653,7 +663,7 @@ class AppProvider extends ChangeNotifier {
         dateOfBirth: dateOfBirth,
         name: name,
       );
-      _isDemoMode = false;
+      _setDemoMode(false);
       _applySession(session);
       notifyListeners();
       return true;
@@ -672,7 +682,7 @@ class AppProvider extends ChangeNotifier {
     _pendingLoginChallenge = null;
     _otpAttemptsRemaining = null;
     _otpLocked = false;
-    _isDemoMode = true;
+    _setDemoMode(true);
     _isPinLocked = false;
     _isInitializing = false;
 
@@ -691,7 +701,7 @@ class AppProvider extends ChangeNotifier {
     Workspace? workspace,
   }) {
     _authError = null;
-    _isDemoMode = true;
+    _setDemoMode(true);
     _isInitializing = false;
     _currentUser = childUser;
     _currentWorkspace = workspace ?? _buildDemoWorkspace();
@@ -923,7 +933,7 @@ class AppProvider extends ChangeNotifier {
     _currentUser = null;
     _currentWorkspace = null;
     _authError = null;
-    _isDemoMode = false;
+    _setDemoMode(false);
     _needsChildOnboarding = false;
     _requirePinOnResume = false;
     _hasPinSet = false;

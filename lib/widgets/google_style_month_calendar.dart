@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../utils/calendar_date_utils.dart';
+import '../utils/demo_time.dart';
 
 const _maxVisibleEvents = 3;
 
@@ -199,7 +200,7 @@ class _MonthGrid extends StatelessWidget {
       calendarBuilders: CalendarBuilders<void>(
         defaultBuilder: (context, day, focused) => _DayCell(
           day: day,
-          isToday: isSameDay(day, DateTime.now()),
+          isToday: isSameDay(day, DemoTime.now()),
           isSelected: isSameDay(day, selectedDay),
           isOutside: day.month != month.month,
           slots: getSlotsForDay(day),
@@ -213,7 +214,7 @@ class _MonthGrid extends StatelessWidget {
         ),
         todayBuilder: (context, day, focused) => _DayCell(
           day: day,
-          isToday: true,
+          isToday: isSameDay(day, DemoTime.now()),
           isSelected: isSameDay(day, selectedDay),
           isOutside: day.month != month.month,
           slots: getSlotsForDay(day),
@@ -227,7 +228,7 @@ class _MonthGrid extends StatelessWidget {
         ),
         selectedBuilder: (context, day, focused) => _DayCell(
           day: day,
-          isToday: isSameDay(day, DateTime.now()),
+          isToday: isSameDay(day, DemoTime.now()),
           isSelected: true,
           isOutside: day.month != month.month,
           slots: getSlotsForDay(day),
@@ -241,7 +242,7 @@ class _MonthGrid extends StatelessWidget {
         ),
         outsideBuilder: (context, day, focused) => _DayCell(
           day: day,
-          isToday: isSameDay(day, DateTime.now()),
+          isToday: isSameDay(day, DemoTime.now()),
           isSelected: isSameDay(day, selectedDay),
           isOutside: true,
           slots: getSlotsForDay(day),

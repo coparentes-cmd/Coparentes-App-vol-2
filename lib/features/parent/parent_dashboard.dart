@@ -8,6 +8,7 @@ import '../../../theme/app_theme.dart';
 import '../../../config/feature_flags.dart';
 import '../../../config/messaging_categories.dart';
 import '../../../utils/app_browser_back.dart';
+import '../../../utils/demo_time.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../screens/messaging/messaging_screen.dart';
@@ -27,7 +28,7 @@ class ParentDashboard extends StatefulWidget {
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
   int _previousTabIndex = 0;
-  DateTime _calendarFocusDay = DateTime.now();
+  DateTime _calendarFocusDay = DemoTime.now();
   int _calendarFocusRequestId = 0;
   String? _pendingOpenThreadId;
   int _openThreadRequestId = 0;

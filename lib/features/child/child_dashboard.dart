@@ -7,6 +7,7 @@ import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
+import '../../../utils/demo_time.dart';
 import '../../../utils/app_browser_back.dart';
 import '../../../config/messaging_categories.dart';
 import '../../screens/calendar/calendar_screen.dart';
@@ -184,7 +185,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
   }
 
   Widget _buildTodayTab(BuildContext context, String firstName) {
-    final now = DateTime.now();
+    final now = DemoTime.now();
     final weekdays = [
       'Poniedziałek',
       'Wtorek',

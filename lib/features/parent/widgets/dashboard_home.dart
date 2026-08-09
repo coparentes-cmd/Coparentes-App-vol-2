@@ -6,6 +6,7 @@ import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../utils/calendar_date_utils.dart';
+import '../../../../utils/demo_time.dart';
 import '../../../../utils/layout_utils.dart';
 import '../../../../utils/messaging_helpers.dart';
 import '../../../../widgets/parent_tab_scaffold.dart';
@@ -48,7 +49,7 @@ class _DashboardHomeState extends State<DashboardHome> {
     final finance = context.watch<FinanceProvider>();
     final calendar = context.watch<CalendarProvider>();
 
-    final now = DateTime.now();
+    final now = DemoTime.now();
     final today = calendarDayFrom(now);
     final todaySlots = calendar.getSlotsForDay(today);
     final todayEvents = calendar.getEventsForDay(today);

@@ -5,6 +5,7 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
+import '../../../utils/demo_time.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
 import '../../../widgets/google_style_month_calendar.dart';
@@ -35,8 +36,8 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  DateTime _focusedDay = DateTime.now();
-  DateTime _selectedDay = DateTime.now();
+  DateTime _focusedDay = DemoTime.now();
+  DateTime _selectedDay = DemoTime.now();
   Timer? _liveRefreshTimer;
 
   static const _liveRefreshInterval = Duration(seconds: 12);
@@ -291,7 +292,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         setState(() => _focusedDay = month);
       },
       onTodayPressed: () {
-        final today = DateTime.now();
+        final today = DemoTime.now();
         setState(() {
           _focusedDay = today;
           _selectedDay = today;
