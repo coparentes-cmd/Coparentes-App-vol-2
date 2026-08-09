@@ -44,7 +44,8 @@ class _DashboardHomeState extends State<DashboardHome> {
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
     final workspace = context.watch<AppProvider>().currentWorkspace;
-    final highConflict = context.watch<AppProvider>().highConflictMode;
+    final app = context.watch<AppProvider>();
+    final highConflict = app.highConflictMode && !app.isDemoMode;
     final messaging = context.watch<MessagingProvider>();
     final finance = context.watch<FinanceProvider>();
     final calendar = context.watch<CalendarProvider>();
