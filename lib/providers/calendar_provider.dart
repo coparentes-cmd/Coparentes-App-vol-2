@@ -65,6 +65,19 @@ class CalendarProvider extends ChangeNotifier {
   bool get hasActiveSchedule =>
       _custodySchedule?.status == CustodyScheduleStatus.active;
 
+  /// Single-day custody changes ("Zmiana opieki") stay available while an
+  /// approved schedule is in effect — including when a newer proposal is
+  /// pending and the API surfaces that pending row instead of the active one.
+  bool get canRequestDayCustodyChange {
+    if (hasActiveSchedule) {
+      return true;
+    }
+    if (!hasPendingScheduleApproval) {
+      return false;
+    }
+    return _displaySlots.isNotEmpty || _custodySlots.isNotEmpty;
+  }
+
   /// Grafik zapisany (oczekujący lub aktywny) — bezpośrednie edycje są zablokowane.
   bool get hasLockedSchedule =>
       hasActiveSchedule || hasPendingScheduleApproval;
