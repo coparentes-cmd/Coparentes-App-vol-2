@@ -13,19 +13,32 @@ import '../../screens/settings/privacy_consents_section.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/change_password_sheet.dart';
 import 'widgets/email_invite_sheet.dart';
-import 'widgets/section_header.dart';
-import 'widgets/settings_card.dart';
 import 'widgets/settings_divider.dart';
 import 'widgets/info_tile.dart';
 import 'widgets/action_tile.dart';
 import 'widgets/switch_tile.dart';
 import 'widgets/setup_pin_sheet.dart';
 import 'widgets/change_pin_sheet.dart';
+import 'widgets/ios_settings_accordion.dart';
 
 const _showPreLaunchPlaceholderSections = false;
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  /// iOS-style accordion: one section open at a time (null = all collapsed).
+  String? _expandedId = 'profile';
+
+  void _toggleSection(String id) {
+    setState(() {
+      _expandedId = _expandedId == id ? null : id;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +53,8 @@ class SettingsScreen extends StatelessWidget {
         (user?.role == UserRole.parentA || user?.role == UserRole.parentB);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : AppTheme.surfaceColor,
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       body: AppContentShell(
         child: CustomScrollView(
         slivers: [
@@ -144,9 +158,14 @@ class SettingsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Profil osobisty ──────────────────────────────────────
-                  SectionHeader(
-                      label: 'Profil osobisty', icon: Icons.person_outline),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'Profil osobisty',
+                    icon: Icons.person_outline,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'profile',
+                    onToggle: () => _toggleSection('profile'),
+                    children: [
                     InfoTile(
                       icon: Icons.badge_outlined,
                       label: 'Imię i nazwisko',
@@ -275,11 +294,14 @@ class SettingsScreen extends StatelessWidget {
 
                   if (user?.role == UserRole.parentA) ...[
                     const SizedBox(height: 20),
-                    SectionHeader(
-                      label: 'Zaproszenia e-mail',
-                      icon: Icons.mail_outline,
-                    ),
-                    SettingsCard(isDark: isDark, children: [
+                    IosSettingsAccordion(
+                    title: 'Zaproszenia e-mail',
+                    icon: Icons.mail_outline,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'invites',
+                    onToggle: () => _toggleSection('invites'),
+                    children: [
                       ActionTile(
                         icon: Icons.send_outlined,
                         label: 'Zaproś drugiego rodzica mailem',
@@ -294,8 +316,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── Wygląd ────────────────────────────────────────────────
-                  SectionHeader(label: 'Wygląd', icon: Icons.palette_outlined),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'Wygląd',
+                    icon: Icons.palette_outlined,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'appearance',
+                    onToggle: () => _toggleSection('appearance'),
+                    children: [
                     // Dark / Light mode
                     SwitchTile(
                       icon: isDark
@@ -398,10 +426,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── Bezpieczeństwo i logowanie ────────────────────────────
-                  SectionHeader(
-                      label: 'Bezpieczeństwo',
-                      icon: Icons.security_outlined),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'Bezpieczeństwo',
+                    icon: Icons.security_outlined,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'security',
+                    onToggle: () => _toggleSection('security'),
+                    children: [
                     SwitchTile(
                       icon: Icons.lock_outline,
                       label: 'PIN przy wznowieniu',
@@ -486,10 +518,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── Powiadomienia ─────────────────────────────────────────
-                  SectionHeader(
-                      label: 'Powiadomienia',
-                      icon: Icons.notifications_outlined),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'Powiadomienia',
+                    icon: Icons.notifications_outlined,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'notifications',
+                    onToggle: () => _toggleSection('notifications'),
+                    children: [
                     SwitchTile(
                       icon: Icons.chat_bubble_outline,
                       label: 'Nowe wiadomości',
@@ -534,10 +570,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── AI & Prywatność ────────────────────────────────────────
-                  SectionHeader(
-                      label: 'AI i prywatność',
-                      icon: Icons.auto_awesome_outlined),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'AI i prywatność',
+                    icon: Icons.auto_awesome_outlined,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'ai',
+                    onToggle: () => _toggleSection('ai'),
+                    children: [
                     SwitchTile(
                       icon: Icons.psychology_outlined,
                       label: 'AI Coach (pre-send)',
@@ -600,12 +640,13 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── Prywatność i zgody ───────────────────────────────────
-                  SectionHeader(
-                    label: 'Prywatność i zgody',
+                  IosSettingsAccordion(
+                    title: 'Prywatność i zgody',
                     icon: Icons.verified_user_outlined,
-                  ),
-                  SettingsCard(
                     isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'privacy',
+                    onToggle: () => _toggleSection('privacy'),
                     children: [
                       PrivacyConsentsSection(
                         roleColor: roleColor,
@@ -616,10 +657,14 @@ class SettingsScreen extends StatelessWidget {
 
                   if (_showPreLaunchPlaceholderSections) ...[
                     const SizedBox(height: 20),
-                    SectionHeader(
-                        label: 'Subskrypcja i rozliczenia',
-                        icon: Icons.credit_card_outlined),
-                    SettingsCard(isDark: isDark, children: [
+                    IosSettingsAccordion(
+                    title: 'Subskrypcja i rozliczenia',
+                    icon: Icons.credit_card_outlined,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'billing',
+                    onToggle: () => _toggleSection('billing'),
+                    children: [
                       InfoTile(
                         icon: Icons.workspace_premium_outlined,
                         label: 'Plan',
@@ -675,10 +720,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── Eksport danych ────────────────────────────────────────
-                  SectionHeader(
-                      label: 'Dane i eksport',
-                      icon: Icons.folder_special_outlined),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'Dane i eksport',
+                    icon: Icons.folder_special_outlined,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'data',
+                    onToggle: () => _toggleSection('data'),
+                    children: [
                     ActionTile(
                       icon: Icons.download_outlined,
                       label: 'Pobierz moje dane (RODO)',
@@ -701,9 +750,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // ── Aplikacja ─────────────────────────────────────────────
-                  SectionHeader(
-                      label: 'Aplikacja', icon: Icons.info_outline),
-                  SettingsCard(isDark: isDark, children: [
+                  IosSettingsAccordion(
+                    title: 'Aplikacja',
+                    icon: Icons.info_outline,
+                    isDark: isDark,
+                    accent: roleColor,
+                    expanded: _expandedId == 'app',
+                    onToggle: () => _toggleSection('app'),
+                    children: [
                     InfoTile(
                       icon: Icons.apps_outlined,
                       label: 'Wersja aplikacji',
@@ -777,21 +831,29 @@ class SettingsScreen extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // ── Wyloguj ───────────────────────────────────────────────
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Wyloguj się',
-                          style: TextStyle(fontSize: 16)),
-                      onPressed: () => _logout(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.errorColor,
-                        side:
-                            const BorderSide(color: AppTheme.errorColor),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                  // ── Wyloguj (iOS-style destructive row) ───────────────────
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _logout(context),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                          child: Center(
+                            child: Text(
+                              'Wyloguj się',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: AppTheme.errorColor,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -800,10 +862,10 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Center(
                     child: Text(
-                      'Coparentes v1.0.0 · branding aligned\nCopyright © 2026 ${LegalConfig.companyName}',
+                      'Coparentes v1.0.0\nCopyright © 2026 ${LegalConfig.companyName}',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color:
                             isDark ? Colors.white38 : AppTheme.textHint,
                       ),
