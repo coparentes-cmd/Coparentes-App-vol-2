@@ -384,11 +384,28 @@ class ThreadScreenState extends State<ThreadScreen> {
     setState(() => _sending = true);
     final attachments =
         _pendingAttachments.map((item) => item.toApiPayload()).toList();
-    final sent = await context.read<MessagingProvider>().sendMessage(
+    final messaging = context.read<MessagingProvider>();
+    final existing = messaging.getThreadById(widget.threadId);
+    String? channelCategory;
+    if (existing != null) {
+      if (isParentsInboxChannel(existing)) {
+        channelCategory = allTabLabel;
+      } else if (isFamilyChannel(existing)) {
+        channelCategory = familyCategoryChannel;
+      } else if (isScheduleChannel(existing)) {
+        channelCategory = scheduleCategoryChannel;
+      } else if (isCategoryChannel(existing)) {
+        channelCategory = existing.category == 'Finansowe'
+            ? 'Finanse'
+            : existing.category;
+      }
+    }
+    final sent = await messaging.sendMessage(
           threadId: widget.threadId,
           content: content,
           tone: _analyzedTone,
           attachments: attachments,
+          channelCategory: channelCategory,
         );
 
     if (!mounted) {
@@ -397,6 +414,13 @@ class ThreadScreenState extends State<ThreadScreen> {
 
     setState(() => _sending = false);
     if (sent == null) {
+      final err = context.read<MessagingProvider>().error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err ?? 'Nie udało się wysłać wiadomości.'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
       return;
     }
 

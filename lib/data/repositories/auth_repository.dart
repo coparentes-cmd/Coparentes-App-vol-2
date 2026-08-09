@@ -67,15 +67,43 @@ class AuthRepository {
     );
   }
 
+  /// Persist bearer even on web — HttpOnly cookies via Netlify→Railway proxy
+  /// are unreliable in Safari; Authorization header must remain available.
+  Future<void> _persistWebBearerFallback(String? token) async {
+    if (!_usesCookieAuth) {
+      return;
+    }
+    if (token != null && token.isNotEmpty) {
+      await _preferences.setString(_tokenKey, token);
+    } else {
+      await _preferences.remove(_tokenKey);
+    }
+  }
+
+  Future<bool> _restoreWebBearerFallback() async {
+    if (!_usesCookieAuth) {
+      return false;
+    }
+    final token = _preferences.getString(_tokenKey);
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+    _apiClient.setToken(token);
+    return true;
+  }
+
   Future<AuthSession?> restoreSession() async {
     final cachedPayload = _offlineStore.getSessionPayload();
 
     if (_usesCookieAuth) {
       final trustedToken = await _readTrustedDeviceToken();
       _apiClient.setTrustedDeviceToken(trustedToken);
+      // Prefer previously saved bearer so messaging works even if cookie dropped.
+      await _restoreWebBearerFallback();
       try {
         final payload = await _apiClient.getJson('/auth/session');
         _applyWebSessionToken(payload);
+        await _persistWebBearerFallback(payload['token'] as String?);
         await _offlineStore.saveSessionPayload(payload);
         return authSessionFromJson(payload);
       } on ApiException catch (error) {
@@ -414,6 +442,9 @@ class AuthRepository {
     final session = authSessionFromJson(payload);
     if (_usesCookieAuth) {
       _applyWebSessionToken(payload);
+      await _persistWebBearerFallback(
+        session.token.isNotEmpty ? session.token : payload['token'] as String?,
+      );
     } else {
       _apiClient.setToken(session.token);
       await _writeToken(session.token);

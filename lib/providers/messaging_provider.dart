@@ -537,7 +537,11 @@ class MessagingProvider extends ChangeNotifier {
           return 'Serwer nie ma skonfigurowanego szyfrowania wiadomości. Skontaktuj się z administratorem.';
         case 'thread_not_ready':
         case 'thread_not_found':
-          return 'Nie udało się połączyć z rozmową. Odśwież wiadomości.';
+          return 'Nie udało się połączyć z rozmową. Odśwież wiadomości (Synchronizuj).';
+        case 'message_empty':
+          return 'Wiadomość jest pusta.';
+        case 'invalid_request':
+          return 'Nieprawidłowe dane wiadomości. Odśwież ekran i spróbuj ponownie.';
         default:
           break;
       }
