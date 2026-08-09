@@ -10,6 +10,7 @@ import '../../../providers/messaging_provider.dart';
 import '../../../services/ai_guidance_service.dart';
 import '../../../services/message_attachment_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/file_download.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../utils/messaging_helpers.dart';
@@ -623,9 +624,7 @@ class MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatTime(DateTime dt) => formatClockTime(dt);
 }
 
 class ToneIndicator extends StatelessWidget {

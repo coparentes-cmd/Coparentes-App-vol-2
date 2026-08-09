@@ -1,5 +1,6 @@
 import '../../models/models.dart';
 import '../../utils/calendar_date_utils.dart';
+import '../../utils/custody_schedule_utils.dart';
 import 'api_serializers.dart' show userRoleFromApi, userRoleToApi;
 
 EventType eventTypeFromApi(String value) {
@@ -67,7 +68,7 @@ String swapStatusToApi(SwapStatus status) {
 CustodySlot custodySlotFromJson(Map<String, dynamic> json) {
   return CustodySlot(
     id: json['id'] as String,
-    date: DateTime.parse(json['date'] as String),
+    date: normalizeScheduleDate(DateTime.parse(json['date'] as String)),
     custodian: userRoleFromApi(json['custodian'] as String),
     handoverLocation: json['handoverLocation'] as String?,
     handoverTime: json['handoverTime'] as String?,
@@ -191,10 +192,10 @@ CustodySchedule? custodyScheduleFromJson(Map<String, dynamic>? json) {
   return CustodySchedule(
     id: json['id'] as String,
     patternType: custodySchedulePatternFromApi(json['patternType'] as String),
-    startDate: DateTime.parse(json['startDate'] as String),
+    startDate: normalizeScheduleDate(DateTime.parse(json['startDate'] as String)),
     endDate: json['endDate'] == null
         ? null
-        : DateTime.parse(json['endDate'] as String),
+        : normalizeScheduleDate(DateTime.parse(json['endDate'] as String)),
     weekA: _weekPatternFromJson(weekAJson),
     weekB: _weekPatternFromJson(
       Map<String, dynamic>.from(json['weekB'] as Map? ?? const {}),
@@ -299,8 +300,12 @@ String custodyExceptionStatusToApi(CustodyExceptionStatus status) {
 CustodyException custodyExceptionFromJson(Map<String, dynamic> json) {
   return CustodyException(
     id: json['id'] as String,
-    fromDate: DateTime.parse(json['fromDate'] as String),
-    toDate: DateTime.parse(json['toDate'] as String),
+    fromDate: normalizeScheduleDate(
+      parseApiDateTime(json['fromDate'] as String),
+    ),
+    toDate: normalizeScheduleDate(
+      parseApiDateTime(json['toDate'] as String),
+    ),
     custodian: userRoleFromApi(json['custodian'] as String),
     exceptionType: custodyExceptionTypeFromApi(
       json['exceptionType'] as String? ?? 'singleDay',
@@ -309,7 +314,7 @@ CustodyException custodyExceptionFromJson(Map<String, dynamic> json) {
     status: custodyExceptionStatusFromApi(json['status'] as String),
     requesterId: json['requesterId'] as String,
     responseNote: json['responseNote'] as String?,
-    createdAt: DateTime.parse(json['createdAt'] as String),
+    createdAt: parseApiDateTime(json['createdAt'] as String),
   );
 }
 
@@ -335,10 +340,10 @@ CalendarEvent calendarEventFromJson(Map<String, dynamic> json) {
         ? json['title'] as String
         : 'Zdarzenie',
     description: json['description'] as String?,
-    startDate: DateTime.parse(json['startDate'] as String),
+    startDate: parseApiDateTime(json['startDate'] as String),
     endDate: json['endDate'] == null
         ? null
-        : DateTime.parse(json['endDate'] as String),
+        : parseApiDateTime(json['endDate'] as String),
     type: eventTypeFromApi(json['type'] as String? ?? 'other'),
     childId: json['childId'] as String?,
     createdBy: json['createdBy'] as String? ?? '',
@@ -366,11 +371,15 @@ SwapRequest swapRequestFromJson(Map<String, dynamic> json) {
     id: json['id'] as String,
     requesterId: json['requesterId'] as String,
     requesterName: json['requesterName'] as String,
-    originalDate: DateTime.parse(json['originalDate'] as String),
-    proposedDate: DateTime.parse(json['proposedDate'] as String),
+    originalDate: normalizeScheduleDate(
+      parseApiDateTime(json['originalDate'] as String),
+    ),
+    proposedDate: normalizeScheduleDate(
+      parseApiDateTime(json['proposedDate'] as String),
+    ),
     reason: json['reason'] as String?,
     status: swapStatusFromApi(json['status'] as String),
-    createdAt: DateTime.parse(json['createdAt'] as String),
+    createdAt: parseApiDateTime(json['createdAt'] as String),
     responseNote: json['responseNote'] as String?,
   );
 }

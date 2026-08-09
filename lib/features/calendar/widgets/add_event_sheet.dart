@@ -65,9 +65,10 @@ class AddEventSheetState extends State<AddEventSheet>
     if (event != null) {
       _titleController.text = event.title;
       _selectedType = event.type;
+      final localStart = event.startDate.toLocal();
       _selectedTime = TimeOfDay(
-        hour: event.startDate.hour,
-        minute: event.startDate.minute,
+        hour: localStart.hour,
+        minute: localStart.minute,
       );
     } else {
       _selectedType = EventType.school;

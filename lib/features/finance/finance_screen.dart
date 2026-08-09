@@ -9,6 +9,7 @@ import '../../../providers/exports_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/receipt_attachment_service.dart';
+import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
@@ -258,13 +259,14 @@ class FinanceScreenState extends State<FinanceScreen>
     if (diff.inSeconds < 15) return 'przed chwilą';
     if (diff.inMinutes < 1) return '${diff.inSeconds} s temu';
     if (diff.inMinutes < 60) return '${diff.inMinutes} min temu';
-    return '${syncedAt.hour.toString().padLeft(2, '0')}:${syncedAt.minute.toString().padLeft(2, '0')}';
+    return formatClockTime(syncedAt);
   }
 
   String _formatReportDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}.'
-        '${date.month.toString().padLeft(2, '0')}.'
-        '${date.year}';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}.'
+        '${local.month.toString().padLeft(2, '0')}.'
+        '${local.year}';
   }
 
   (DateTime, DateTime) _reportDateRange() {

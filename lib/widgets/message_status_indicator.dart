@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../utils/calendar_date_utils.dart';
 
 /// WhatsApp-style receipt: two gray ticks = sent, two blue ticks = read.
 class MessageReceiptFooter extends StatelessWidget {
@@ -65,9 +66,7 @@ class MessageReceiptFooter extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatTime(DateTime dt) => formatClockTime(dt);
 }
 
 String messageReceiptLabel(Message message, {required bool isMe}) {

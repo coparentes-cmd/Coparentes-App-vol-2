@@ -11,7 +11,10 @@ const _dayKeys = [
 ];
 
 DateTime normalizeScheduleDate(DateTime date) =>
-    DateTime(date.year, date.month, date.day);
+    DateTime.utc(date.year, date.month, date.day);
+
+bool isSameCustodyDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
 ({CustodyWeekPattern weekA, CustodyWeekPattern weekB}) resolveWeekPatterns(
   CustodySchedule schedule,
@@ -88,14 +91,14 @@ List<CustodySlot> generateSlotsFromSchedule(
   int monthsAhead = 12,
 }) {
   final start = normalizeScheduleDate(schedule.startDate);
-  final end = schedule.endDate == null
-      ? DateTime(start.year, start.month + monthsAhead, start.day)
+  final endExclusive = schedule.endDate == null
+      ? DateTime.utc(start.year, start.month + monthsAhead, start.day)
       : normalizeScheduleDate(schedule.endDate!).add(const Duration(days: 1));
 
   final slots = <CustodySlot>[];
   for (var cursor = start;
-      cursor.isBefore(end);
-      cursor = cursor.add(const Duration(days: 1))) {
+      cursor.isBefore(endExclusive);
+      cursor = DateTime.utc(cursor.year, cursor.month, cursor.day + 1)) {
     slots.add(
       CustodySlot(
         id: 'sched_${schedule.id}_${cursor.year}${cursor.month}${cursor.day}',
@@ -124,7 +127,9 @@ List<CustodySlot> mergeScheduleSlotsWithOverrides({
         slot.source == CustodySlotSource.swap) {
       final key =
           '${slot.date.year}-${slot.date.month}-${slot.date.day}';
-      overrideByDay[key] = slot;
+      overrideByDay[key] = slot.copyWith(
+        date: normalizeScheduleDate(slot.date),
+      );
     }
   }
 

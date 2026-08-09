@@ -21,11 +21,11 @@ class CalendarProvider extends ChangeNotifier {
   CustodySchedule? _custodySchedule;
   final List<CustodyException> _custodyExceptions = [];
   List<CustodySlot> _displaySlots = [];
-  bool _showsPendingSchedulePreview = false;
   bool _isLoading = false;
   String? _error;
   bool _loadedFromApi = false;
   int _loadGeneration = 0;
+  int _slotsRevision = 0;
 
   List<CustodySlot> get custodySlots => _custodySlots;
   List<CalendarEvent> get events => _events;
@@ -68,9 +68,6 @@ class CalendarProvider extends ChangeNotifier {
   /// Grafik zapisany (oczekujący lub aktywny) — bezpośrednie edycje są zablokowane.
   bool get hasLockedSchedule =>
       hasActiveSchedule || hasPendingScheduleApproval;
-
-  /// Oba rodzice widzą ten sam podgląd proponowanego grafiku.
-  bool get showsPendingSchedulePreview => _showsPendingSchedulePreview;
 
   bool canRespondToPendingSchedule(String? userId) {
     final schedule = _custodySchedule;
@@ -115,8 +112,7 @@ class CalendarProvider extends ChangeNotifier {
     if (schedule == null) {
       return null;
     }
-    if (schedule.status != CustodyScheduleStatus.active &&
-        schedule.status != CustodyScheduleStatus.pendingApproval) {
+    if (schedule.status != CustodyScheduleStatus.active) {
       return null;
     }
 
@@ -357,40 +353,102 @@ class CalendarProvider extends ChangeNotifier {
     _isLoading = false;
     _loadedFromApi = false;
     _displaySlots = [];
-    _showsPendingSchedulePreview = false;
     notifyListeners();
   }
 
+  /// Bumps whenever custody colors should remount the month grid.
+  int get slotsRevision => _slotsRevision;
+
+  int get displaySlotCount => _displaySlots.length;
+
   List<CustodySlot> getSlotsForDay(DateTime date) {
-    return _displaySlots
-        .where((slot) => isSameCalendarDay(slot.date, date))
+    final day = normalizeScheduleDate(date);
+
+    CustodySlot? overrideForDay() {
+      for (final slot in _custodySlots) {
+        if (!isSameCustodyDay(slot.date, day)) {
+          continue;
+        }
+        if (slot.source == CustodySlotSource.exception ||
+            slot.source == CustodySlotSource.swap) {
+          return slot.copyWith(date: normalizeScheduleDate(slot.date));
+        }
+      }
+      return null;
+    }
+
+    final override = overrideForDay();
+    if (override != null) {
+      return [override];
+    }
+
+    final matched = _displaySlots
+        .where((slot) => isSameCustodyDay(slot.date, day))
         .toList();
+    if (matched.isNotEmpty) {
+      return matched;
+    }
+
+    // Live fallback: paint only from an approved (active) schedule.
+    final schedule = _custodySchedule;
+    if (schedule == null ||
+        schedule.status != CustodyScheduleStatus.active) {
+      return _custodySlots
+          .where((slot) => isSameCustodyDay(slot.date, day))
+          .toList();
+    }
+
+    final start = normalizeScheduleDate(schedule.startDate);
+    if (day.isBefore(start)) {
+      return const [];
+    }
+    if (schedule.endDate != null &&
+        day.isAfter(normalizeScheduleDate(schedule.endDate!))) {
+      return const [];
+    }
+
+    return [
+      CustodySlot(
+        id: 'live_${schedule.id}_${day.year}${day.month}${day.day}',
+        date: day,
+        custodian: custodianForScheduleDate(schedule, day),
+        handoverLocation: schedule.handoverLocation,
+        handoverTime: schedule.handoverTime,
+        source: CustodySlotSource.schedule,
+      ),
+    ];
   }
 
   void _rebuildDisplaySlots() {
     final schedule = _custodySchedule;
     if (schedule == null) {
-      _displaySlots = List<CustodySlot>.from(_custodySlots);
-      _showsPendingSchedulePreview = false;
+      _displaySlots = _custodySlots
+          .map(
+            (slot) => slot.copyWith(date: normalizeScheduleDate(slot.date)),
+          )
+          .toList();
+      _slotsRevision++;
       return;
     }
 
-    // Always paint from the approved/proposed pattern so both parents see
-    // colors even before DB slots arrive (or if the snapshot is sparse).
-    if (schedule.status == CustodyScheduleStatus.pendingApproval ||
-        schedule.status == CustodyScheduleStatus.active) {
+    // Colors follow the approved schedule only — pending proposals stay
+    // colorless until the other parent accepts.
+    if (schedule.status == CustodyScheduleStatus.active) {
       final generated = generateSlotsFromSchedule(schedule);
       _displaySlots = mergeScheduleSlotsWithOverrides(
         generated: generated,
         overrides: _custodySlots,
       );
-      _showsPendingSchedulePreview =
-          schedule.status == CustodyScheduleStatus.pendingApproval;
+      _slotsRevision++;
       return;
     }
 
-    _displaySlots = List<CustodySlot>.from(_custodySlots);
-    _showsPendingSchedulePreview = false;
+    _displaySlots = _custodySlots
+        .map(
+          (slot) => slot.copyWith(date: normalizeScheduleDate(slot.date)),
+        )
+        .toList();
+    _slotsRevision++;
   }
 
   Future<bool> loadPersistedDemoIfAvailable() async {
@@ -473,37 +531,43 @@ class CalendarProvider extends ChangeNotifier {
   }
 
   void _applyAcceptedSwapToSlots(SwapRequest swap) {
-    final originalIndex = _custodySlots.indexWhere(
-      (slot) => isSameCalendarDay(slot.date, swap.originalDate),
-    );
-    final proposedIndex = _custodySlots.indexWhere(
-      (slot) => isSameCalendarDay(slot.date, swap.proposedDate),
-    );
-    if (originalIndex < 0 || proposedIndex < 0) {
-      return;
+    final originalDay = normalizeScheduleDate(swap.originalDate);
+    final proposedDay = normalizeScheduleDate(swap.proposedDate);
+    final schedule = _custodySchedule;
+
+    // Exchange the schedule custodians for these two days (idempotent).
+    final originalCustodian = schedule != null
+        ? custodianForScheduleDate(schedule, originalDay)
+        : UserRole.parentA;
+    final proposedCustodian = schedule != null
+        ? custodianForScheduleDate(schedule, proposedDay)
+        : UserRole.parentB;
+
+    void upsertSwapOverride(DateTime day, UserRole custodian) {
+      final index = _custodySlots.indexWhere(
+        (slot) => isSameCustodyDay(slot.date, day),
+      );
+      final existing = index >= 0 ? _custodySlots[index] : null;
+      final next = CustodySlot(
+        id: existing?.id ??
+            'swap_${day.year}${day.month}${day.day}_${custodian.name}',
+        date: day,
+        custodian: custodian,
+        handoverLocation:
+            existing?.handoverLocation ?? schedule?.handoverLocation,
+        handoverTime: existing?.handoverTime ?? schedule?.handoverTime,
+        source: CustodySlotSource.swap,
+      );
+      if (index >= 0) {
+        _custodySlots[index] = next;
+      } else {
+        _custodySlots.add(next);
+      }
     }
 
-    final originalSlot = _custodySlots[originalIndex];
-    final proposedSlot = _custodySlots[proposedIndex];
-    final originalCustodian = originalSlot.custodian;
-    final proposedCustodian = proposedSlot.custodian;
-
-    _custodySlots[originalIndex] = CustodySlot(
-      id: originalSlot.id,
-      date: originalSlot.date,
-      custodian: proposedCustodian,
-      handoverLocation: originalSlot.handoverLocation,
-      handoverTime: originalSlot.handoverTime,
-      source: CustodySlotSource.swap,
-    );
-    _custodySlots[proposedIndex] = CustodySlot(
-      id: proposedSlot.id,
-      date: proposedSlot.date,
-      custodian: originalCustodian,
-      handoverLocation: proposedSlot.handoverLocation,
-      handoverTime: proposedSlot.handoverTime,
-      source: CustodySlotSource.swap,
-    );
+    upsertSwapOverride(originalDay, proposedCustodian);
+    upsertSwapOverride(proposedDay, originalCustodian);
+    _rebuildDisplaySlots();
     notifyListeners();
   }
 
@@ -524,10 +588,11 @@ class CalendarProvider extends ChangeNotifier {
       }
       await _reloadBestEffort();
       if (status == SwapStatus.accepted) {
+        // Re-apply after reload so colors stay correct if the snapshot
+        // briefly omits swap-sourced slots.
         _applyAcceptedSwapToSlots(updated);
       }
     } catch (_) {
-      // Keep local optimistic update; caller shows snackbar.
       rethrow;
     }
   }
@@ -726,9 +791,7 @@ class CalendarProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
     _custodySchedule = schedule;
-    _custodySlots
-      ..clear()
-      ..addAll(generateSlotsFromSchedule(schedule));
+    // Do not paint colors until the other parent accepts.
     _rebuildDisplaySlots();
     notifyListeners();
     unawaited(_persistCurrentSnapshot());
@@ -844,6 +907,37 @@ class CalendarProvider extends ChangeNotifier {
     }
   }
 
+  void _applyAcceptedExceptionToSlots(CustodyException exception) {
+    final from = normalizeScheduleDate(exception.fromDate);
+    final to = normalizeScheduleDate(exception.toDate);
+    for (var cursor = from;
+        !cursor.isAfter(to);
+        cursor = cursor.add(const Duration(days: 1))) {
+      final day = normalizeScheduleDate(cursor);
+      final index = _custodySlots.indexWhere(
+        (slot) => isSameCustodyDay(slot.date, day),
+      );
+      final existing = index >= 0 ? _custodySlots[index] : null;
+      final next = CustodySlot(
+        id: existing?.id ??
+            'exception_${day.year}${day.month}${day.day}_${exception.id}',
+        date: day,
+        custodian: exception.custodian,
+        handoverLocation:
+            existing?.handoverLocation ?? _custodySchedule?.handoverLocation,
+        handoverTime: existing?.handoverTime ?? _custodySchedule?.handoverTime,
+        source: CustodySlotSource.exception,
+      );
+      if (index >= 0) {
+        _custodySlots[index] = next;
+      } else {
+        _custodySlots.add(next);
+      }
+    }
+    _rebuildDisplaySlots();
+    notifyListeners();
+  }
+
   Future<void> respondToException({
     required String exceptionId,
     required bool approve,
@@ -859,8 +953,15 @@ class CalendarProvider extends ChangeNotifier {
       if (index >= 0) {
         _custodyExceptions[index] = updated;
       }
-      notifyListeners();
+      if (approve && updated.status == CustodyExceptionStatus.accepted) {
+        _applyAcceptedExceptionToSlots(updated);
+      } else {
+        notifyListeners();
+      }
       await _reloadBestEffort();
+      if (approve && updated.status == CustodyExceptionStatus.accepted) {
+        _applyAcceptedExceptionToSlots(updated);
+      }
     } catch (_) {
       rethrow;
     }

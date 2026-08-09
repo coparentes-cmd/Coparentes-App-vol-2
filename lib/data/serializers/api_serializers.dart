@@ -1,4 +1,5 @@
 import '../../models/models.dart';
+import '../../utils/calendar_date_utils.dart';
 import '../models/auth_session.dart';
 
 UserRole userRoleFromApi(String value) {
@@ -190,7 +191,7 @@ MessageThread messageThreadFromJson(Map<String, dynamic> json) {
     category: json['category'] as String,
     childId: json['childId'] as String?,
     audience: json['audience'] as String? ?? 'parents',
-    lastActivity: DateTime.parse(json['lastActivity'] as String),
+    lastActivity: parseApiDateTime(json['lastActivity'] as String),
     hasUnread: _jsonBool(json['hasUnread'], fallback: false),
     messages: (json['messages'] as List<dynamic>)
         .map(
@@ -233,7 +234,7 @@ Message messageFromJson(Map<String, dynamic> json) {
           ),
         )
         .toList(),
-    sentAt: DateTime.parse(json['sentAt'] as String),
+    sentAt: parseApiDateTime(json['sentAt'] as String),
     isDelivered: _jsonBool(json['isDelivered'], fallback: true),
     isRead: _jsonBool(json['isRead'], fallback: false),
     hash: json['hash'] as String? ?? '',

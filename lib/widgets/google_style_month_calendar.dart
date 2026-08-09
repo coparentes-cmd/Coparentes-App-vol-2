@@ -507,8 +507,8 @@ class _DayCell extends StatelessWidget {
 
     final isParentA = slots.first.custodian == UserRole.parentA;
     final baseTint = isParentA
-        ? AppTheme.parentAColor.withValues(alpha: isOutside ? 0.10 : 0.16)
-        : AppTheme.parentBColor.withValues(alpha: isOutside ? 0.10 : 0.16);
+        ? AppTheme.parentAColor.withValues(alpha: isOutside ? 0.18 : 0.32)
+        : AppTheme.parentBColor.withValues(alpha: isOutside ? 0.18 : 0.32);
 
     if (isSelected) {
       return Color.alphaBlend(

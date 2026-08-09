@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
 import '../../../widgets/google_style_month_calendar.dart';
@@ -187,7 +188,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (!isReadOnly && calendar.hasPendingScheduleApproval)
           PendingScheduleBanner(
             schedule: calendar.custodySchedule!,
-            showsPreview: calendar.showsPendingSchedulePreview,
             canRespond: calendar.canRespondToPendingSchedule(userId),
             keyboardAcceptAutofocus:
                 calendar.canRespondToPendingSchedule(userId),
@@ -255,13 +255,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }) {
     return GoogleStyleMonthCalendar(
       key: ValueKey(
-        'cal-${calendar.custodySlots.length}-'
-        '${calendar.events.length}-'
+        'cal-${calendar.slotsRevision}-'
+        '${calendar.displaySlotCount}-'
         '${calendar.custodySchedule?.id}-'
         '${calendar.custodySchedule?.status.name}-'
         '${calendar.custodySchedule?.patternType.name}-'
-        '${calendar.custodySchedule?.weekInterval}-'
-        '${calendar.showsPendingSchedulePreview}-'
         '${calendar.loadedFromApi}',
       ),
       focusedDay: _focusedDay,
@@ -583,11 +581,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => AddEventSheet(
-        selectedDay: DateTime(
-          event.startDate.year,
-          event.startDate.month,
-          event.startDate.day,
-        ),
+        selectedDay: calendarDayFrom(event.startDate),
         event: event,
       ),
     );

@@ -4,10 +4,23 @@ String calendarDateToApiIso(DateTime date) {
   return DateTime.utc(local.year, local.month, local.day, 12).toIso8601String();
 }
 
+/// Parse an API ISO timestamp into the device-local wall clock.
+DateTime parseApiDateTime(String value) => DateTime.parse(value).toLocal();
+
 /// Event start/end with a specific local time.
 String calendarDateTimeToApiIso(DateTime date) {
-  final utc = date.toLocal().toUtc();
-  // Strip microseconds so Zod datetime always accepts the payload.
+  final local = date.toLocal();
+  // Explicit wall-clock → UTC (avoids Flutter-web edge cases with toUtc()).
+  final offset = local.timeZoneOffset;
+  final utc = DateTime.utc(
+    local.year,
+    local.month,
+    local.day,
+    local.hour,
+    local.minute,
+    local.second,
+    local.millisecond,
+  ).subtract(offset);
   return DateTime.utc(
     utc.year,
     utc.month,
@@ -56,14 +69,20 @@ int compareEventTimes(DateTime a, DateTime b) {
   return a.toLocal().compareTo(b.toLocal());
 }
 
+/// Clock time in the device timezone (HH:mm). Always converts UTC API values.
+String formatClockTime(DateTime date) {
+  final local = date.toLocal();
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
+}
+
 String? formatEventTimeLabel(DateTime date) {
   final local = date.toLocal();
   if (local.hour == 0 && local.minute == 0) {
     return null;
   }
-  final hour = local.hour.toString().padLeft(2, '0');
-  final minute = local.minute.toString().padLeft(2, '0');
-  return '$hour:$minute';
+  return formatClockTime(local);
 }
 
 /// Google Calendar–style time column: "Cały dzień" or "09:30–10:00".
