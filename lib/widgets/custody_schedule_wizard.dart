@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import 'booking_style_calendar_picker.dart';
+import 'mini_calendar_date_sheet.dart';
 
 class CustodyScheduleWizard extends StatefulWidget {
   const CustodyScheduleWizard({super.key});
@@ -25,7 +26,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   bool _isSubmitting = false;
   bool _calendarSaved = false;
   bool _calendarInteracted = false;
-  int _rangeClickCount = 0;
 
   late Map<String, UserRole> _weekA;
   late Map<String, UserRole> _weekB;
@@ -85,7 +85,6 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       _pattern = pattern;
       _calendarSaved = false;
       _calendarInteracted = false;
-      _rangeClickCount = 0;
       _selectedCustomDates.clear();
       _applyPatternPreset(pattern, creatorRole);
       if (_usesTemplateDateRange) {
@@ -99,43 +98,79 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
   void _updateRange(DateTime? start, DateTime? end) {
     setState(() {
       _calendarSaved = false;
-      _rangeClickCount++;
-      _calendarInteracted = _usesTemplateDateRange
-          ? _rangeClickCount >= 2
-          : true;
       if (start != null) {
         _startDate = start;
         _endDate = end ?? start;
       } else if (end != null) {
         _endDate = end;
       }
+      final hasFullRange = start != null && end != null;
+      _calendarInteracted = hasFullRange;
     });
   }
 
   void _updateSelectedDates(Set<String> dates) {
     setState(() {
       _calendarSaved = false;
-      _calendarInteracted = true;
+      _calendarInteracted = dates.isNotEmpty;
       _selectedCustomDates
         ..clear()
         ..addAll(dates);
     });
   }
 
-  void _saveCalendarSelection() {
-    if (!_applyCalendarIfReady()) {
+  Future<void> _openRangeMiniCalendar() async {
+    final result = await showMiniCalendarSheet(
+      context: context,
+      mode: BookingCalendarMode.range,
+      accentColor: AppTheme.accentColor,
+      title: 'Okres obowiązywania',
+      subtitle: 'Kliknij datę początkową, potem końcową.',
+      initialMonth: _normalizedStartDate,
+      rangeStart: _normalizedStartDate,
+      rangeEnd: _normalizedEndDate,
+    );
+    if (result == null || !mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _usesTemplateDateRange
-              ? 'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)} zapisany. Kliknij „Dalej”.'
-              : 'Zaznaczono ${_selectedCustomDates.length} dni. Kliknij „Dalej”.',
-        ),
-        backgroundColor: AppTheme.successColor,
-      ),
+    if (result.rangeStart == null || result.rangeEnd == null) {
+      return;
+    }
+    _updateRange(result.rangeStart, result.rangeEnd);
+    setState(() => _calendarSaved = true);
+  }
+
+  Future<void> _openCustomDaysMiniCalendar(String creatorLabel) async {
+    final creatorRole =
+        context.read<AppProvider>().currentUser?.role ?? UserRole.parentA;
+    final result = await showMiniCalendarSheet(
+      context: context,
+      mode: BookingCalendarMode.multiSelect,
+      accentColor: AppTheme.accentColor,
+      title: 'Zaznacz dni opieki',
+      subtitle: 'Dni zaznaczone kolorem ($creatorLabel).',
+      initialMonth: _calendarLeftMonth,
+      selectedDates: _selectedCustomDates,
+      colorForDay: (_) => creatorRole == UserRole.parentA
+          ? AppTheme.parentAColor
+          : AppTheme.parentBColor,
     );
+    if (result == null || !mounted) {
+      return;
+    }
+    _updateSelectedDates(result.selectedDates);
+    if (_selectedCustomDates.isNotEmpty) {
+      setState(() {
+        _calendarSaved = true;
+        final first = (_selectedCustomDates.toList()..sort()).first;
+        final parts = first.split('-');
+        _calendarLeftMonth = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          1,
+        );
+      });
+    }
   }
 
   void _applyCustomDatesToWeekPattern() {
@@ -202,7 +237,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Wybierz datę początkową i końcową w kalendarzu (dwa kliknięcia).',
+              'Kliknij Początek lub Koniec i wybierz okres w mini-kalendarzu.',
             ),
             backgroundColor: AppTheme.errorColor,
           ),
@@ -210,7 +245,9 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Zaznacz co najmniej jeden dzień w kalendarzu.'),
+            content: Text(
+              'Kliknij „Dni opieki” i zaznacz co najmniej jeden dzień.',
+            ),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -375,7 +412,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ),
         _PatternOption(
           title: 'Własny tydzień',
-          subtitle: 'Zaznacz dni w kalendarzu — każdy dzień osobno',
+          subtitle: 'Zaznacz dni w mini-kalendarzu — każdy dzień osobno',
           value: CustodySchedulePattern.customWeek,
           groupValue: _pattern,
           accentColor: creatorColor,
@@ -383,36 +420,44 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ),
         if (_showsCalendar) ...[
           const SizedBox(height: 16),
-          BookingStyleCalendarPicker(
-            mode: _usesTemplateDateRange
-                ? BookingCalendarMode.range
-                : BookingCalendarMode.multiSelect,
-            accentColor: AppTheme.accentColor,
-            creatorLabel: creatorLabel,
-            leftMonth: _calendarLeftMonth,
-            rangeStart: _usesTemplateDateRange ? _normalizedStartDate : null,
-            rangeEnd: _usesTemplateDateRange ? _normalizedEndDate : null,
-            selectedDates: _selectedCustomDates,
-            onLeftMonthChanged: (month) =>
-                setState(() => _calendarLeftMonth = month),
-            onRangeChanged: _updateRange,
-            onSelectedDatesChanged: _updateSelectedDates,
-            onConfirm: _saveCalendarSelection,
-            colorForDay: _pattern == CustodySchedulePattern.customWeek
-                ? (day) {
-                    if (!_selectedCustomDates.contains(bookingDateKey(day))) {
-                      return null;
-                    }
-                    final creatorRole = context
-                            .read<AppProvider>()
-                            .currentUser
-                            ?.role ??
-                        UserRole.parentA;
-                    return creatorRole == UserRole.parentA
-                        ? AppTheme.parentAColor
-                        : AppTheme.parentBColor;
-                  }
-                : null,
+          const Text(
+            'Daty',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.dividerColor),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Column(
+                children: [
+                  if (_usesTemplateDateRange) ...[
+                    IosDateFieldRow(
+                      label: 'Początek',
+                      value: _formatDate(_normalizedStartDate),
+                      onTap: _openRangeMiniCalendar,
+                    ),
+                    const Divider(height: 1, indent: 16),
+                    IosDateFieldRow(
+                      label: 'Koniec',
+                      value: _formatDate(_normalizedEndDate),
+                      onTap: _openRangeMiniCalendar,
+                    ),
+                  ] else
+                    IosDateFieldRow(
+                      label: 'Dni opieki',
+                      value: _selectedCustomDates.isEmpty
+                          ? 'Wybierz…'
+                          : '${_selectedCustomDates.length} dni',
+                      onTap: () => _openCustomDaysMiniCalendar(creatorLabel),
+                    ),
+                ],
+              ),
+            ),
           ),
           if (_calendarSaved) ...[
             const SizedBox(height: 8),
@@ -422,7 +467,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                 const SizedBox(width: 6),
                 Text(
                   _usesTemplateDateRange
-                      ? 'Okres zapisany'
+                      ? 'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)}'
                       : 'Zaznaczono ${_selectedCustomDates.length} dni',
                   style: TextStyle(
                     color: creatorColor,
