@@ -19,6 +19,7 @@ import 'category_bar.dart';
 import 'split_overview_card.dart';
 import 'expense_card.dart';
 import 'dispute_expense_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class AddExpenseSheet extends StatefulWidget {
   final bool initialOcrMode;
@@ -265,7 +266,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     onPressed: () =>
                         _pickAndParseReceipt(ReceiptImageSource.camera),
                     icon: const Icon(Icons.camera_alt),
-                    label: const Text('Zrób zdjęcie aparatem'),
+                    label: Text(context.tr('Zrób zdjęcie aparatem')),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -275,7 +276,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     onPressed: () =>
                         _pickAndParseReceipt(ReceiptImageSource.gallery),
                     icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Dodaj załącznik'),
+                    label: Text(context.tr('Dodaj załącznik')),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -435,7 +436,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _saveExpense,
-                  child: const Text('Zapisz wydatek'),
+                  child: Text(context.tr('Zapisz wydatek')),
                 ),
               ),
           ],
@@ -451,8 +452,8 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
 
     if (title.isEmpty || amount == null || amount <= 0) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Uzupełnij poprawnie opis i kwotę wydatku.'),
+        SnackBar(
+          content: Text(context.tr('Uzupełnij poprawnie opis i kwotę wydatku.')),
           backgroundColor: AppTheme.warningColor,
         ),
       );
@@ -484,8 +485,8 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się zapisać wydatku.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się zapisać wydatku.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );

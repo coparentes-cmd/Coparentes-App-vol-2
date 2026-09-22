@@ -6,6 +6,10 @@ import 'package:http/http.dart' as http;
 
 import '../config/country_profiles.dart';
 import '../data/api/app_api_client.dart';
+import '../data/local/locale_store.dart';
+import '../l10n/app_strings.dart';
+import '../l10n/demo_copy.dart';
+import '../l10n/locale_policy.dart';
 import '../data/models/auth_session.dart';
 import '../data/models/login_challenge.dart';
 import '../data/local/pin_lock_store.dart';
@@ -106,14 +110,22 @@ class AppProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final ConsentRepository _consentRepository;
   final PinLockStore _pinLockStore;
+  final LocaleStore? _localeStore;
 
   AppProvider({
     required AuthRepository authRepository,
     required ConsentRepository consentRepository,
     required PinLockStore pinLockStore,
+    LocaleStore? localeStore,
+    Locale? initialLocale,
   })  : _authRepository = authRepository,
         _consentRepository = consentRepository,
-        _pinLockStore = pinLockStore {
+        _pinLockStore = pinLockStore,
+        _localeStore = localeStore {
+    if (initialLocale != null) {
+      _locale = localeFromStoredCode(initialLocale.languageCode);
+      _language = _locale.languageCode;
+    }
     unawaited(bootstrap());
   }
 
@@ -194,6 +206,13 @@ class AppProvider extends ChangeNotifier {
   Color get primaryLight => _colorScheme.light;
 
   String _mapAuthError(Object error, {required String fallback}) {
+    return AppStrings.translate(
+      _language,
+      _polishAuthError(error, fallback: fallback),
+    );
+  }
+
+  String _polishAuthError(Object error, {required String fallback}) {
     if (error is ApiException) {
       switch (error.message) {
         case 'email_in_use':
@@ -915,16 +934,46 @@ class AppProvider extends ChangeNotifier {
   }
 
   void setLocale(Locale locale) {
-    _locale = locale;
-    _language = locale.languageCode;
+    final next = localeFromStoredCode(locale.languageCode);
+    _locale = next;
+    _language = next.languageCode;
+    final store = _localeStore;
+    if (store != null) {
+      unawaited(store.writeExplicit(next));
+    }
+    applyDemoWorkspaceName(notify: false);
     notifyListeners();
   }
 
+  /// Country changes currency and profile only. It does not switch the UI language.
   void setCountryProfile(String countryCode) {
     _countryProfile = CountryProfiles.byCode(countryCode);
-    _locale = Locale(_countryProfile.languageCode);
-    _language = _countryProfile.languageCode;
     notifyListeners();
+  }
+
+  /// Renames only the original demo workspace. Production workspaces are ignored.
+  void applyDemoWorkspaceName({bool notify = true}) {
+    final current = _currentWorkspace;
+    if (current == null || current.id != DemoCopy.workspaceDemoId) {
+      return;
+    }
+    final name = DemoCopy.workspaceName(_language);
+    if (current.name == name) {
+      return;
+    }
+    _currentWorkspace = Workspace(
+      id: current.id,
+      name: name,
+      inviteCode: current.inviteCode,
+      childInviteCode: current.childInviteCode,
+      inviteCodeExpiresAt: current.inviteCodeExpiresAt,
+      members: current.members,
+      children: current.children,
+      createdAt: current.createdAt,
+    );
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
@@ -954,7 +1003,7 @@ class AppProvider extends ChangeNotifier {
     final createdAt = DateTime(2026, 1, 12, 9, 30);
     return Workspace(
       id: 'workspace_demo_001',
-      name: 'Rodzina Kowalskich — demo',
+      name: DemoCopy.workspaceName(_language),
       inviteCode: 'DEMO-2026',
       childInviteCode: 'DZIECIKOWAL2026',
       members: [

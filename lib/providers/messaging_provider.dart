@@ -4,6 +4,7 @@ import '../config/message_tags.dart';
 import '../config/messaging_categories.dart';
 import '../data/api/app_api_client.dart';
 import '../data/repositories/messaging_repository.dart';
+import '../l10n/demo_copy.dart';
 import '../models/models.dart';
 import '../utils/demo_time.dart';
 import '../utils/messaging_helpers.dart';
@@ -381,6 +382,47 @@ class MessagingProvider extends ChangeNotifier {
       ),
     ]);
     notifyListeners();
+  }
+
+  /// Updates only the original demo thread/message ids. Session threads stay.
+  void localizeDemoSeed(String languageCode) {
+    var changed = false;
+    for (var i = 0; i < _threads.length; i++) {
+      final thread = _threads[i];
+      if (!DemoCopy.isDemoThread(thread.id)) {
+        continue;
+      }
+      final subject =
+          DemoCopy.threadSubject(thread.id, languageCode) ?? thread.subject;
+      final messages = thread.messages.map((message) {
+        final content =
+            DemoCopy.messageContent(message.id, languageCode) ?? message.content;
+        if (content == message.content) {
+          return message;
+        }
+        return message.copyWith(content: content);
+      }).toList();
+      final messagesChanged = messages.asMap().entries.any(
+            (entry) => entry.value.content != thread.messages[entry.key].content,
+          );
+      if (subject == thread.subject && !messagesChanged) {
+        continue;
+      }
+      _threads[i] = MessageThread(
+        id: thread.id,
+        subject: subject,
+        category: thread.category,
+        messages: messages,
+        lastActivity: thread.lastActivity,
+        hasUnread: thread.hasUnread,
+        childId: thread.childId,
+        audience: thread.audience,
+      );
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   void initializeChildSampleData() {

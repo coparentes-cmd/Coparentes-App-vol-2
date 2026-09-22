@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../utils/calendar_date_utils.dart';
 import '../utils/demo_time.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 const _maxVisibleEvents = 3;
 
@@ -188,7 +189,9 @@ class _MonthGrid extends StatelessWidget {
       lastDay: DateTime.now().add(const Duration(days: 730)),
       focusedDay: month,
       selectedDayPredicate: (day) => isSameDay(day, selectedDay),
-      locale: 'pl_PL',
+      locale: Localizations.localeOf(context).languageCode == 'en'
+          ? 'en_GB'
+          : 'pl_PL',
       startingDayOfWeek: StartingDayOfWeek.monday,
       availableGestures: AvailableGestures.none,
       pageAnimationEnabled: false,
@@ -303,7 +306,7 @@ class _MonthHeader extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.keyboard_arrow_up),
-            tooltip: 'Poprzedni miesiąc',
+            tooltip: context.tr('Poprzedni miesiąc'),
             onPressed: onPrevious,
           ),
           Expanded(
@@ -320,7 +323,7 @@ class _MonthHeader extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.keyboard_arrow_down),
-            tooltip: 'Następny miesiąc',
+            tooltip: context.tr('Następny miesiąc'),
             onPressed: onNext,
           ),
           TextButton(
@@ -455,40 +458,47 @@ class _DayCell extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ...visibleEvents.map(
-                    (event) => _EventChip(
-                      event: event,
-                      onDoubleTap: onEventDoubleTap == null
-                          ? null
-                          : () => onEventDoubleTap!(event),
-                    ),
-                  ),
-                  if (hiddenCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 2, top: 1),
-                      child: Text(
-                        '+$hiddenCount więcej',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isOutside
-                              ? AppTheme.textHint
-                              : AppTheme.textSecondary,
-                        ),
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topCenter,
+                  maxHeight: double.infinity,
+                  child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ...visibleEvents.map(
+                      (event) => _EventChip(
+                        event: event,
+                        onDoubleTap: onEventDoubleTap == null
+                            ? null
+                            : () => onEventDoubleTap!(event),
                       ),
                     ),
-                ],
+                    if (hiddenCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2, top: 1),
+                        child: Text(
+                          '+$hiddenCount więcej',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isOutside
+                                ? AppTheme.textHint
+                                : AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
-    ),
+      ),
     );
   }
 

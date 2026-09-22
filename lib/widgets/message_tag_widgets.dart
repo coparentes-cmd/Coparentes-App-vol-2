@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config/message_tags.dart';
 import '../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class MessageTagChip extends StatelessWidget {
   final String tag;
@@ -297,7 +298,7 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
               prefixIcon: const Icon(Icons.new_label_outlined, size: 20),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.add),
-                tooltip: 'Dodaj etykietę',
+                tooltip: context.tr('Dodaj etykietę'),
                 onPressed: () => _addCustomTag(_controller.text),
               ),
             ),
@@ -308,12 +309,12 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Anuluj'),
+                child: Text(context.tr('Anuluj')),
               ),
               const Spacer(),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, _tags),
-                child: const Text('Zastosuj'),
+                child: Text(context.tr('Zastosuj')),
               ),
             ],
           ),

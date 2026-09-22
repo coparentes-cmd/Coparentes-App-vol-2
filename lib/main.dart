@@ -32,13 +32,16 @@ import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
 import 'widgets/pin_lock_overlay.dart';
+import 'data/local/locale_store.dart';
 import 'utils/app_browser_back.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   installAppBrowserBackHandling();
   await initializeDateFormatting('pl_PL', null);
+  await initializeDateFormatting('en_GB', null);
   final preferences = await SharedPreferences.getInstance();
+  final localeStore = LocaleStore(preferences: preferences);
   final offlineStore = OfflineStore(preferences: preferences);
   await offlineStore.initialize();
   final pinLockStore = PinLockStore(preferences: preferences);
@@ -81,6 +84,7 @@ Future<void> main() async {
       offlineStore: offlineStore,
       pinLockStore: pinLockStore,
       apiClient: apiClient,
+      localeStore: localeStore,
     ),
   );
 }
@@ -96,6 +100,7 @@ class CoparentesApp extends StatelessWidget {
   final OfflineStore offlineStore;
   final PinLockStore pinLockStore;
   final AppApiClient apiClient;
+  final LocaleStore localeStore;
 
   const CoparentesApp({
     super.key,
@@ -109,6 +114,7 @@ class CoparentesApp extends StatelessWidget {
     required this.offlineStore,
     required this.pinLockStore,
     required this.apiClient,
+    required this.localeStore,
   });
 
   @override
@@ -120,6 +126,8 @@ class CoparentesApp extends StatelessWidget {
             authRepository: authRepository,
             consentRepository: consentRepository,
             pinLockStore: pinLockStore,
+            localeStore: localeStore,
+            initialLocale: localeStore.read(),
           ),
         ),
         ChangeNotifierProvider(
@@ -189,8 +197,6 @@ class CoparentesApp extends StatelessWidget {
             supportedLocales: const [
               Locale('pl'),
               Locale('en'),
-              Locale('de'),
-              Locale('fr'),
             ],
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
@@ -200,19 +206,21 @@ class CoparentesApp extends StatelessWidget {
             theme: AppTheme.buildLight(ap.colorScheme.primary),
             darkTheme: AppTheme.buildDark(ap.colorScheme.primary),
             builder: (context, child) {
-              return PinLockGate(
-                child: AppLifecycleRefresher(
-                  child: MessageNotificationListener(
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: child ?? const SizedBox.shrink(),
-                        ),
-                        const Align(
-                          alignment: Alignment.topCenter,
-                          child: OfflineStatusBanner(),
-                        ),
-                      ],
+              return _DemoLocaleSync(
+                child: PinLockGate(
+                  child: AppLifecycleRefresher(
+                    child: MessageNotificationListener(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: child ?? const SizedBox.shrink(),
+                          ),
+                          const Align(
+                            alignment: Alignment.topCenter,
+                            child: OfflineStatusBanner(),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -223,6 +231,27 @@ class CoparentesApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _DemoLocaleSync extends StatelessWidget {
+  final Widget child;
+
+  const _DemoLocaleSync({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppProvider>();
+    final languageCode = app.language;
+    if (app.isDemoMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<CalendarProvider>().localizeDemoSeed(languageCode);
+        context.read<FinanceProvider>().localizeDemoSeed(languageCode);
+        context.read<MessagingProvider>().localizeDemoSeed(languageCode);
+        context.read<AppProvider>().applyDemoWorkspaceName();
+      });
+    }
+    return child;
   }
 }
 
@@ -308,6 +337,11 @@ class _AppGateState extends State<_AppGate> {
         // Always re-seed demo calendar so the fixed day (10.08.2026) and
         // sample events are not replaced by a stale offline snapshot.
         calendarProvider.initializeSampleData();
+        final languageCode = context.read<AppProvider>().language;
+        calendarProvider.localizeDemoSeed(languageCode);
+        financeProvider.localizeDemoSeed(languageCode);
+        messagingProvider.localizeDemoSeed(languageCode);
+        context.read<AppProvider>().applyDemoWorkspaceName();
       } else {
         final appProvider = context.read<AppProvider>();
         final role = appProvider.currentUser?.role;

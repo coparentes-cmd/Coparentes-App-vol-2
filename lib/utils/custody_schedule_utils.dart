@@ -239,6 +239,31 @@ const _polishWeekdays = [
   'niedziela',
 ];
 
+const _englishWeekdays = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+const _englishMonths = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 const _polishMonthsGenitive = [
   'stycznia',
   'lutego',
@@ -256,19 +281,28 @@ const _polishMonthsGenitive = [
 
 /// Label for Start handover strip, e.g. `piątek, 7 sierpnia (jutro) 17:00`.
 /// Relative day only for dzisiaj / jutro / pojutrze.
-String formatNextHandoverLabel(CustodySlot slot, {DateTime? now}) {
+String formatNextHandoverLabel(
+  CustodySlot slot, {
+  DateTime? now,
+  String languageCode = 'pl',
+}) {
   final base = now ?? DemoTime.now();
   final day = _dateOnly(slot.date);
   final today = _dateOnly(base);
-  final weekday = _polishWeekdays[day.weekday - 1];
-  final month = _polishMonthsGenitive[day.month - 1];
+  final english = languageCode == 'en';
+  final weekday = english
+      ? _englishWeekdays[day.weekday - 1]
+      : _polishWeekdays[day.weekday - 1];
+  final month = english
+      ? _englishMonths[day.month - 1]
+      : _polishMonthsGenitive[day.month - 1];
   final datePart = '$weekday, ${day.day} $month';
 
   final dayDiff = day.difference(today).inDays;
   final relative = switch (dayDiff) {
-    0 => 'dzisiaj',
-    1 => 'jutro',
-    2 => 'pojutrze',
+    0 => english ? 'today' : 'dzisiaj',
+    1 => english ? 'tomorrow' : 'jutro',
+    2 => english ? 'the day after tomorrow' : 'pojutrze',
     _ => null,
   };
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/message_attachment_service.dart';
 import '../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class MessageComposeBar extends StatefulWidget {
   final TextEditingController controller;
@@ -171,7 +172,7 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                       ? AppTheme.textHint
                       : AppTheme.textSecondary,
                 ),
-                tooltip: 'Dodaj załącznik',
+                tooltip: context.tr('Dodaj załącznik'),
                 onPressed: widget.pendingAttachments.length >=
                         maxMessageAttachmentsPerMessage
                     ? null

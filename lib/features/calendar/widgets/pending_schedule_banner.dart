@@ -5,6 +5,7 @@ import '../../../../theme/app_theme.dart';
 import '../../../../widgets/common_widgets.dart';
 
 import '../calendar_helpers.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class PendingScheduleBanner extends StatelessWidget {
   final CustodySchedule schedule;
@@ -60,7 +61,7 @@ class PendingScheduleBanner extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: onReject,
-                          child: const Text('Odrzuć'),
+                          child: Text(context.tr('Odrzuć')),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -70,7 +71,7 @@ class PendingScheduleBanner extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.successColor,
                           ),
-                          child: const Text('Akceptuj'),
+                          child: Text(context.tr('Akceptuj')),
                         ),
                       ),
                     ],

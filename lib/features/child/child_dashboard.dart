@@ -14,6 +14,7 @@ import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import 'widgets/child_todo_models.dart';
 import 'widgets/mood_button.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ChildDashboard extends StatefulWidget {
   const ChildDashboard({super.key});
@@ -132,15 +133,15 @@ class _ChildDashboardState extends State<ChildDashboard> {
         selectedItemColor: AppTheme.childColor,
         unselectedItemColor: AppTheme.textHint,
         type: BottomNavigationBarType.fixed,
-        items: const [
+        items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.today),
-            label: 'Dzisiaj',
+            label: context.tr('Dzisiaj'),
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month_outlined),
             activeIcon: Icon(Icons.calendar_month),
-            label: 'Kalendarz',
+            label: context.tr('Kalendarz'),
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.family_restroom_outlined),
@@ -150,7 +151,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
           BottomNavigationBarItem(
             icon: Icon(Icons.list_alt_outlined),
             activeIcon: Icon(Icons.list_alt),
-            label: 'Lista',
+            label: context.tr('Lista'),
           ),
         ],
       ),
@@ -162,12 +163,12 @@ class _ChildDashboardState extends State<ChildDashboard> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Zmień profil'),
-        content: const Text('Czy chcesz wrócić do ekranu wyboru profilu?'),
+        title: Text(context.tr('Zmień profil')),
+        content: Text(context.tr('Czy chcesz wrócić do ekranu wyboru profilu?')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Nie'),
+            child: Text(context.tr('Nie')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -177,7 +178,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.childColor,
             ),
-            child: const Text('Tak, zmień'),
+            child: Text(context.tr('Tak, zmień')),
           ),
         ],
       ),
@@ -218,7 +219,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.switch_account, color: Colors.white),
-            tooltip: 'Zmień profil',
+            tooltip: context.tr('Zmień profil'),
             onPressed: () => _showExitDialog(context),
           ),
         ],
@@ -577,7 +578,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.switch_account, color: Colors.white),
-            tooltip: 'Zmień profil',
+            tooltip: context.tr('Zmień profil'),
             onPressed: () => _showExitDialog(context),
           ),
         ],
@@ -620,7 +621,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
             child: OutlinedButton.icon(
               onPressed: _showNewListDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Nowa lista'),
+              label: Text(context.tr('Nowa lista')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.childColor,
                 side: BorderSide(color: AppTheme.childColor.withValues(alpha: 0.55)),
@@ -652,15 +653,15 @@ class _ChildDashboardState extends State<ChildDashboard> {
                         controller: _listItemController,
                         focusNode: _listItemFocus,
                         textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
-                          hintText: 'Dodaj element listy…',
+                        decoration: InputDecoration(
+                          hintText: context.tr('Dodaj element listy…'),
                           border: InputBorder.none,
                         ),
                         onSubmitted: _addListItem,
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Dodaj',
+                      tooltip: context.tr('Dodaj'),
                       icon: const Icon(Icons.arrow_upward_rounded),
                       color: AppTheme.childColor,
                       onPressed: () => _addListItem(_listItemController.text),
@@ -778,7 +779,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
     final created = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Nowa lista'),
+        title: Text(context.tr('Nowa lista')),
         content: TextField(
           controller: titleController,
           autofocus: true,
@@ -792,7 +793,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Anuluj'),
+            child: Text(context.tr('Anuluj')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -800,7 +801,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
               backgroundColor: AppTheme.childColor,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Utwórz'),
+            child: Text(context.tr('Utwórz')),
           ),
         ],
       ),

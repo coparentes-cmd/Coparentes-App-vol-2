@@ -19,6 +19,7 @@ import 'category_bar.dart';
 import 'split_overview_card.dart';
 import 'dispute_expense_sheet.dart';
 import 'add_expense_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ExpenseCard extends StatefulWidget {
   final Expense expense;
@@ -91,8 +92,8 @@ class ExpenseCardState extends State<ExpenseCard> {
     if (!context.mounted) return;
     if (data == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się pobrać paragonu.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się pobrać paragonu.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -102,8 +103,8 @@ class ExpenseCardState extends State<ExpenseCard> {
     final contentBase64 = data['contentBase64'] as String?;
     if (contentBase64 == null || contentBase64.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Brak zapisanego paragonu.'),
+        SnackBar(
+          content: Text(context.tr('Brak zapisanego paragonu.')),
           backgroundColor: AppTheme.warningColor,
         ),
       );
@@ -120,7 +121,7 @@ class ExpenseCardState extends State<ExpenseCard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             AppBar(
-              title: const Text('Paragon'),
+              title: Text(context.tr('Paragon')),
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
@@ -203,7 +204,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                       ),
                       Text(
                         '${expense.date.day}.${expense.date.month}.${expense.date.year}'
-                        ' · ${expense.category}'
+                        ' · ${context.tr(expense.category)}'
                         '${childName != null ? ' · $childName' : ''}',
                         style: const TextStyle(
                           fontSize: 12,
@@ -239,9 +240,11 @@ class ExpenseCardState extends State<ExpenseCard> {
             Row(
               children: [
                 StatusChip(
-                  label: expense.status == ExpenseStatus.settled
-                      ? 'Rozliczone'
-                      : expense.statusLabel,
+                  label: context.tr(
+                    expense.status == ExpenseStatus.settled
+                        ? 'Rozliczone'
+                        : expense.statusLabel,
+                  ),
                   color: expense.statusColor,
                 ),
                 const SizedBox(width: 8),

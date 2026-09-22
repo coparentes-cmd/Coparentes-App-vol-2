@@ -18,6 +18,7 @@ import 'widgets/swap_request_sheet.dart';
 import 'widgets/schedule_setup_banner.dart';
 import 'widgets/pending_schedule_banner.dart';
 import 'widgets/day_action_buttons.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? focusDay;
@@ -134,13 +135,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? null
           : [
               _CalendarHeaderIconButton(
-                tooltip: 'Grafik opieki',
+                tooltip: context.tr('Grafik opieki'),
                 icon: Icons.settings,
                 backgroundColor: AppTheme.primaryTeal,
                 onPressed: () => _openScheduleWizard(context),
               ),
               _CalendarHeaderIconButton(
-                tooltip: 'Nowe zdarzenie',
+                tooltip: context.tr('Nowe zdarzenie'),
                 icon: Icons.add,
                 backgroundColor: AppTheme.purpleColor,
                 onPressed: () => _addEvent(context),
@@ -180,7 +181,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               TextButton(
                 onPressed: () =>
                     context.read<CalendarProvider>().load(),
-                child: const Text('Odśwież'),
+                child: Text(context.tr('Odśwież')),
               ),
             ],
           ),
@@ -234,12 +235,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             children: [
               LegendItem(
                 color: AppTheme.parentAColor,
-                label: 'U Mamy',
+                label: context.tr('U Mamy'),
               ),
               const SizedBox(width: 20),
               LegendItem(
                 color: AppTheme.parentBColor,
-                label: 'U Taty',
+                label: context.tr('U Taty'),
               ),
             ],
           ),
@@ -397,7 +398,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Zmiana grafiku wymaga akceptacji'),
+          title: Text(context.tr('Zmiana grafiku wymaga akceptacji')),
           content: Text(
             calendar.hasActiveSchedule
                 ? 'Obecny grafik pozostaje w mocy do czasu akceptacji nowej propozycji przez drugiego rodzica.'
@@ -406,11 +407,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Anuluj'),
+              child: Text(context.tr('Anuluj')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Kontynuuj'),
+              child: Text(context.tr('Kontynuuj')),
             ),
           ],
         ),

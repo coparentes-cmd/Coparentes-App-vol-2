@@ -76,7 +76,10 @@ class ExportsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> saveExportAsPdf(ExportJob job) async {
+  Future<bool> saveExportAsPdf(
+    ExportJob job, {
+    String languageCode = 'pl',
+  }) async {
     _error = null;
     notifyListeners();
 
@@ -99,7 +102,10 @@ class ExportsProvider extends ChangeNotifier {
     }
 
     try {
-      final bytes = await ExportPdfService.buildPdf(data);
+      final bytes = await ExportPdfService.buildPdf(
+        data,
+        languageCode: languageCode,
+      );
       await saveBytesAsFile(
         fileName: ExportPdfService.fileNameForJob(job),
         mimeType: 'application/pdf',

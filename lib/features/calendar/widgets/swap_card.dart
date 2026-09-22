@@ -24,6 +24,7 @@ import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class SwapCard extends StatelessWidget {
   final SwapRequest swap;
@@ -77,14 +78,14 @@ class SwapCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   SwapDateRow(
-                    label: 'Oryginalny dzień',
+                    label: context.tr('Oryginalny dzień'),
                     date: swap.originalDate,
                     icon: Icons.event,
                     color: AppTheme.errorColor,
                   ),
                   const SizedBox(height: 6),
                   SwapDateRow(
-                    label: 'Proponowany dzień',
+                    label: context.tr('Proponowany dzień'),
                     date: swap.proposedDate,
                     icon: Icons.event_available,
                     color: AppTheme.successColor,

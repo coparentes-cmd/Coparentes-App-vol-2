@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
 import '../../../widgets/common_widgets.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ScheduleMessageActions extends StatelessWidget {
   final bool alignEnd;
@@ -40,7 +41,7 @@ class ScheduleMessageActions extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
-              child: const Text('Odrzuć'),
+              child: Text(context.tr('Odrzuć')),
             ),
             const SizedBox(width: 8),
             ElevatedButton(
@@ -63,7 +64,7 @@ class ScheduleMessageActions extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Akceptuj'),
+                  : Text(context.tr('Akceptuj')),
             ),
           ],
         ),

@@ -21,6 +21,7 @@ import 'widgets/split_overview_card.dart';
 import 'widgets/expense_card.dart';
 import 'widgets/dispute_expense_sheet.dart';
 import 'widgets/add_expense_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 enum _ReportPeriod { thisMonth, quarter, year, custom }
 
@@ -158,18 +159,18 @@ class FinanceScreenState extends State<FinanceScreen>
     final isReadOnly = user?.role == UserRole.observer;
 
     return ParentTabScaffold(
-      title: 'Finanse',
+      title: context.tr('Finanse'),
       actions: [
         if (!isReadOnly) ...[
           ParentHeaderActionButton(
-            label: 'Nowy wydatek',
+            label: context.tr('Nowy wydatek'),
             icon: Icons.add,
             backgroundColor: AppTheme.purpleColor,
             prominent: true,
             onPressed: () => _addExpense(context, ocrMode: false),
           ),
           ParentHeaderActionButton(
-            label: 'Z paragonu',
+            label: context.tr('Z paragonu'),
             icon: Icons.camera_alt,
             backgroundColor: AppTheme.purpleColor,
             prominent: true,
@@ -184,7 +185,7 @@ class FinanceScreenState extends State<FinanceScreen>
         ],
         IconButton(
           icon: const Icon(Icons.picture_as_pdf_outlined),
-          tooltip: 'Eksport PDF',
+          tooltip: context.tr('Eksport PDF'),
           onPressed: () => _exportFinances(context),
         ),
       ],
@@ -199,7 +200,7 @@ class FinanceScreenState extends State<FinanceScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Wydatki'),
+                Text(context.tr('Wydatki')),
                 const SizedBox(width: 4),
                 Consumer<FinanceProvider>(
                   builder: (_, fp, __) {
@@ -301,14 +302,14 @@ class FinanceScreenState extends State<FinanceScreen>
           builder: (context, setDialogState) {
             final invalidRange = from.isAfter(to);
             return AlertDialog(
-              title: const Text('Wybierz daty'),
+              title: Text(context.tr('Wybierz daty')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Od'),
+                    title: Text(context.tr('Od')),
                     subtitle: Text(_formatReportDate(from)),
                     trailing: const Icon(Icons.calendar_today_outlined),
                     onTap: () async {
@@ -325,7 +326,7 @@ class FinanceScreenState extends State<FinanceScreen>
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Do'),
+                    title: Text(context.tr('Do')),
                     subtitle: Text(_formatReportDate(to)),
                     trailing: const Icon(Icons.calendar_today_outlined),
                     onTap: () async {
@@ -353,13 +354,13 @@ class FinanceScreenState extends State<FinanceScreen>
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Anuluj'),
+                  child: Text(context.tr('Anuluj')),
                 ),
                 ElevatedButton(
                   onPressed: invalidRange
                       ? null
                       : () => Navigator.pop(dialogContext, true),
-                  child: const Text('Zastosuj'),
+                  child: Text(context.tr('Zastosuj')),
                 ),
               ],
             );
@@ -471,7 +472,7 @@ class FinanceScreenState extends State<FinanceScreen>
             children: [
               Expanded(
                 child: StatusCountChip(
-                  label: 'Zaakceptowane',
+                  label: context.tr('Zaakceptowane'),
                   count: finance.acceptedCount,
                   color: AppTheme.successColor,
                   onTap: () => _openExpensesFiltered(ExpenseStatus.accepted),
@@ -480,7 +481,7 @@ class FinanceScreenState extends State<FinanceScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: StatusCountChip(
-                  label: 'Oczekujące',
+                  label: context.tr('Oczekujące'),
                   count: finance.pendingCount,
                   color: AppTheme.warningColor,
                   onTap: () => _openExpensesFiltered(ExpenseStatus.pending),
@@ -489,7 +490,7 @@ class FinanceScreenState extends State<FinanceScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: StatusCountChip(
-                  label: 'Sporne',
+                  label: context.tr('Sporne'),
                   count: finance.disputedCount,
                   color: AppTheme.errorColor,
                   onTap: () => _openExpensesFiltered(ExpenseStatus.disputed),
@@ -502,7 +503,7 @@ class FinanceScreenState extends State<FinanceScreen>
             children: [
               Expanded(
                 child: SummaryCard(
-                  title: 'Ten miesiąc',
+                  title: context.tr('Ten miesiąc'),
                   amount: finance.totalThisMonth,
                   color: AppTheme.primaryTeal,
                   icon: Icons.calendar_month,
@@ -622,12 +623,12 @@ class FinanceScreenState extends State<FinanceScreen>
     final members = app.currentWorkspace?.members ?? [];
     final children = app.currentWorkspace?.children ?? [];
 
-    const filters = <({ExpenseStatus? status, String label})>[
-      (status: null, label: 'Wszystkie'),
-      (status: ExpenseStatus.pending, label: 'Oczekujące'),
-      (status: ExpenseStatus.accepted, label: 'Zaakceptowane'),
-      (status: ExpenseStatus.disputed, label: 'Sporne'),
-      (status: ExpenseStatus.settled, label: 'Rozliczone'),
+    final filters = <({ExpenseStatus? status, String label})>[
+      (status: null, label: context.tr('Wszystkie')),
+      (status: ExpenseStatus.pending, label: context.tr('Oczekujące')),
+      (status: ExpenseStatus.accepted, label: context.tr('Zaakceptowane')),
+      (status: ExpenseStatus.disputed, label: context.tr('Sporne')),
+      (status: ExpenseStatus.settled, label: context.tr('Rozliczone')),
     ];
 
     return Column(
@@ -720,8 +721,8 @@ class FinanceScreenState extends State<FinanceScreen>
                         } catch (_) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Nie udało się zaakceptować wydatku.'),
+                              SnackBar(
+                                content: Text(context.tr('Nie udało się zaakceptować wydatku.')),
                                 backgroundColor: AppTheme.errorColor,
                               ),
                             );
@@ -877,19 +878,19 @@ class FinanceScreenState extends State<FinanceScreen>
             spacing: 8,
             children: [
               PeriodChip(
-                label: 'Ten miesiąc',
+                label: context.tr('Ten miesiąc'),
                 selected: _reportPeriod == _ReportPeriod.thisMonth,
                 onSelected: () =>
                     setState(() => _reportPeriod = _ReportPeriod.thisMonth),
               ),
               PeriodChip(
-                label: 'Kwartał',
+                label: context.tr('Kwartał'),
                 selected: _reportPeriod == _ReportPeriod.quarter,
                 onSelected: () =>
                     setState(() => _reportPeriod = _ReportPeriod.quarter),
               ),
               PeriodChip(
-                label: 'Rok',
+                label: context.tr('Rok'),
                 selected: _reportPeriod == _ReportPeriod.year,
                 onSelected: () =>
                     setState(() => _reportPeriod = _ReportPeriod.year),
@@ -941,7 +942,7 @@ class FinanceScreenState extends State<FinanceScreen>
                 ),
               ),
               PeriodChip(
-                label: 'Saldo',
+                label: context.tr('Saldo'),
                 selected: _reportType == _FinanceReportType.balance,
                 onSelected: () => setState(
                   () => _reportType = _FinanceReportType.balance,
@@ -964,7 +965,7 @@ class FinanceScreenState extends State<FinanceScreen>
             width: double.infinity,
             child: ElevatedButton.icon(
               icon: const Icon(Icons.picture_as_pdf_outlined),
-              label: const Text('Generuj eksport PDF'),
+              label: Text(context.tr('Generuj eksport PDF')),
               onPressed: exports.isLoading
                   ? null
                   : () => _createFinanceExport(context),
@@ -1010,7 +1011,11 @@ class FinanceScreenState extends State<FinanceScreen>
                           onPressed: () async {
                             final saved = await context
                                 .read<ExportsProvider>()
-                                .saveExportAsPdf(job);
+                                .saveExportAsPdf(
+                                  job,
+                                  languageCode: Localizations.localeOf(context)
+                                      .languageCode,
+                                );
                             if (!context.mounted) {
                               return;
                             }
@@ -1050,7 +1055,10 @@ class FinanceScreenState extends State<FinanceScreen>
     if (!context.mounted) return;
     if (job != null) {
       final saved = job.status == 'completed'
-          ? await context.read<ExportsProvider>().saveExportAsPdf(job)
+          ? await context.read<ExportsProvider>().saveExportAsPdf(
+              job,
+              languageCode: Localizations.localeOf(context).languageCode,
+            )
           : false;
       if (!context.mounted) return;
       final provider = context.read<ExportsProvider>();
@@ -1118,7 +1126,10 @@ class FinanceScreenState extends State<FinanceScreen>
     if (!context.mounted) return;
     if (job != null) {
       final saved = job.status == 'completed'
-          ? await context.read<ExportsProvider>().saveExportAsPdf(job)
+          ? await context.read<ExportsProvider>().saveExportAsPdf(
+              job,
+              languageCode: Localizations.localeOf(context).languageCode,
+            )
           : false;
       if (!context.mounted) return;
       final provider = context.read<ExportsProvider>();
@@ -1138,8 +1149,8 @@ class FinanceScreenState extends State<FinanceScreen>
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się wygenerować eksportu.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się wygenerować eksportu.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/repositories/finance_repository.dart';
 import '../models/models.dart';
 import '../services/receipt_attachment_service.dart';
+import '../l10n/demo_copy.dart';
 
 /// Net debt between two parents after accepted (unpaid) expenses.
 class ParentNetBalance {
@@ -340,6 +341,42 @@ class FinanceProvider extends ChangeNotifier {
       ),
     ]);
     notifyListeners();
+  }
+
+  /// Updates only the original demo expense ids. Expenses added in the session stay.
+  void localizeDemoSeed(String languageCode) {
+    var changed = false;
+    for (var i = 0; i < _expenses.length; i++) {
+      final expense = _expenses[i];
+      if (!DemoCopy.isDemoExpense(expense.id)) {
+        continue;
+      }
+      final title = DemoCopy.expenseTitle(expense.id, languageCode);
+      final note = DemoCopy.expenseNote(expense.id, languageCode) ?? expense.note;
+      if (expense.title == title && expense.note == note) {
+        continue;
+      }
+      _expenses[i] = Expense(
+        id: expense.id,
+        title: title,
+        amount: expense.amount,
+        currency: expense.currency,
+        category: expense.category,
+        childId: expense.childId,
+        paidBy: expense.paidBy,
+        splitRatio: expense.splitRatio,
+        date: expense.date,
+        receiptUrl: expense.receiptUrl,
+        hasReceipt: expense.hasReceipt,
+        status: expense.status,
+        note: note,
+        hash: expense.hash,
+      );
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   void clear() {

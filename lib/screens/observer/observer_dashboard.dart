@@ -13,6 +13,7 @@ import '../finance/finance_screen.dart';
 import '../exports/exports_screen.dart';
 import '../documents/documents_screen.dart';
 import '../settings/settings_screen.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ObserverDashboard extends StatefulWidget {
   const ObserverDashboard({super.key});
@@ -38,70 +39,70 @@ class _ObserverDashboardState extends State<ObserverDashboard> {
     ];
 
     final railDestinations = <NavigationRailDestination>[
-      const NavigationRailDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.dashboard_outlined),
         selectedIcon: Icon(Icons.dashboard),
-        label: Text('Przegląd'),
+        label: Text(context.tr('Przegląd')),
       ),
-      const NavigationRailDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.chat_bubble_outline),
         selectedIcon: Icon(Icons.chat_bubble),
-        label: Text('Wiadomości'),
+        label: Text(context.tr('Wiadomości')),
       ),
-      const NavigationRailDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.calendar_month_outlined),
         selectedIcon: Icon(Icons.calendar_month),
-        label: Text('Kalendarz'),
+        label: Text(context.tr('Kalendarz')),
       ),
-      const NavigationRailDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.account_balance_wallet_outlined),
         selectedIcon: Icon(Icons.account_balance_wallet),
-        label: Text('Finanse'),
+        label: Text(context.tr('Finanse')),
       ),
-      const NavigationRailDestination(
+      NavigationRailDestination(
         icon: Icon(Icons.folder_open_outlined),
         selectedIcon: Icon(Icons.folder_open),
-        label: Text('Dokumenty'),
+        label: Text(context.tr('Dokumenty')),
       ),
       if (FeatureFlags.showExportsTab)
-        const NavigationRailDestination(
+        NavigationRailDestination(
           icon: Icon(Icons.folder_special_outlined),
           selectedIcon: Icon(Icons.folder_special),
-          label: Text('Eksporty'),
+          label: Text(context.tr('Eksporty')),
         ),
     ];
 
     final bottomItems = <BottomNavigationBarItem>[
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.dashboard_outlined),
         activeIcon: Icon(Icons.dashboard),
-        label: 'Przegląd',
+        label: context.tr('Przegląd'),
       ),
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.chat_bubble_outline),
         activeIcon: Icon(Icons.chat_bubble),
-        label: 'Wiadomości',
+        label: context.tr('Wiadomości'),
       ),
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.calendar_month_outlined),
         activeIcon: Icon(Icons.calendar_month),
-        label: 'Kalendarz',
+        label: context.tr('Kalendarz'),
       ),
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.account_balance_wallet_outlined),
         activeIcon: Icon(Icons.account_balance_wallet),
-        label: 'Finanse',
+        label: context.tr('Finanse'),
       ),
-      const BottomNavigationBarItem(
+      BottomNavigationBarItem(
         icon: Icon(Icons.folder_open_outlined),
         activeIcon: Icon(Icons.folder_open),
-        label: 'Dokumenty',
+        label: context.tr('Dokumenty'),
       ),
       if (FeatureFlags.showExportsTab)
-        const BottomNavigationBarItem(
+        BottomNavigationBarItem(
           icon: Icon(Icons.folder_special_outlined),
           activeIcon: Icon(Icons.folder_special),
-          label: 'Eksporty',
+          label: context.tr('Eksporty'),
         ),
     ];
 
@@ -414,7 +415,7 @@ class _ObserverHome extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.folder_special),
-                        label: const Text('Generuj pełny pakiet dowodowy'),
+                        label: Text(context.tr('Generuj pełny pakiet dowodowy')),
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

@@ -24,6 +24,7 @@ import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class SelectedDayCard extends StatelessWidget {
   final DateTime day;
@@ -75,13 +76,13 @@ class SelectedDayCard extends StatelessWidget {
                   spacing: 8,
                   children: [
                     if (isException)
-                      const StatusChip(
-                        label: 'Wyjątek',
+                      StatusChip(
+                        label: context.tr('Wyjątek'),
                         color: AppTheme.warningColor,
                       ),
                     if (isPending)
-                      const StatusChip(
-                        label: 'Oczekuje akceptacji',
+                      StatusChip(
+                        label: context.tr('Oczekuje akceptacji'),
                         color: AppTheme.warningColor,
                       ),
                   ],

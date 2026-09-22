@@ -20,6 +20,7 @@ import 'widgets/switch_tile.dart';
 import 'widgets/setup_pin_sheet.dart';
 import 'widgets/change_pin_sheet.dart';
 import 'widgets/ios_settings_accordion.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 const _showPreLaunchPlaceholderSections = false;
 
@@ -168,28 +169,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                     InfoTile(
                       icon: Icons.badge_outlined,
-                      label: 'Imię i nazwisko',
+                      label: context.tr('Imię i nazwisko'),
                       value: user?.name ?? '—',
                       isDark: isDark,
                     ),
                     SettingsDivider(),
                     InfoTile(
                       icon: Icons.email_outlined,
-                      label: 'Adres e-mail',
+                      label: context.tr('Adres e-mail'),
                       value: user?.email ?? '—',
                       isDark: isDark,
                     ),
                     SettingsDivider(),
                     InfoTile(
                       icon: Icons.work_outline,
-                      label: 'Rola w aplikacji',
+                      label: context.tr('Rola w aplikacji'),
                       value: _roleBadge(user?.role),
                       isDark: isDark,
                     ),
                     SettingsDivider(),
                     InfoTile(
                       icon: Icons.group_outlined,
-                      label: 'Nazwa przestrzeni',
+                      label: context.tr('Nazwa przestrzeni'),
                       value: workspace?.name ?? '—',
                       isDark: isDark,
                     ),
@@ -197,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       InfoTile(
                         icon: Icons.people_outline,
-                        label: 'Członkowie',
+                        label: context.tr('Członkowie'),
                         value:
                             '${workspace.members.length} (${workspace.members.map((m) => m.name.split(' ').first).join(', ')})',
                         isDark: isDark,
@@ -210,7 +211,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           workspace.childInviteCode!.isNotEmpty) ...[
                         ActionTile(
                           icon: Icons.child_care_outlined,
-                          label: 'Kod zaproszenia dziecka',
+                          label: context.tr('Kod zaproszenia dziecka'),
                           subtitle: workspace.childInviteCode!,
                           color: roleColor,
                           isDark: isDark,
@@ -224,7 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                       ActionTile(
                         icon: Icons.family_restroom_outlined,
-                        label: 'Kod zaproszenia dla drugiego rodzica',
+                        label: context.tr('Kod zaproszenia dla drugiego rodzica'),
                         subtitle: workspace.inviteCodeExpiresAt != null
                             ? '${workspace.inviteCode!}\nWażny do ${_formatInviteExpiry(workspace.inviteCodeExpiresAt!)}'
                             : workspace.inviteCode!,
@@ -243,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (workspace != null && workspace.children.isNotEmpty) ...[
                         InfoTile(
                           icon: Icons.people_outline,
-                          label: 'Dzieci w rodzinie',
+                          label: context.tr('Dzieci w rodzinie'),
                           value: workspace.children
                               .map((c) => c.name.split(' ').first)
                               .join(', '),
@@ -264,7 +265,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                       ActionTile(
                         icon: Icons.person_add_outlined,
-                        label: 'Dodaj dziecko',
+                        label: context.tr('Dodaj dziecko'),
                         subtitle: workspace?.children.isEmpty ?? true
                             ? 'Dodaj pierwszy profil dziecka'
                             : 'Dodaj kolejny profil dziecka',
@@ -277,7 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.edit_outlined,
-                      label: 'Edytuj profil',
+                      label: context.tr('Edytuj profil'),
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showEditProfile(context, user, roleColor),
@@ -285,7 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.password_outlined,
-                      label: 'Zmień hasło',
+                      label: context.tr('Zmień hasło'),
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showChangePasswordSheet(context, roleColor),
@@ -304,7 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       ActionTile(
                         icon: Icons.send_outlined,
-                        label: 'Zaproś drugiego rodzica mailem',
+                        label: context.tr('Zaproś drugiego rodzica mailem'),
                         subtitle: 'Wyślij link akceptacji na e-mail',
                         color: roleColor,
                         isDark: isDark,
@@ -329,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: isDark
                           ? Icons.dark_mode
                           : Icons.light_mode_outlined,
-                      label: 'Tryb ciemny',
+                      label: context.tr('Tryb ciemny'),
                       subtitle: isDark ? 'Ciemne tło aktywne' : 'Jasne tło aktywne',
                       value: isDark,
                       activeColor: roleColor,
@@ -436,7 +437,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                     SwitchTile(
                       icon: Icons.lock_outline,
-                      label: 'PIN przy wznowieniu',
+                      label: context.tr('PIN przy wznowieniu'),
                       subtitle: ap.hasPinSet
                           ? 'Wymagaj PIN-u po przejściu aplikacji w tło'
                           : 'Najpierw ustaw PIN w „Zmień PIN logowania”',
@@ -455,7 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     SwitchTile(
                       icon: Icons.verified_user_outlined,
-                      label: '2FA (dwuetapowa weryfikacja)',
+                      label: context.tr('2FA (dwuetapowa weryfikacja)'),
                       subtitle: 'Kod weryfikacyjny e-mail przy logowaniu',
                       value: user?.twoFactorEnabled ?? false,
                       activeColor: roleColor,
@@ -483,7 +484,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.pin_outlined,
-                      label: 'Zmień PIN logowania',
+                      label: context.tr('Zmień PIN logowania'),
                       subtitle: ap.hasPinSet
                           ? 'Zmień 4-cyfrowy PIN'
                           : 'Ustaw 4-cyfrowy PIN',
@@ -495,14 +496,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       InfoTile(
                         icon: Icons.history_outlined,
-                        label: 'Ostatnie logowanie',
+                        label: context.tr('Ostatnie logowanie'),
                         value: 'Dziś, ${_formatNow()}',
                         isDark: isDark,
                       ),
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.devices_outlined,
-                        label: 'Zaufane urządzenia',
+                        label: context.tr('Zaufane urządzenia'),
                         subtitle: '1 urządzenie zarejestrowane',
                         color: roleColor,
                         isDark: isDark,
@@ -528,7 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                     SwitchTile(
                       icon: Icons.chat_bubble_outline,
-                      label: 'Nowe wiadomości',
+                      label: context.tr('Nowe wiadomości'),
                       subtitle: 'Alert przy każdej nowej wiadomości',
                       value: ap.notifyMessages,
                       activeColor: roleColor,
@@ -538,7 +539,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     SwitchTile(
                       icon: Icons.calendar_today_outlined,
-                      label: 'Zdarzenia kalendarza',
+                      label: context.tr('Zdarzenia kalendarza'),
                       subtitle: 'Przypomnienia o przekazaniach i zajęciach',
                       value: ap.notifyCalendar,
                       activeColor: roleColor,
@@ -548,7 +549,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     SwitchTile(
                       icon: Icons.swap_horiz_outlined,
-                      label: 'Wnioski o zamianę',
+                      label: context.tr('Wnioski o zamianę'),
                       subtitle: 'Alert o nowych wnioskach o zamianę',
                       value: ap.notifySwaps,
                       activeColor: roleColor,
@@ -558,7 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     SwitchTile(
                       icon: Icons.account_balance_wallet_outlined,
-                      label: 'Finanse',
+                      label: context.tr('Finanse'),
                       subtitle: 'Nowe wydatki wymagające uwagi',
                       value: ap.notifyFinance,
                       activeColor: roleColor,
@@ -600,7 +601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     SwitchTile(
                       icon: Icons.warning_amber_outlined,
-                      label: 'Tryb wysokiego konfliktu',
+                      label: context.tr('Tryb wysokiego konfliktu'),
                       subtitle: 'HC – ograniczone powiadomienia',
                       value: ap.highConflictMode,
                       activeColor: AppTheme.highConflictColor,
@@ -626,7 +627,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.privacy_tip_outlined,
-                      label: 'Polityka prywatności AI',
+                      label: context.tr('Polityka prywatności AI'),
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showFeatureInfo(
@@ -667,7 +668,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       InfoTile(
                         icon: Icons.workspace_premium_outlined,
-                        label: 'Plan',
+                        label: context.tr('Plan'),
                         value: 'Coparentes',
                         isDark: isDark,
                         valueColor: const Color(0xFF6A1B9A),
@@ -675,21 +676,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       InfoTile(
                         icon: Icons.calendar_month_outlined,
-                        label: 'Następne odnowienie',
+                        label: context.tr('Następne odnowienie'),
                         value: '15 maja 2025',
                         isDark: isDark,
                       ),
                       SettingsDivider(),
                       InfoTile(
                         icon: Icons.payments_outlined,
-                        label: 'Kwota',
+                        label: context.tr('Kwota'),
                         value: '39,99 PLN / miesiąc',
                         isDark: isDark,
                       ),
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.receipt_long_outlined,
-                        label: 'Historia płatności',
+                        label: context.tr('Historia płatności'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showBillingHistory(context, roleColor),
@@ -697,7 +698,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.credit_card_outlined,
-                        label: 'Zmień metodę płatności',
+                        label: context.tr('Zmień metodę płatności'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showFeatureInfo(
@@ -709,7 +710,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.cancel_outlined,
-                        label: 'Anuluj subskrypcję',
+                        label: context.tr('Anuluj subskrypcję'),
                         color: AppTheme.errorColor,
                         isDark: isDark,
                         onTap: () => _showCancelDialog(context, roleColor),
@@ -730,7 +731,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                     ActionTile(
                       icon: Icons.download_outlined,
-                      label: 'Pobierz moje dane (RODO)',
+                      label: context.tr('Pobierz moje dane (RODO)'),
                       subtitle: 'Wyślij wniosek e-mailem do supportu',
                       color: roleColor,
                       isDark: isDark,
@@ -739,7 +740,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.delete_outline,
-                      label: 'Usuń konto',
+                      label: context.tr('Usuń konto'),
                       subtitle: 'Nieodwracalne – wymaga potwierdzenia',
                       color: AppTheme.errorColor,
                       isDark: isDark,
@@ -760,7 +761,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                     InfoTile(
                       icon: Icons.apps_outlined,
-                      label: 'Wersja aplikacji',
+                      label: context.tr('Wersja aplikacji'),
                       value: '1.0.0 (MVP)',
                       isDark: isDark,
                     ),
@@ -793,7 +794,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.gavel_outlined,
-                        label: 'Regulamin',
+                        label: context.tr('Regulamin'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showFeatureInfo(
@@ -805,7 +806,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.shield_moon_outlined,
-                        label: 'Polityka prywatności (RODO)',
+                        label: context.tr('Polityka prywatności (RODO)'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showFeatureInfo(
@@ -817,7 +818,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       SettingsDivider(),
                       ActionTile(
                         icon: Icons.support_agent_outlined,
-                        label: 'Pomoc i wsparcie',
+                        label: context.tr('Pomoc i wsparcie'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showFeatureInfo(
@@ -938,13 +939,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Wyloguj się'),
+        title: Text(context.tr('Wyloguj się')),
         content:
-            const Text('Czy na pewno chcesz się wylogować z Coparentes?'),
+            Text(context.tr('Czy na pewno chcesz się wylogować z Coparentes?')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Anuluj')),
+              child: Text(context.tr('Anuluj'))),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -970,17 +971,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final locale in const [
-              Locale('pl'),
-              Locale('en'),
-              Locale('de'),
-              Locale('fr'),
+            for (final entry in const [
+              (Locale('pl'), 'Polski'),
+              (Locale('en'), 'English'),
             ])
               ListTile(
                 leading: Icon(Icons.language, color: color),
-                title: Text(locale.languageCode.toUpperCase()),
+                title: Text(entry.$2),
                 onTap: () {
-                  ap.setLocale(locale);
+                  ap.setLocale(entry.$1);
                   Navigator.pop(context);
                 },
               ),
@@ -1103,7 +1102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nie udało się zmienić ustawienia PIN')),
+        SnackBar(content: Text(context.tr('Nie udało się zmienić ustawienia PIN'))),
       );
     }
   }
@@ -1170,7 +1169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Zamknij'),
+                child: Text(context.tr('Zamknij')),
               ),
             ),
           ],
@@ -1218,13 +1217,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Anuluj subskrypcję'),
+        title: Text(context.tr('Anuluj subskrypcję')),
         content: const Text(
             'Czy na pewno chcesz anulować? Stracisz dostęp do wszystkich funkcji Pro po zakończeniu okresu rozliczeniowego (15 maja 2025).'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Nie, zachowaj')),
+              child: Text(context.tr('Nie, zachowaj'))),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -1265,7 +1264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Eksport danych RODO'),
+        title: Text(context.tr('Eksport danych RODO')),
         content: Text(
           'Wyślemy wniosek o kopię Twoich danych (art. 20 RODO) na adres '
           '${LegalConfig.supportEmail}. Odpowiemy na e-mail powiązany z kontem.',
@@ -1273,7 +1272,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
+            child: Text(context.tr('Anuluj')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1297,7 +1296,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Usuń konto'),
+        title: Text(context.tr('Usuń konto')),
         content: const Text(
           'Ta operacja jest nieodwracalna. Aby usunąć konto, wyślij wniosek '
           'e-mailem do supportu. Potwierdzimy usunięcie danych po weryfikacji.',
@@ -1305,7 +1304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Anuluj')),
+              child: Text(context.tr('Anuluj'))),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);

@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../utils/calendar_date_utils.dart';
 import '../utils/custody_schedule_utils.dart';
 import '../utils/demo_time.dart';
+import '../l10n/demo_copy.dart';
 
 class CalendarProvider extends ChangeNotifier {
   final CalendarRepository _repository;
@@ -267,6 +268,62 @@ class CalendarProvider extends ChangeNotifier {
 
     _rebuildDisplaySlots();
     notifyListeners();
+  }
+
+  /// Updates only the original demo event and swap ids. Session records stay.
+  void localizeDemoSeed(String languageCode) {
+    var changed = false;
+    for (var i = 0; i < _events.length; i++) {
+      final event = _events[i];
+      if (!DemoCopy.isDemoEvent(event.id)) {
+        continue;
+      }
+      final title = DemoCopy.eventTitle(event.id, languageCode);
+      final location =
+          DemoCopy.eventLocation(event.id, languageCode) ?? event.location;
+      if (event.title == title && event.location == location) {
+        continue;
+      }
+      _events[i] = CalendarEvent(
+        id: event.id,
+        title: title,
+        description: event.description,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        type: event.type,
+        childId: event.childId,
+        createdBy: event.createdBy,
+        location: location,
+      );
+      changed = true;
+    }
+    for (var i = 0; i < _swapRequests.length; i++) {
+      final swap = _swapRequests[i];
+      if (!DemoCopy.isDemoSwap(swap.id)) {
+        continue;
+      }
+      final reason = DemoCopy.swapReason(swap.id, languageCode) ?? swap.reason;
+      final responseNote =
+          DemoCopy.swapResponseNote(swap.id, languageCode) ?? swap.responseNote;
+      if (swap.reason == reason && swap.responseNote == responseNote) {
+        continue;
+      }
+      _swapRequests[i] = SwapRequest(
+        id: swap.id,
+        requesterId: swap.requesterId,
+        requesterName: swap.requesterName,
+        originalDate: swap.originalDate,
+        proposedDate: swap.proposedDate,
+        reason: reason,
+        status: swap.status,
+        createdAt: swap.createdAt,
+        responseNote: responseNote,
+      );
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   /// Dodaje wydarzenie na dziś — wyłącznie w testach widget.

@@ -8,6 +8,7 @@ import '../../services/document_attachment_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/file_download.dart';
 import '../../widgets/parent_tab_scaffold.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 const _allCategoriesFilter = 'All';
 
@@ -74,10 +75,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             .toList();
 
     return ParentTabScaffold(
-      title: 'Dokumenty',
+      title: context.tr('Dokumenty'),
       actions: [
         ParentHeaderActionButton(
-          label: 'Dodaj dokument',
+          label: context.tr('Dodaj dokument'),
           icon: Icons.add,
           backgroundColor: AppTheme.purpleColor,
           prominent: true,
@@ -244,14 +245,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     if (!document.hasFile) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Brak pliku do tego dokumentu.')),
+        SnackBar(content: Text(context.tr('Brak pliku do tego dokumentu.'))),
       );
       return;
     }
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Pobieram dokument…')),
+      SnackBar(content: Text(context.tr('Pobieram dokument…'))),
     );
 
     final payload =
@@ -262,8 +263,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     if (payload == null) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się pobrać dokumentu.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się pobrać dokumentu.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -273,8 +274,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final contentBase64 = payload['contentBase64'] as String?;
     if (contentBase64 == null || contentBase64.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Brak danych pliku.'),
+        SnackBar(
+          content: Text(context.tr('Brak danych pliku.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -375,7 +376,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   Future<void> _save() async {
     if (_pendingFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Najpierw dodaj zdjęcie lub plik.')),
+        SnackBar(content: Text(context.tr('Najpierw dodaj zdjęcie lub plik.'))),
       );
       return;
     }
@@ -383,7 +384,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Podaj tytuł dokumentu.')),
+        SnackBar(content: Text(context.tr('Podaj tytuł dokumentu.'))),
       );
       return;
     }
@@ -445,7 +446,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                   child: ElevatedButton.icon(
                     onPressed: () => _pickFile(DocumentCaptureSource.camera),
                     icon: const Icon(Icons.camera_alt),
-                    label: const Text('Zrób zdjęcie aparatem'),
+                    label: Text(context.tr('Zrób zdjęcie aparatem')),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -454,7 +455,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                   child: OutlinedButton.icon(
                     onPressed: () => _pickFile(DocumentCaptureSource.file),
                     icon: const Icon(Icons.attach_file),
-                    label: const Text('Dodaj plik'),
+                    label: Text(context.tr('Dodaj plik')),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -508,7 +509,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
               TextButton.icon(
                 onPressed: _isSaving ? null : () => setState(() => _pendingFile = null),
                 icon: const Icon(Icons.refresh),
-                label: const Text('Wybierz inny plik'),
+                label: Text(context.tr('Wybierz inny plik')),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -547,9 +548,9 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                   decoration:
                       const InputDecoration(labelText: 'Dziecko (opcjonalnie)'),
                   items: [
-                    const DropdownMenuItem<String?>(
+                    DropdownMenuItem<String?>(
                       value: null,
-                      child: Text('Rodzina'),
+                      child: Text(context.tr('Rodzina')),
                     ),
                     ...widget.workspace!.children.map(
                       (child) => DropdownMenuItem<String?>(
@@ -574,7 +575,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Zapisz dokument'),
+                      : Text(context.tr('Zapisz dokument')),
                 ),
               ),
             ],

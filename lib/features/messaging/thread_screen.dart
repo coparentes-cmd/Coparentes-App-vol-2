@@ -19,6 +19,7 @@ import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/thread_messages_list.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ThreadScreen extends StatefulWidget {
   final String threadId;
@@ -50,8 +51,8 @@ class ThreadScreenState extends State<ThreadScreen> {
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Możesz dodać maksymalnie 3 załączniki.'),
+        SnackBar(
+          content: Text(context.tr('Możesz dodać maksymalnie 3 załączniki.')),
         ),
       );
       return;
@@ -160,9 +161,9 @@ class ThreadScreenState extends State<ThreadScreen> {
     final thread = context.watch<MessagingProvider>().getThreadById(widget.threadId);
 
     if (thread == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Nie znaleziono watku.'),
+          child: Text(context.tr('Nie znaleziono watku.')),
         ),
       );
     }
@@ -215,12 +216,12 @@ class ThreadScreenState extends State<ThreadScreen> {
                       IconButton(
                         icon: const Icon(Icons.arrow_back, size: 22),
                         color: AppTheme.textPrimary,
-                        tooltip: 'Wróć',
+                        tooltip: context.tr('Wróć'),
                         onPressed: _handleBack,
                       ),
                       Expanded(
                         child: Text(
-                          threadListTitle(thread),
+                          context.tr(threadListTitle(thread)),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -233,7 +234,7 @@ class ThreadScreenState extends State<ThreadScreen> {
                       IconButton(
                         icon: const Icon(Icons.picture_as_pdf_outlined, size: 22),
                         color: AppTheme.textSecondary,
-                        tooltip: 'Eksportuj wątek',
+                        tooltip: context.tr('Eksportuj wątek'),
                         onPressed: () => _exportThread(context),
                       ),
                     ],
@@ -308,7 +309,7 @@ class ThreadScreenState extends State<ThreadScreen> {
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
-                          child: const Text('Użyj oryginału'),
+                          child: Text(context.tr('Użyj oryginału')),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -321,7 +322,7 @@ class ThreadScreenState extends State<ThreadScreen> {
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
-                          child: const Text('Użyj sugestii'),
+                          child: Text(context.tr('Użyj sugestii')),
                         ),
                       ),
                     ],
@@ -438,7 +439,7 @@ class ThreadScreenState extends State<ThreadScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Eksport wątku'),
+        title: Text(context.tr('Eksport wątku')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,7 +459,7 @@ class ThreadScreenState extends State<ThreadScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
+            child: Text(context.tr('Anuluj')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -484,7 +485,11 @@ class ThreadScreenState extends State<ThreadScreen> {
               }
 
               final saved =
-                  await context.read<ExportsProvider>().saveExportAsPdf(created);
+                  await context.read<ExportsProvider>().saveExportAsPdf(
+                    created,
+                    languageCode:
+                        Localizations.localeOf(context).languageCode,
+                  );
 
               if (!context.mounted) {
                 return;
@@ -504,7 +509,7 @@ class ThreadScreenState extends State<ThreadScreen> {
                 ),
               );
             },
-            child: const Text('Generuj eksport'),
+            child: Text(context.tr('Generuj eksport')),
           ),
         ],
       ),

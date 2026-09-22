@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/custom_week_recurrence.dart';
 import 'booking_style_calendar_picker.dart';
 import 'mini_calendar_date_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 enum _CustomEndRule { never, onDate, afterOccurrences }
 
@@ -492,13 +493,13 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                 child: Column(
                   children: [
                     IosDateFieldRow(
-                      label: 'Początek',
+                      label: context.tr('Początek'),
                       value: _formatDate(_normalizedStartDate),
                       onTap: _openRangeMiniCalendar,
                     ),
                     const Divider(height: 1, indent: 16),
                     IosDateFieldRow(
-                      label: 'Koniec',
+                      label: context.tr('Koniec'),
                       value: _formatDate(_normalizedEndDate),
                       onTap: _openRangeMiniCalendar,
                     ),
@@ -577,7 +578,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             child: Column(
               children: [
                 IosDateFieldRow(
-                  label: 'Początek',
+                  label: context.tr('Początek'),
                   value: _formatDate(_normalizedStartDate),
                   onTap: () => _openSingleDatePicker(
                     title: 'Data rozpoczęcia',
@@ -682,7 +683,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   value: _CustomEndRule.never,
                   groupValue: _customEndRule,
                   activeColor: creatorColor,
-                  title: const Text('Nigdy'),
+                  title: Text(context.tr('Nigdy')),
                   onChanged: (value) => setState(() {
                     _customEndRule = value!;
                     _calendarSaved = false;
@@ -694,7 +695,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   activeColor: creatorColor,
                   title: Row(
                     children: [
-                      const Text('W dniu'),
+                      Text(context.tr('W dniu')),
                       const Spacer(),
                       TextButton(
                         onPressed: _customEndRule == _CustomEndRule.onDate
@@ -725,7 +726,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   activeColor: creatorColor,
                   title: Row(
                     children: [
-                      const Text('Po'),
+                      Text(context.tr('Po')),
                       const SizedBox(width: 8),
                       _StepperChip(
                         value: _customOccurrenceCount,
@@ -979,7 +980,7 @@ class _CustodyScheduleWizardPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Grafik opieki'),
+        title: Text(context.tr('Grafik opieki')),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),

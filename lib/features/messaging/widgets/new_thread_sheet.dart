@@ -5,6 +5,7 @@ import '../../../config/messaging_categories.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/messaging_provider.dart';
 import '../../../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class NewThreadSheet extends StatefulWidget {
   const NewThreadSheet({super.key});
@@ -95,7 +96,7 @@ class NewThreadSheetState extends State<NewThreadSheet> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Utwórz wątek'),
+                  : Text(context.tr('Utwórz wątek')),
             ),
           ),
         ],
@@ -140,8 +141,8 @@ class NewThreadSheetState extends State<NewThreadSheet> {
 
     if (thread == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się utworzyć wątku.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się utworzyć wątku.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );

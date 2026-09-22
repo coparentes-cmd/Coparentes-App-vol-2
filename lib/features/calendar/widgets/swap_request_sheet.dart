@@ -25,6 +25,7 @@ import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class SwapRequestSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -147,7 +148,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
           const SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Dzień do zmiany'),
+            title: Text(context.tr('Dzień do zmiany')),
             subtitle: Text(
               '${_originalDate.day}.${_originalDate.month}.${_originalDate.year}',
             ),
@@ -159,7 +160,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Proponowany dzień'),
+            title: Text(context.tr('Proponowany dzień')),
             subtitle: Text(
               '${_proposedDate.day}.${_proposedDate.month}.${_proposedDate.year}',
             ),
@@ -189,7 +190,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Wyślij propozycję'),
+                  : Text(context.tr('Wyślij propozycję')),
             ),
           ),
         ],

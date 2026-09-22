@@ -8,6 +8,7 @@ import '../../../../theme/app_theme.dart';
 import '../../../../utils/calendar_date_utils.dart';
 import '../../../../config/messaging_categories.dart';
 import '../../../../utils/messaging_helpers.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 import '../../../../utils/layout_utils.dart';
 import '../../../../utils/app_browser_back.dart';
 import '../../../../widgets/brand_widgets.dart';
@@ -82,7 +83,7 @@ class MessageThreadPreview extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            threadListTitle(thread),
+                            context.tr(threadListTitle(thread)),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: _hasUnread

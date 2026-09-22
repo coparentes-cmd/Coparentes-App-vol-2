@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/layout_utils.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 enum BookingCalendarMode { range, multiSelect }
 
@@ -49,10 +50,15 @@ class BookingStyleCalendarPicker extends StatefulWidget {
 }
 
 class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker> {
-  static const _weekdayLabels = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+  List<String> _weekdayLabels(BuildContext context) {
+    if (Localizations.localeOf(context).languageCode == 'en') {
+      return const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    }
+    return const ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+  }
 
-  late final DateFormat _monthTitleFormat =
-      DateFormat('LLLL yyyy', 'pl_PL');
+  String get _dateLocale =>
+      Localizations.localeOf(context).languageCode == 'en' ? 'en_GB' : 'pl_PL';
 
   DateTime get _secondMonth =>
       DateTime(widget.leftMonth.year, widget.leftMonth.month + 1, 1);
@@ -190,11 +196,11 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
               ),
               if (widget.mode == BookingCalendarMode.multiSelect) ...[
                 const SizedBox(height: 8),
-                const Row(
+                Row(
                   children: [
-                    _LegendChip(color: AppTheme.parentAColor, label: 'Mama'),
+                    _LegendChip(color: AppTheme.parentAColor, label: context.tr('Mama')),
                     SizedBox(width: 12),
-                    _LegendChip(color: AppTheme.parentBColor, label: 'Tata'),
+                    _LegendChip(color: AppTheme.parentBColor, label: context.tr('Tata')),
                   ],
                 ),
               ],
@@ -257,7 +263,7 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
   }
 
   Widget _buildMonth(DateTime month, {required bool showPrev, required bool showNext}) {
-    final title = _capitalize(_monthTitleFormat.format(month));
+    final title = _capitalize(DateFormat('LLLL yyyy', _dateLocale).format(month));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -292,7 +298,7 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
         ),
         const SizedBox(height: 8),
         Row(
-          children: _weekdayLabels
+          children: _weekdayLabels(context)
               .map(
                 (label) => Expanded(
                   child: Center(

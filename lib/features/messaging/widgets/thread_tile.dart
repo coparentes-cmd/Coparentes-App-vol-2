@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../config/messaging_categories.dart';
+import '../../../l10n/app_strings.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/messaging_helpers.dart';
@@ -72,7 +73,7 @@ class ThreadTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              threadListTitle(thread),
+                              context.tr(threadListTitle(thread)),
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: _hasUnread

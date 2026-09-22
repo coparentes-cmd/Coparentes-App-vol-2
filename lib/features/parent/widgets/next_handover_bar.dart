@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../models/models.dart';
-import '../../../../theme/app_theme.dart';
-import '../../../../utils/custody_schedule_utils.dart';
+import '../../../l10n/app_strings.dart';
+import '../../../models/models.dart';
+import '../../../theme/app_theme.dart';
+import '../../../utils/custody_schedule_utils.dart';
 
 /// Readable next custody handover strip — data from [CalendarProvider.getNextHandover].
 class NextHandoverBar extends StatelessWidget {
@@ -17,18 +18,21 @@ class NextHandoverBar extends StatelessWidget {
     this.onTap,
   });
 
-  String get _dateLabel {
+  String _dateLabel(BuildContext context) {
     final slot = handover;
     if (slot == null) {
-      return 'Brak zaplanowanego przekazania';
+      return context.tr('Brak zaplanowanego przekazania');
     }
-    return formatNextHandoverLabel(slot);
+    return formatNextHandoverLabel(
+      slot,
+      languageCode: Localizations.localeOf(context).languageCode,
+    );
   }
 
-  String get _placeLabel {
+  String _placeLabel(BuildContext context) {
     final place = handover?.handoverLocation?.trim();
     if (place == null || place.isEmpty) {
-      return 'Miejsce nieustalone';
+      return context.tr('Miejsce nieustalone');
     }
     return place;
   }
@@ -79,7 +83,7 @@ class NextHandoverBar extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      _dateLabel,
+                      _dateLabel(context),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -101,12 +105,13 @@ class NextHandoverBar extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _placeLabel,
+                        _placeLabel(context),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           height: 1.3,
-                          color: _placeLabel == 'Miejsce nieustalone'
+                          color: (handover?.handoverLocation?.trim().isEmpty ??
+                                  true)
                               ? AppTheme.textSecondary
                               : AppTheme.textPrimary,
                         ),

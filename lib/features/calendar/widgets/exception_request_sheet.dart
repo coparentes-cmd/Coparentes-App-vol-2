@@ -25,6 +25,7 @@ import 'pending_schedule_banner.dart';
 import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ExceptionRequestSheet extends StatefulWidget {
   final DateTime day;
@@ -72,8 +73,8 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Wniosek o wyjątek wysłany do akceptacji.'),
+        SnackBar(
+          content: Text(context.tr('Wniosek o wyjątek wysłany do akceptacji.')),
           backgroundColor: AppTheme.successColor,
         ),
       );
@@ -119,9 +120,9 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
           ),
           const SizedBox(height: 16),
           SegmentedButton<UserRole>(
-            segments: const [
-              ButtonSegment(value: UserRole.parentA, label: Text('Mama')),
-              ButtonSegment(value: UserRole.parentB, label: Text('Tata')),
+            segments: [
+              ButtonSegment(value: UserRole.parentA, label: Text(context.tr('Mama'))),
+              ButtonSegment(value: UserRole.parentB, label: Text(context.tr('Tata'))),
             ],
             selected: {_custodian},
             onSelectionChanged: (value) =>

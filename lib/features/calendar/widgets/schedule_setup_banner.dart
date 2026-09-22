@@ -24,6 +24,7 @@ import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ScheduleSetupBanner extends StatelessWidget {
   final VoidCallback onPressed;
@@ -41,7 +42,7 @@ class ScheduleSetupBanner extends StatelessWidget {
         ),
         leading: const Icon(Icons.view_week, color: AppTheme.primaryTeal),
         actions: [
-          TextButton(onPressed: onPressed, child: const Text('Utwórz grafik')),
+          TextButton(onPressed: onPressed, child: Text(context.tr('Utwórz grafik'))),
         ],
       ),
     );

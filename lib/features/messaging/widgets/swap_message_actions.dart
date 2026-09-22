@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/common_widgets.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class SwapMessageActions extends StatelessWidget {
   final SwapRequest swap;
@@ -43,7 +44,7 @@ class SwapMessageActions extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
-              child: const Text('Odrzuć'),
+              child: Text(context.tr('Odrzuć')),
             ),
             const SizedBox(width: 8),
             ElevatedButton(
@@ -66,7 +67,7 @@ class SwapMessageActions extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Akceptuj'),
+                  : Text(context.tr('Akceptuj')),
             ),
           ],
         ),

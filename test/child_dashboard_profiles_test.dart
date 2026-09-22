@@ -12,6 +12,7 @@ import 'package:coparentes/providers/calendar_provider.dart';
 import 'package:coparentes/screens/child/child_dashboard.dart';
 import 'package:coparentes/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -261,6 +262,13 @@ Future<void> _pumpChildDashboard(WidgetTester tester, AppUser child) async {
         ChangeNotifierProvider<MessagingProvider>.value(value: messagingProvider),
       ],
       child: MaterialApp(
+        locale: const Locale('pl'),
+        supportedLocales: const [Locale('pl'), Locale('en')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: AppTheme.buildLight(AppTheme.primaryTeal),
         home: const ChildDashboard(),
       ),

@@ -9,6 +9,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final LoginChallenge challenge;
@@ -333,7 +334,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                   height: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : const Text('Potwierdź'),
+                              : Text(context.tr('Potwierdź')),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -365,7 +366,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       ),
                       TextButton(
                         onPressed: _submitting ? null : widget.onCancel,
-                        child: const Text('Wróć do logowania'),
+                        child: Text(context.tr('Wróć do logowania')),
                       ),
                     ],
                   ),

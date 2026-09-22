@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../theme/app_theme.dart';
 import 'booking_style_calendar_picker.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 /// Result of a mini-calendar sheet (range or multi-select).
 class MiniCalendarResult {
@@ -138,9 +139,15 @@ class _MiniCalendarSheet extends StatefulWidget {
 }
 
 class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
-  static const _weekdayLabels = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+  List<String> _weekdayLabels(BuildContext context) {
+    if (Localizations.localeOf(context).languageCode == 'en') {
+      return const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    }
+    return const ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+  }
 
-  late final DateFormat _monthTitleFormat = DateFormat('LLLL yyyy', 'pl_PL');
+  String get _dateLocale =>
+      Localizations.localeOf(context).languageCode == 'en' ? 'en_GB' : 'pl_PL';
   late DateTime _month;
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
@@ -244,7 +251,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final title = _capitalize(_monthTitleFormat.format(_month));
+    final title = _capitalize(DateFormat('LLLL yyyy', _dateLocale).format(_month));
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -310,7 +317,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                 ],
               ),
               Row(
-                children: _weekdayLabels
+                children: _weekdayLabels(context)
                     .map(
                       (label) => Expanded(
                         child: Center(
@@ -334,7 +341,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Anuluj'),
+                    child: Text(context.tr('Anuluj')),
                   ),
                   const Spacer(),
                   FilledButton(
@@ -347,7 +354,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                       disabledForegroundColor: Colors.white70,
                       minimumSize: const Size(120, 40),
                     ),
-                    child: const Text('Zatwierdź'),
+                    child: Text(context.tr('Zatwierdź')),
                   ),
                 ],
               ),

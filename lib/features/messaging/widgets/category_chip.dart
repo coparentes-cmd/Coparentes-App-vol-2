@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../config/messaging_categories.dart';
+import '../../../l10n/app_strings.dart';
 import '../../../theme/app_theme.dart';
 
 class CategoryChip extends StatelessWidget {
@@ -23,7 +24,7 @@ class CategoryChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
-        label: Text(messagingCategoryLabel(category)),
+        label: Text(context.tr(messagingCategoryLabel(category))),
         selected: selected,
         showCheckmark: false,
         onSelected: (_) => onTap(),

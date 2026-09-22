@@ -7,6 +7,7 @@ import '../../providers/exports_provider.dart';
 import '../../utils/layout_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ExportsScreen extends StatefulWidget {
   const ExportsScreen({super.key});
@@ -35,7 +36,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
     final exportsProvider = context.watch<ExportsProvider>();
 
     return ParentTabScaffold(
-      title: 'Eksporty',
+      title: context.tr('Eksporty'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -108,7 +109,10 @@ class _ExportsScreenState extends State<ExportsScreen> {
 
     if (!context.mounted || created == null) return;
 
-    final saved = await context.read<ExportsProvider>().saveExportAsPdf(created);
+    final saved = await context.read<ExportsProvider>().saveExportAsPdf(
+      created,
+      languageCode: Localizations.localeOf(context).languageCode,
+    );
 
     if (!context.mounted) return;
 
@@ -260,7 +264,11 @@ class _ExportJobCard extends StatelessWidget {
                     ? () async {
                         final saved = await context
                             .read<ExportsProvider>()
-                            .saveExportAsPdf(job);
+                            .saveExportAsPdf(
+                          job,
+                          languageCode:
+                              Localizations.localeOf(context).languageCode,
+                        );
                         if (!context.mounted) {
                           return;
                         }
@@ -375,7 +383,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
             children: [
               Expanded(
                 child: _DatePickerField(
-                  label: 'Od',
+                  label: context.tr('Od'),
                   date: _fromDate,
                   onChanged: (d) => setState(() => _fromDate = d),
                 ),
@@ -383,7 +391,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: _DatePickerField(
-                  label: 'Do',
+                  label: context.tr('Do'),
                   date: _toDate,
                   onChanged: (d) => setState(() => _toDate = d),
                 ),
@@ -394,7 +402,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
           const SizedBox(height: 16),
 
           SwitchListTile(
-            title: const Text('Załącz pliki (paragony, dokumenty)'),
+            title: Text(context.tr('Załącz pliki (paragony, dokumenty)')),
             value: _includeAttachments,
             onChanged: (v) => setState(() => _includeAttachments = v),
             activeThumbColor: AppTheme.primaryTeal,

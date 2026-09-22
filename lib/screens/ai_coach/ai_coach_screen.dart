@@ -6,6 +6,7 @@ import '../../services/ai_guidance_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_content_shell.dart';
 import '../../widgets/common_widgets.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class AiCoachScreen extends StatefulWidget {
   const AiCoachScreen({super.key});
@@ -632,7 +633,7 @@ class _ToneResultCard extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.aiCoachColor,
                 ),
-                child: const Text('Użyj wersji AI'),
+                child: Text(context.tr('Użyj wersji AI')),
               ),
             ),
           ],

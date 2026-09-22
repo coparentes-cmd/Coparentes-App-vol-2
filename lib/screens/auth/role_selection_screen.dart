@@ -14,6 +14,7 @@ import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import 'consent_registration_screen.dart';
 import 'otp_verification_screen.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 enum _AuthMode { login, register, join, joinChild }
 
@@ -105,7 +106,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     return Scaffold(
       body: BrandBackdrop(
         child: SafeArea(
-          child: Center(
+          child: Stack(
+            children: [
+              Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 maxWidth: LayoutTokens.authMarketingMax,
@@ -261,7 +264,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                             _mode = _AuthMode.joinChild;
                                             _childJoinPreview = null;
                                           }),
-                                          child: const Text('Wejście dziecka'),
+                                          child: Text(context.tr('Wejście dziecka')),
                                         ),
                                       ),
                                     ],
@@ -324,6 +327,47 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
             ),
           ),
+              Positioned(
+                top: 4,
+                right: 8,
+                child: _StartLanguageButton(
+                  languageCode: appProvider.language,
+                  onPick: () => _pickLanguage(context, appProvider),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _pickLanguage(BuildContext context, AppProvider ap) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final entry in const [
+              (Locale('pl'), 'Polski'),
+              (Locale('en'), 'English'),
+            ])
+              ListTile(
+                leading: Icon(
+                  Icons.language,
+                  color: AppTheme.primaryTeal,
+                ),
+                title: Text(entry.$2),
+                trailing: ap.language == entry.$1.languageCode
+                    ? const Icon(Icons.check, color: AppTheme.primaryTeal)
+                    : null,
+                onTap: () {
+                  ap.setLocale(entry.$1);
+                  Navigator.pop(context);
+                },
+              ),
+          ],
         ),
       ),
     );
@@ -343,7 +387,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           _Field(
             controller: _passwordController,
-            label: 'Hasło',
+            label: context.tr('Hasło'),
             hint: 'Hasło lub 12 cyfr z maila',
             obscureText: _obscureLoginPassword,
             keyboardType: TextInputType.visiblePassword,
@@ -362,9 +406,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text(
-                'Nie pamiętam hasła',
-                style: TextStyle(
+              child: Text(
+                context.tr('Nie pamiętam hasła'),
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.accentColor,
@@ -378,14 +422,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         return [
           _Field(
             controller: _firstNameController,
-            label: 'Imię',
+            label: context.tr('Imię'),
             hint: 'np. Anna',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _lastNameController,
-            label: 'Nazwisko',
+            label: context.tr('Nazwisko'),
             hint: 'np. Kowalska',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -396,7 +440,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               children: [
                 Expanded(
                   child: _RoleChoiceChip(
-                    label: 'Mama',
+                    label: context.tr('Mama'),
                     selected: _registerIsMama,
                     onTap: () => setState(() => _registerIsMama = true),
                   ),
@@ -404,7 +448,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _RoleChoiceChip(
-                    label: 'Tata',
+                    label: context.tr('Tata'),
                     selected: !_registerIsMama,
                     onTap: () => setState(() => _registerIsMama = false),
                   ),
@@ -414,7 +458,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           _Field(
             controller: _workspaceController,
-            label: 'Nazwa przestrzeni',
+            label: context.tr('Nazwa przestrzeni'),
             hint: 'np. Rodzina Kowalska',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -429,7 +473,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           _Field(
             controller: _passwordController,
-            label: 'Hasło',
+            label: context.tr('Hasło'),
             hint: 'Minimum 10 znaków',
             obscureText: true,
             textInputAction: TextInputAction.go,
@@ -440,14 +484,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         return [
           _Field(
             controller: _inviteCodeController,
-            label: 'Kod zaproszenia do przestrzeni',
+            label: context.tr('Kod zaproszenia do przestrzeni'),
             hint: 'np. RODZINA-AB12',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _nameController,
-            label: 'Imię i nazwisko',
+            label: context.tr('Imię i nazwisko'),
             hint: 'np. Marek Kowalski',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -462,7 +506,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           _Field(
             controller: _passwordController,
-            label: 'Hasło',
+            label: context.tr('Hasło'),
             hint: 'Minimum 10 znaków',
             obscureText: true,
             textInputAction: TextInputAction.go,
@@ -473,7 +517,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         return [
           _Field(
             controller: _childInviteCodeController,
-            label: 'Kod zaproszenia dziecka',
+            label: context.tr('Kod zaproszenia dziecka'),
             hint: 'np. DZIECIKOWAL2026',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -488,7 +532,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Sprawdź kod'),
+                  : Text(context.tr('Sprawdź kod')),
             ),
           ),
           if (_childJoinPreview != null) ...[
@@ -521,7 +565,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Data urodzenia'),
+              title: Text(context.tr('Data urodzenia')),
               subtitle: Text(
                 '${_childDateOfBirth.day.toString().padLeft(2, '0')}.'
                 '${_childDateOfBirth.month.toString().padLeft(2, '0')}.'
@@ -533,14 +577,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ],
           _Field(
             controller: _nameController,
-            label: 'Imię (przy pierwszym logowaniu)',
+            label: context.tr('Imię (przy pierwszym logowaniu)'),
             hint: 'np. Zosia',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           _Field(
             controller: _passwordController,
-            label: 'Hasło',
+            label: context.tr('Hasło'),
             hint: 'Minimum 10 znaków',
             obscureText: true,
             textInputAction: TextInputAction.go,
@@ -615,7 +659,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Nie pamiętam hasła'),
+              title: Text(context.tr('Nie pamiętam hasła')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,7 +689,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 TextButton(
                   onPressed:
                       sending ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Anuluj'),
+                  child: Text(context.tr('Anuluj')),
                 ),
                 ElevatedButton(
                   onPressed: sending
@@ -658,8 +702,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               this.context.read<AppProvider>();
                           if (email.isEmpty || !email.contains('@')) {
                             messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Podaj prawidłowy adres e-mail.'),
+                              SnackBar(
+                                content: Text(context.tr('Podaj prawidłowy adres e-mail.')),
                               ),
                             );
                             return;
@@ -716,7 +760,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text('Wyślij hasło'),
+                      : Text(context.tr('Wyślij hasło')),
                 ),
               ],
             );
@@ -867,13 +911,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   String _buttonLabel(_AuthMode mode) {
     switch (mode) {
       case _AuthMode.login:
-        return 'Zaloguj';
+        return context.tr('Zaloguj');
       case _AuthMode.register:
-        return 'Zarejestruj';
+        return context.tr('Zarejestruj');
       case _AuthMode.join:
-        return 'Dołącz';
+        return context.tr('Dołącz');
       case _AuthMode.joinChild:
-        return 'Wejdź';
+        return context.tr('Wejdź');
     }
   }
 }
@@ -905,32 +949,35 @@ class _BrandIntroCard extends StatelessWidget {
           const BrandLogo(width: 220, height: 56),
           const SizedBox(height: 14),
           Text(
-            'Spokojne rodzicielstwo po rozstaniu',
+            context.tr('Spokojne rodzicielstwo po rozstaniu'),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: AppTheme.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
           ),
           const SizedBox(height: 28),
-          const _FeatureBullet(
+          _FeatureBullet(
             icon: Icons.chat_bubble_outline,
-            title: 'Komunikacja',
-            subtitle:
-                'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.',
+            title: context.tr('Komunikacja'),
+            subtitle: context.tr(
+              'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.',
+            ),
           ),
           const SizedBox(height: 14),
-          const _FeatureBullet(
+          _FeatureBullet(
             icon: Icons.calendar_month_outlined,
-            title: 'Organizacja',
-            subtitle:
-                'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
+            title: context.tr('Organizacja'),
+            subtitle: context.tr(
+              'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
+            ),
           ),
           const SizedBox(height: 14),
-          const _FeatureBullet(
+          _FeatureBullet(
             icon: Icons.account_balance_wallet_outlined,
-            title: 'Finanse',
-            subtitle:
-                'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
+            title: context.tr('Finanse'),
+            subtitle: context.tr(
+              'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
+            ),
           ),
           const SizedBox(height: 28),
           Material(
@@ -956,7 +1003,9 @@ class _BrandIntroCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Tryb demo — sprawdź czy aplikacja Ci pomoże',
+                        context.tr(
+                          'Tryb demo — sprawdź czy aplikacja Ci pomoże',
+                        ),
                         style: TextStyle(
                           color: AppTheme.primaryTeal,
                           fontWeight: FontWeight.w700,
@@ -978,14 +1027,14 @@ class _BrandIntroCard extends StatelessWidget {
           if (demoPickerOpen) ...[
             const SizedBox(height: 14),
             Text(
-              'Wybierz tryb wersji demo',
+              context.tr('Wybierz tryb wersji demo'),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
             ),
             const SizedBox(height: 10),
             _DemoRoleButton(
-              label: 'Anna — matka',
+              label: context.tr('Anna — matka'),
               icon: Icons.person_outline,
               onTap: onDemoRoleSelected == null
                   ? null
@@ -993,7 +1042,7 @@ class _BrandIntroCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _DemoRoleButton(
-              label: 'Marek — ojciec',
+              label: context.tr('Marek — ojciec'),
               icon: Icons.person,
               onTap: onDemoRoleSelected == null
                   ? null
@@ -1001,7 +1050,7 @@ class _BrandIntroCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _DemoRoleButton(
-              label: 'Franek — dziecko',
+              label: context.tr('Franek — dziecko'),
               icon: Icons.child_care,
               onTap: onDemoRoleSelected == null
                   ? null
@@ -1063,9 +1112,9 @@ class _ModeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <(_AuthMode, String)>[
-      (_AuthMode.login, 'Logowanie'),
-      (_AuthMode.register, 'Rejestracja'),
-      (_AuthMode.join, 'Dołączanie'),
+      (_AuthMode.login, context.tr('Logowanie')),
+      (_AuthMode.register, context.tr('Rejestracja')),
+      (_AuthMode.join, context.tr('Dołączanie')),
     ];
 
     return SizedBox(
@@ -1258,6 +1307,53 @@ class _Field extends StatelessWidget {
                         : Icons.visibility_off_outlined,
                   ),
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StartLanguageButton extends StatelessWidget {
+  final String languageCode;
+  final VoidCallback onPick;
+
+  const _StartLanguageButton({
+    required this.languageCode,
+    required this.onPick,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = languageCode == 'en' ? 'EN' : 'PL';
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      elevation: 1,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onPick,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.language,
+                size: 18,
+                color: AppTheme.primaryTeal,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

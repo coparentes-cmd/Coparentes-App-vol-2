@@ -18,6 +18,7 @@ import 'thread_screen.dart';
 import 'widgets/inline_chat_panel.dart';
 import 'widgets/new_thread_sheet.dart';
 import 'widgets/thread_tile.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 export 'thread_screen.dart';
 
@@ -251,11 +252,11 @@ class MessagingScreenState extends State<MessagingScreen> {
           backgroundColor: Colors.white,
           foregroundColor: AppTheme.textPrimary,
           elevation: 0.5,
-          title: Text(familyCategoryDisplayLabel),
+          title: Text(context.tr(familyCategoryDisplayLabel)),
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Odśwież wiadomości',
+              tooltip: context.tr('Odśwież wiadomości'),
               onPressed: () => _loadThreads(context),
             ),
           ],
@@ -300,11 +301,11 @@ class MessagingScreenState extends State<MessagingScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: _closeConversation,
           ),
-          title: Text(messagingCategoryLabel(_conversationCategory!)),
+          title: Text(context.tr(messagingCategoryLabel(_conversationCategory!))),
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Odśwież wiadomości',
+              tooltip: context.tr('Odśwież wiadomości'),
               onPressed: () => _loadThreads(context),
             ),
           ],
@@ -373,12 +374,12 @@ class MessagingScreenState extends State<MessagingScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.close),
-                    tooltip: 'Zamknij',
+                    tooltip: context.tr('Zamknij'),
                     onPressed: _closeConversation,
                   ),
                   Expanded(
                     child: Text(
-                      messagingCategoryLabel(_conversationCategory!),
+                      context.tr(messagingCategoryLabel(_conversationCategory!)),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -387,7 +388,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh),
-                    tooltip: 'Odśwież',
+                    tooltip: context.tr('Odśwież'),
                     onPressed: () => _loadThreads(context),
                   ),
                 ],
@@ -506,7 +507,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Szukaj',
+                    hintText: context.tr('Szukaj'),
                     prefixIcon: const Icon(Icons.search, size: 20),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
@@ -731,13 +732,15 @@ class _ChatFilterTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <(_ChatListTab, String)>[
-      (_ChatListTab.all, allTabDisplayLabel),
+      (_ChatListTab.all, context.tr(allTabDisplayLabel)),
       (
         _ChatListTab.unread,
-        unreadCount > 0 ? 'Nieprzeczytane ($unreadCount)' : 'Nieprzeczytane',
+        unreadCount > 0
+            ? '${context.tr('Nieprzeczytane')} ($unreadCount)'
+            : context.tr('Nieprzeczytane'),
       ),
-      (_ChatListTab.family, familyCategoryDisplayLabel),
-      (_ChatListTab.schedule, scheduleCategoryChannel),
+      (_ChatListTab.family, context.tr(familyCategoryDisplayLabel)),
+      (_ChatListTab.schedule, context.tr(scheduleCategoryChannel)),
     ];
 
     return SizedBox(
@@ -829,7 +832,7 @@ class _UnreadMessageTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    threadListTitle(thread),
+                    context.tr(threadListTitle(thread)),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

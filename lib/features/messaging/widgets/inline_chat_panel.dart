@@ -18,6 +18,7 @@ import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
 import 'thread_messages_list.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class InlineCategoryChatPanel extends StatefulWidget {
   final String? category;
@@ -56,8 +57,8 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Możesz dodać maksymalnie 3 załączniki.'),
+        SnackBar(
+          content: Text(context.tr('Możesz dodać maksymalnie 3 załączniki.')),
         ),
       );
       return;
@@ -256,7 +257,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
     if (threadId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nie udało się otworzyć rozmowy.')),
+          SnackBar(content: Text(context.tr('Nie udało się otworzyć rozmowy.'))),
         );
       }
       return;
@@ -380,8 +381,8 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
 
     final panelCategory = widget.category ?? thread.category;
     final panelSubtitle = widget.threadId != null
-        ? thread.subject
-        : categoryChannelSubtitle(panelCategory);
+        ? context.tr(threadListTitle(thread))
+        : context.tr(categoryChannelSubtitle(panelCategory));
     final visibleMessages = widget.messageSearchQuery == null
         ? thread.messages
         : filterMessagesForSearch(

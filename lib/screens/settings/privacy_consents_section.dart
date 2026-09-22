@@ -5,6 +5,7 @@ import '../../data/models/user_consent.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/consent_widgets.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class PrivacyConsentsSection extends StatefulWidget {
   final Color roleColor;
@@ -103,7 +104,7 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
               ),
             ),
             const SizedBox(height: 12),
-            TextButton(onPressed: _loadConsents, child: const Text('Spróbuj ponownie')),
+            TextButton(onPressed: _loadConsents, child: Text(context.tr('Spróbuj ponownie'))),
           ],
         ),
       );

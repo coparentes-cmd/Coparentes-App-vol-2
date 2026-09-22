@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../data/serializers/api_serializers.dart';
+import '../l10n/app_strings.dart';
 import '../models/models.dart';
 
 class ExportPdfService {
@@ -46,7 +47,10 @@ class ExportPdfService {
     );
   }
 
-  static Future<Uint8List> buildPdf(Map<String, dynamic> downloadResponse) async {
+  static Future<Uint8List> buildPdf(
+    Map<String, dynamic> downloadResponse, {
+    String languageCode = 'pl',
+  }) async {
     final theme = await _loadTheme();
     final payload = Map<String, dynamic>.from(
       downloadResponse['payload'] as Map? ?? const {},
@@ -64,7 +68,7 @@ class ExportPdfService {
     final generatedAt = _parseDate(payload['generatedAt']) ?? DateTime.now();
 
     final pdf = pw.Document(
-      title: 'Coparentes – ${_typeLabel(type)}',
+      title: 'Coparentes – ${_typeLabel(type, languageCode)}',
       author: 'Coparentes',
     );
 
@@ -88,7 +92,7 @@ class ExportPdfService {
             ),
             pw.SizedBox(height: 4),
             pw.Text(
-              _typeLabel(type),
+              _typeLabel(type, languageCode),
               style: _textStyle(fontSize: 16, bold: true),
             ),
             pw.SizedBox(height: 12),
@@ -102,7 +106,7 @@ class ExportPdfService {
             pw.SizedBox(height: 20),
             pw.Divider(),
             pw.SizedBox(height: 12),
-            ..._buildItems(type, items),
+            ..._buildItems(type, items, languageCode),
           ];
         },
         footer: (context) {
@@ -201,7 +205,11 @@ class ExportPdfService {
     }
   }
 
-  static List<pw.Widget> _buildItems(String type, List<Map<String, dynamic>> items) {
+  static List<pw.Widget> _buildItems(
+    String type,
+    List<Map<String, dynamic>> items,
+    String languageCode,
+  ) {
     if (items.isEmpty) {
       return [
         pw.Text(
@@ -215,10 +223,10 @@ class ExportPdfService {
       return _buildMessageSections(items);
     }
     if (type == 'calendar') {
-      return _buildCalendarSections(items);
+      return _buildCalendarSections(items, languageCode);
     }
     if (type == 'finances') {
-      return _buildFinanceSections(items);
+      return _buildFinanceSections(items, languageCode);
     }
     if (type == 'fullPack') {
       final messages = items
@@ -247,14 +255,14 @@ class ExportPdfService {
           style: _textStyle(fontSize: 14, bold: true),
         ),
         pw.SizedBox(height: 8),
-        ..._buildCalendarSections(calendar),
+        ..._buildCalendarSections(calendar, languageCode),
         pw.SizedBox(height: 16),
         pw.Text(
           'Finanse',
           style: _textStyle(fontSize: 14, bold: true),
         ),
         pw.SizedBox(height: 8),
-        ..._buildFinanceSections(finances),
+        ..._buildFinanceSections(finances, languageCode),
       ];
     }
 
@@ -331,7 +339,10 @@ class ExportPdfService {
     );
   }
 
-  static List<pw.Widget> _buildCalendarSections(List<Map<String, dynamic>> items) {
+  static List<pw.Widget> _buildCalendarSections(
+    List<Map<String, dynamic>> items,
+    String languageCode,
+  ) {
     if (items.isEmpty) {
       return [
         pw.Text(
@@ -348,7 +359,7 @@ class ExportPdfService {
           return _boxedItem(
             title: 'Opieka – ${_formatDate(_parseDate(item['date']))}',
             lines: [
-              'Opiekun: ${_custodianLabel(item['custodian'] as String?)}',
+              '${AppStrings.translate(languageCode, 'Opiekun')}: ${_custodianLabel(item['custodian'] as String?, languageCode)}',
               if (item['handoverTime'] != null)
                 'Przekazanie: ${item['handoverTime']}',
               if (item['handoverLocation'] != null)
@@ -362,7 +373,7 @@ class ExportPdfService {
               'Od: ${item['requesterName'] ?? 'Rodzic'}',
               'Data oryginalna: ${_formatDate(_parseDate(item['originalDate']))}',
               'Data proponowana: ${_formatDate(_parseDate(item['proposedDate']))}',
-              'Status: ${_statusLabel(item['status'] as String?)}',
+              '${AppStrings.translate(languageCode, 'Status')}: ${_statusLabel(item['status'] as String?, languageCode)}',
               if (item['reason'] != null) 'Powód: ${item['reason']}',
             ],
           );
@@ -381,7 +392,10 @@ class ExportPdfService {
     }).toList();
   }
 
-  static List<pw.Widget> _buildFinanceSections(List<Map<String, dynamic>> items) {
+  static List<pw.Widget> _buildFinanceSections(
+    List<Map<String, dynamic>> items,
+    String languageCode,
+  ) {
     if (items.isEmpty) {
       return [
         pw.Text(
@@ -404,7 +418,7 @@ class ExportPdfService {
             item['title'] as String? ?? '—',
             amount == null ? '—' : '${amount.toString()} $currency',
             item['category'] as String? ?? '—',
-            _statusLabel(item['status'] as String?),
+            _statusLabel(item['status'] as String?, languageCode),
           ];
         }).toList(),
         border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
@@ -462,45 +476,35 @@ class ExportPdfService {
     );
   }
 
-  static String _typeLabel(String type) {
-    switch (type) {
-      case 'messages':
-        return 'Eksport wiadomości';
-      case 'calendar':
-        return 'Eksport kalendarza';
-      case 'finances':
-        return 'Eksport finansów';
-      case 'fullPack':
-        return 'Pełny pakiet';
-      default:
-        return 'Eksport';
-    }
+  static String _typeLabel(String type, String languageCode) {
+    final polish = switch (type) {
+      'messages' => 'Eksport wiadomości',
+      'calendar' => 'Eksport kalendarza',
+      'finances' => 'Eksport finansów',
+      'fullPack' => 'Pełny pakiet',
+      _ => 'Eksport',
+    };
+    return AppStrings.translate(languageCode, polish);
   }
 
-  static String _custodianLabel(String? value) {
-    switch (value) {
-      case 'parentA':
-        return 'Rodzic A';
-      case 'parentB':
-        return 'Rodzic B';
-      default:
-        return value ?? '—';
-    }
+  static String _custodianLabel(String? value, String languageCode) {
+    final polish = switch (value) {
+      'parentA' => 'Rodzic A',
+      'parentB' => 'Rodzic B',
+      _ => value ?? '—',
+    };
+    return AppStrings.translate(languageCode, polish);
   }
 
-  static String _statusLabel(String? value) {
-    switch (value) {
-      case 'approved':
-        return 'Zatwierdzony';
-      case 'pending':
-        return 'Oczekujący';
-      case 'rejected':
-        return 'Odrzucony';
-      case 'completed':
-        return 'Gotowy';
-      default:
-        return value ?? '—';
-    }
+  static String _statusLabel(String? value, String languageCode) {
+    final polish = switch (value) {
+      'approved' => 'Zatwierdzony',
+      'pending' => 'Oczekujący',
+      'rejected' => 'Odrzucony',
+      'completed' => 'Gotowy',
+      _ => value ?? '—',
+    };
+    return AppStrings.translate(languageCode, polish);
   }
 
   static DateTime? _parseDate(Object? value) {

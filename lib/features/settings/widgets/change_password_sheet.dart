@@ -19,6 +19,7 @@ import 'action_tile.dart';
 import 'switch_tile.dart';
 import 'setup_pin_sheet.dart';
 import 'change_pin_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ChangePasswordSheet extends StatefulWidget {
   final Color color;
@@ -96,15 +97,15 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
                   : () async {
                       if (_newController.text.length < 10) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Nowe hasło musi mieć co najmniej 10 znaków.'),
+                          SnackBar(
+                            content: Text(context.tr('Nowe hasło musi mieć co najmniej 10 znaków.')),
                           ),
                         );
                         return;
                       }
                       if (_newController.text != _confirmController.text) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Hasła nie są identyczne.')),
+                          SnackBar(content: Text(context.tr('Hasła nie są identyczne.'))),
                         );
                         return;
                       }

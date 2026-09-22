@@ -9,6 +9,7 @@ import '../../../../utils/calendar_date_utils.dart';
 import '../../../../widgets/common_widgets.dart';
 
 import '../calendar_helpers.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class AddEventSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -125,8 +126,8 @@ class AddEventSheetState extends State<AddEventSheet> {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Podaj tytuł zdarzenia.'),
+        SnackBar(
+          content: Text(context.tr('Podaj tytuł zdarzenia.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -248,7 +249,7 @@ class AddEventSheetState extends State<AddEventSheet> {
             contentPadding: EdgeInsets.zero,
             leading:
                 const Icon(Icons.access_time, color: AppTheme.textSecondary),
-            title: const Text('Godzina'),
+            title: Text(context.tr('Godzina')),
             subtitle: Text(_formatTime(_selectedTime)),
             trailing: const Icon(Icons.chevron_right),
             onTap: _pickTime,

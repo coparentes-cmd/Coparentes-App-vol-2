@@ -25,6 +25,7 @@ import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class SwapRejectSheet extends StatefulWidget {
   final SwapRequest swap;
@@ -204,14 +205,14 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
             child: Column(
               children: [
                 SwapDateRow(
-                  label: 'Oryginalny dzień we wniosku',
+                  label: context.tr('Oryginalny dzień we wniosku'),
                   date: widget.swap.originalDate,
                   icon: Icons.event,
                   color: AppTheme.errorColor,
                 ),
                 const SizedBox(height: 8),
                 SwapDateRow(
-                  label: 'Proponowany dzień we wniosku',
+                  label: context.tr('Proponowany dzień we wniosku'),
                   date: widget.swap.proposedDate,
                   icon: Icons.event_available,
                   color: AppTheme.successColor,
@@ -241,7 +242,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
           if (_proposeAlternativeDates) ...[
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Twój oryginalny dzień'),
+              title: Text(context.tr('Twój oryginalny dzień')),
               subtitle: Text(formatSwapDate(_counterOriginalDate)),
               trailing: const Icon(Icons.calendar_today),
               onTap: () => _pickDate(
@@ -252,7 +253,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Twój proponowany dzień'),
+              title: Text(context.tr('Twój proponowany dzień')),
               subtitle: Text(formatSwapDate(_counterProposedDate)),
               trailing: const Icon(Icons.calendar_today),
               onTap: () => _pickDate(

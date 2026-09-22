@@ -19,6 +19,7 @@ import 'category_bar.dart';
 import 'split_overview_card.dart';
 import 'expense_card.dart';
 import 'add_expense_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class DisputeExpenseSheet extends StatefulWidget {
   final Expense expense;
@@ -43,8 +44,8 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
     final reason = _noteController.text.trim();
     if (reason.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Podaj powód sporu.'),
+        SnackBar(
+          content: Text(context.tr('Podaj powód sporu.')),
           backgroundColor: AppTheme.warningColor,
         ),
       );
@@ -72,8 +73,8 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nie udało się zgłosić sporu.'),
+          SnackBar(
+            content: Text(context.tr('Nie udało się zgłosić sporu.')),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -113,9 +114,9 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
           TextField(
             controller: _noteController,
             maxLines: 3,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Powód sporu',
-              hintText: 'Np. kwota przekracza uzgodniony limit',
+              hintText: context.tr('Np. kwota przekracza uzgodniony limit'),
             ),
           ),
           const SizedBox(height: 20),
@@ -129,7 +130,7 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Zgłoś spór'),
+                  : Text(context.tr('Zgłoś spór')),
             ),
           ),
         ],

@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/consent_widgets.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class RegistrationDraft {
   final String name;
@@ -167,7 +168,7 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('Zakończ rejestrację'),
+                                : Text(context.tr('Zakończ rejestrację')),
                           ),
                         ),
                       ),

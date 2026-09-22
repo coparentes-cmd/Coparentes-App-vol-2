@@ -19,6 +19,7 @@ import 'info_tile.dart';
 import 'action_tile.dart';
 import 'switch_tile.dart';
 import 'setup_pin_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ChangePinSheet extends StatefulWidget {
   final Color color;
@@ -75,8 +76,8 @@ class ChangePinSheetState extends State<ChangePinSheet> {
 
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PIN został zmieniony ✓'),
+      SnackBar(
+        content: Text(context.tr('PIN został zmieniony ✓')),
         backgroundColor: AppTheme.successColor,
       ),
     );

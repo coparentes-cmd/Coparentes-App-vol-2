@@ -19,6 +19,7 @@ import '../../../widgets/message_status_indicator.dart';
 import '../../../widgets/message_tag_widgets.dart';
 import 'schedule_message_actions.dart';
 import 'swap_message_actions.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class MessageBubble extends StatefulWidget {
   final Message message;
@@ -418,8 +419,8 @@ class MessageBubbleState extends State<MessageBubble> {
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się zapisać odpowiedzi na grafik.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się zapisać odpowiedzi na grafik.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -467,8 +468,8 @@ class MessageBubbleState extends State<MessageBubble> {
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się zapisać odpowiedzi na wyjątek.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się zapisać odpowiedzi na wyjątek.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -569,8 +570,8 @@ class MessageBubbleState extends State<MessageBubble> {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Nie udało się zapisać odpowiedzi na wniosek.'),
+        SnackBar(
+          content: Text(context.tr('Nie udało się zapisać odpowiedzi na wniosek.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -599,7 +600,7 @@ class MessageBubbleState extends State<MessageBubble> {
 
     if (payload == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nie udało się pobrać załącznika.')),
+        SnackBar(content: Text(context.tr('Nie udało się pobrać załącznika.'))),
       );
       return;
     }
