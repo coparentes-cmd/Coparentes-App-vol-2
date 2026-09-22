@@ -12,6 +12,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
+import '../../widgets/language_flag.dart';
 import 'consent_registration_screen.dart';
 import 'otp_verification_screen.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -346,14 +347,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final entry in const [
-              (Locale('pl'), 'Polski'),
-              (Locale('en'), 'English'),
+              (Locale('pl'), 'Polski', 'pl'),
+              (Locale('en'), 'English', 'en'),
             ])
               ListTile(
-                leading: Icon(
-                  Icons.language,
-                  color: AppTheme.primaryTeal,
-                ),
+                leading: LanguageFlag(languageCode: entry.$3, size: 28),
                 title: Text(entry.$2),
                 trailing: ap.language == entry.$1.languageCode
                     ? const Icon(Icons.check, color: AppTheme.primaryTeal)
@@ -1315,35 +1313,19 @@ class _StartLanguageButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = languageCode == 'en' ? 'EN' : 'PL';
     return Material(
-      color: Colors.white.withValues(alpha: 0.92),
+      color: Colors.white.withValues(alpha: 0.96),
       elevation: 1,
       shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(22),
+      shape: const CircleBorder(),
       child: InkWell(
         onTap: onPick,
-        borderRadius: BorderRadius.circular(22),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.language,
-                size: 18,
-                color: AppTheme.primaryTeal,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
+        customBorder: const CircleBorder(),
+        child: Tooltip(
+          message: languageCode == 'en' ? 'English' : 'Polski',
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: LanguageFlag(languageCode: languageCode, size: 28),
           ),
         ),
       ),

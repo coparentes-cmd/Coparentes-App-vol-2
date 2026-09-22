@@ -190,6 +190,7 @@ class CoparentesApp extends StatelessWidget {
       child: Consumer<AppProvider>(
         builder: (context, ap, _) {
           return MaterialApp(
+            key: ValueKey('app-locale-${ap.locale.languageCode}'),
             title: 'Coparentes',
             debugShowCheckedModeBanner: false,
             themeMode: ap.themeMode,

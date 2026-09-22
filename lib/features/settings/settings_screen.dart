@@ -20,6 +20,7 @@ import 'widgets/switch_tile.dart';
 import 'widgets/setup_pin_sheet.dart';
 import 'widgets/change_pin_sheet.dart';
 import 'widgets/ios_settings_accordion.dart';
+import '../../../widgets/language_flag.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
 const _showPreLaunchPlaceholderSections = false;
@@ -968,12 +969,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final entry in const [
-              (Locale('pl'), 'Polski'),
-              (Locale('en'), 'English'),
+              (Locale('pl'), 'Polski', 'pl'),
+              (Locale('en'), 'English', 'en'),
             ])
               ListTile(
-                leading: Icon(Icons.language, color: color),
+                leading: LanguageFlag(languageCode: entry.$3, size: 28),
                 title: Text(entry.$2),
+                trailing: ap.language == entry.$1.languageCode
+                    ? Icon(Icons.check, color: color)
+                    : null,
                 onTap: () {
                   ap.setLocale(entry.$1);
                   Navigator.pop(context);
