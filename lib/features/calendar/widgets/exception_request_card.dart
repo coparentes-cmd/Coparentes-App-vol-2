@@ -24,6 +24,7 @@ import 'pending_schedule_banner.dart';
 import 'schedule_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ExceptionRequestCard extends StatelessWidget {
   final CustodyException exception;
@@ -67,14 +68,13 @@ class ExceptionRequestCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Wniosek o zmianę opiekuna',
+                  Text(context.tr('Wniosek o zmianę opiekuna'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text('Okres: $_rangeLabel'),
                   Text('Opiekun: $_custodianLabel'),
                   if (exception.reason != null)
@@ -96,9 +96,9 @@ class ExceptionRequestCard extends StatelessWidget {
                           backgroundColor: AppTheme.successColor,
                           minimumSize: const Size.fromHeight(40),
                         ),
-                        child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
+                        child: Text(context.tr('Akceptuj'), style: TextStyle(fontSize: 13)),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       OutlinedButton(
                         onPressed: onReject,
                         style: OutlinedButton.styleFrom(
@@ -106,7 +106,7 @@ class ExceptionRequestCard extends StatelessWidget {
                           side: const BorderSide(color: AppTheme.errorColor),
                           minimumSize: const Size.fromHeight(40),
                         ),
-                        child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
+                        child: Text(context.tr('Odrzuć'), style: TextStyle(fontSize: 13)),
                       ),
                     ],
                   ),

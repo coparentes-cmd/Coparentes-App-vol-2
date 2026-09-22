@@ -25,6 +25,7 @@ import 'pending_schedule_banner.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ScheduleRequestCard extends StatelessWidget {
   final CustodySchedule schedule;
@@ -61,7 +62,7 @@ class ScheduleRequestCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text('Szablon: ${schedule.patternLabel}'),
                   Text(
                     schedule.endDate != null
@@ -71,10 +72,9 @@ class ScheduleRequestCard extends StatelessWidget {
                   if (schedule.handoverTime != null)
                     Text('Przekazanie: ${schedule.handoverTime}'),
                   if (!canRespond)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        'Oczekuje na decyzję drugiego rodzica.',
+                      child: Text(context.tr('Oczekuje na decyzję drugiego rodzica.'),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -98,9 +98,9 @@ class ScheduleRequestCard extends StatelessWidget {
                           backgroundColor: AppTheme.successColor,
                           minimumSize: const Size.fromHeight(40),
                         ),
-                        child: const Text('Akceptuj', style: TextStyle(fontSize: 13)),
+                        child: Text(context.tr('Akceptuj'), style: TextStyle(fontSize: 13)),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       OutlinedButton(
                         onPressed: onReject,
                         style: OutlinedButton.styleFrom(
@@ -108,7 +108,7 @@ class ScheduleRequestCard extends StatelessWidget {
                           side: const BorderSide(color: AppTheme.errorColor),
                           minimumSize: const Size.fromHeight(40),
                         ),
-                        child: const Text('Odrzuć', style: TextStyle(fontSize: 13)),
+                        child: Text(context.tr('Odrzuć'), style: TextStyle(fontSize: 13)),
                       ),
                     ],
                   ),

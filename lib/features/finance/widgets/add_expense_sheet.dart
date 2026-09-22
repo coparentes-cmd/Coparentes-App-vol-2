@@ -152,8 +152,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
       });
 
       final confidenceLabel = parsed.confidence == 'medium'
-          ? 'Rozpoznano dane z paragonu. Sprawdź przed zapisem.'
-          : 'Rozpoznanie niepewne — uzupełnij brakujące pola ręcznie.';
+          ? context.tr('Rozpoznano dane z paragonu. Sprawdź przed zapisem.') : context.tr('Rozpoznanie niepewne — uzupełnij brakujące pola ręcznie.');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -220,14 +219,14 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _ocrMode ? 'Wydatek z paragonu' : 'Nowy wydatek',
+              _ocrMode ? 'Wydatek z paragonu' : context.tr('Nowy wydatek'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             if (_ocrMode) ...[
               if (_pendingReceipt != null) ...[
@@ -240,17 +239,16 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               if (_isParsingReceipt)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Column(
                     children: [
                       CircularProgressIndicator(strokeWidth: 2),
                       SizedBox(height: 12),
-                      Text(
-                        'Odczytuję paragon…',
+                      Text(context.tr('Odczytuję paragon…'),
                         style: TextStyle(
                           color: AppTheme.primaryTeal,
                           fontSize: 13,
@@ -269,7 +267,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     label: Text(context.tr('Zrób zdjęcie aparatem')),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -279,9 +277,8 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     label: Text(context.tr('Dodaj załącznik')),
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Po zrobieniu zdjęcia odczytamy kwotę, sklep i datę z paragonu.',
+                SizedBox(height: 8),
+                Text(context.tr('Po zrobieniu zdjęcia odczytamy kwotę, sklep i datę z paragonu.'),
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
@@ -299,7 +296,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Paragon: ${_pendingReceipt!.fileName}',
                   style: const TextStyle(
@@ -307,29 +304,29 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Opis wydatku',
+                decoration: InputDecoration(
+                  labelText: context.tr('Opis wydatku'),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextField(
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Kwota (PLN)',
+                decoration: InputDecoration(
+                  labelText: context.tr('Kwota (PLN)'),
                   suffixText: 'PLN',
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               InkWell(
                 onTap: _pickDate,
                 child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Data wydatku',
+                  decoration: InputDecoration(
+                    labelText: context.tr('Data wydatku'),
                   ),
                   child: Text(
                     '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year}',
@@ -337,7 +334,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
               ),
               if (children.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 const Text(
                   'Dziecko',
                   style: TextStyle(
@@ -345,7 +342,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: children
@@ -366,7 +363,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                       .toList(),
                 ),
               ],
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               const Text(
                 'Kategoria',
                 style: TextStyle(
@@ -374,7 +371,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                   color: AppTheme.textSecondary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -392,15 +389,14 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     )
                     .toList(),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Podział kosztów (udział drugiego rodzica)',
+              SizedBox(height: 12),
+              Text(context.tr('Podział kosztów (udział drugiego rodzica)'),
                 style: TextStyle(
                   fontSize: 14,
                   color: AppTheme.textSecondary,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: _splitPresets
@@ -420,17 +416,17 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                     )
                     .toList(),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextField(
                 controller: _noteController,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Notatka (opcjonalnie)',
+                decoration: InputDecoration(
+                  labelText: context.tr('Notatka (opcjonalnie)'),
                 ),
               ),
             ],
 
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             if (!_ocrMode)
               SizedBox(
                 width: double.infinity,
@@ -499,8 +495,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
       SnackBar(
         content: Text(
           _pendingReceipt != null
-              ? 'Wydatek z paragonem zapisany. Oczekuje na akceptację drugiego rodzica.'
-              : 'Wydatek zapisany. Oczekuje na akceptację drugiego rodzica.',
+              ? context.tr('Wydatek z paragonem zapisany. Oczekuje na akceptację drugiego rodzica.') : context.tr('Wydatek zapisany. Oczekuje na akceptację drugiego rodzica.'),
         ),
         backgroundColor: AppTheme.successColor,
       ),

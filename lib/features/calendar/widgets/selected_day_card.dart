@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/api/app_api_client.dart';
+import '../../../../l10n/locale_policy.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../providers/calendar_provider.dart';
@@ -63,7 +65,7 @@ class SelectedDayCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                _formatDayHeader(day),
+                _formatDayHeader(context, day),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -71,7 +73,7 @@ class SelectedDayCard extends StatelessWidget {
                 ),
               ),
               if (isException || isPending) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -89,13 +91,13 @@ class SelectedDayCard extends StatelessWidget {
                 ),
               ],
               if (slot != null && label != null) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   children: [
                     Icon(Icons.home, color: color, size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
-                      label,
+                      context.tr(label),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -103,10 +105,10 @@ class SelectedDayCard extends StatelessWidget {
                       ),
                     ),
                     if (slot!.handoverTime != null) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Przekazanie: ${slot!.handoverTime}',
+                          '${context.tr('Przekazanie')}: ${slot!.handoverTime}',
                           textAlign: TextAlign.end,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -119,7 +121,7 @@ class SelectedDayCard extends StatelessWidget {
                   ],
                 ),
                 if (slot!.handoverLocation != null) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       const Icon(
@@ -127,10 +129,10 @@ class SelectedDayCard extends StatelessWidget {
                         size: 14,
                         color: AppTheme.textSecondary,
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          slot!.handoverLocation!,
+                          context.tr(slot!.handoverLocation!),
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 12,
@@ -204,11 +206,11 @@ class SelectedDayCard extends StatelessWidget {
                   },
                 ),
               ] else if (slot == null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Brak zdarzeń tego dnia',
-                    style: TextStyle(
+                    context.tr('Brak zdarzeń tego dnia'),
+                    style: const TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
                     ),
@@ -220,31 +222,12 @@ class SelectedDayCard extends StatelessWidget {
     );
   }
 
-  String _formatDayHeader(DateTime date) {
-    const weekdays = [
-      'poniedziałek',
-      'wtorek',
-      'środa',
-      'czwartek',
-      'piątek',
-      'sobota',
-      'niedziela',
-    ];
-    const months = [
-      'stycznia',
-      'lutego',
-      'marca',
-      'kwietnia',
-      'maja',
-      'czerwca',
-      'lipca',
-      'sierpnia',
-      'września',
-      'października',
-      'listopada',
-      'grudnia',
-    ];
-    final weekday = weekdays[date.weekday - 1];
-    return '${weekday[0].toUpperCase()}${weekday.substring(1)}, ${date.day} ${months[date.month - 1]}';
+  String _formatDayHeader(BuildContext context, DateTime date) {
+    final locale = dateFormattingLocale(Localizations.localeOf(context));
+    final raw = DateFormat('EEEE, d MMMM', locale).format(date);
+    if (raw.isEmpty) {
+      return raw;
+    }
+    return '${raw[0].toUpperCase()}${raw.substring(1)}';
   }
 }

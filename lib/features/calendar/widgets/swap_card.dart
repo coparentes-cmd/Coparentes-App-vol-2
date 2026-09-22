@@ -61,8 +61,8 @@ class SwapCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           isMyRequest
-                              ? 'Twój wniosek'
-                              : 'Wniosek od ${swap.requesterName}',
+                              ? context.tr('Twój wniosek')
+                              : '${context.tr('Wniosek od')} ${swap.requesterName}',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -71,19 +71,19 @@ class SwapCard extends StatelessWidget {
                         ),
                       ),
                       StatusChip(
-                        label: swap.statusLabel,
+                        label: context.tr(swap.statusLabel),
                         color: swap.statusColor,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   SwapDateRow(
                     label: context.tr('Oryginalny dzień'),
                     date: swap.originalDate,
                     icon: Icons.event,
                     color: AppTheme.errorColor,
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   SwapDateRow(
                     label: context.tr('Proponowany dzień'),
                     date: swap.proposedDate,
@@ -91,7 +91,7 @@ class SwapCard extends StatelessWidget {
                     color: AppTheme.successColor,
                   ),
                   if (swap.reason != null) ...[
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Text(
                       'Powód: ${swap.reason}',
                       style: const TextStyle(
@@ -102,7 +102,7 @@ class SwapCard extends StatelessWidget {
                     ),
                   ],
                   if (swap.responseNote != null) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       'Odpowiedź: ${swap.responseNote}',
                       style: const TextStyle(
@@ -112,9 +112,8 @@ class SwapCard extends StatelessWidget {
                     ),
                   ],
                   if (isMyRequest && swap.status == SwapStatus.pending) ...[
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Oczekuje na decyzję drugiego rodzica.',
+                    SizedBox(height: 10),
+                    Text(context.tr('Oczekuje na decyzję drugiego rodzica.'),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
@@ -125,7 +124,7 @@ class SwapCard extends StatelessWidget {
               ),
             ),
             if (canRespond) ...[
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               EnterAcceptScope(
                 onAccept: onAccept,
                 autofocus: keyboardAcceptAutofocus,
@@ -141,12 +140,11 @@ class SwapCard extends StatelessWidget {
                           minimumSize: const Size.fromHeight(40),
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
-                        child: const Text(
-                          'Akceptuj',
+                        child: Text(context.tr('Akceptuj'),
                           style: TextStyle(fontSize: 13),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       OutlinedButton(
                         onPressed: onReject,
                         style: OutlinedButton.styleFrom(
@@ -155,8 +153,7 @@ class SwapCard extends StatelessWidget {
                           minimumSize: const Size.fromHeight(40),
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
-                        child: const Text(
-                          'Odrzuć',
+                        child: Text(context.tr('Odrzuć'),
                           style: TextStyle(fontSize: 13),
                         ),
                       ),

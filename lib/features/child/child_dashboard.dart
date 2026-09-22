@@ -209,11 +209,11 @@ class _ChildDashboardState extends State<ChildDashboard> {
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         backgroundColor: AppTheme.childColor,
-        title: const Row(
+        title: Row(
           children: [
             Text('👧', style: TextStyle(fontSize: 20)),
             SizedBox(width: 8),
-            Text('Mój dzień', style: TextStyle(color: Colors.white)),
+            Text(context.tr('Mój dzień'), style: TextStyle(color: Colors.white)),
           ],
         ),
         actions: [
@@ -255,9 +255,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          dayName,
+                        SizedBox(height: 4),
+                        Text(context.tr(dayName),
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 15,
@@ -271,7 +270,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             _buildTodayPlanSection(
               slot: slot,
@@ -280,7 +279,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
               handoverHint: handoverHint,
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // Mood
             Container(
@@ -292,17 +291,15 @@ class _ChildDashboardState extends State<ChildDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Jak się dzisiaj czujesz? 💭',
+                  Text(context.tr('Jak się dzisiaj czujesz? 💭'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'To tylko dla Ciebie – rodzice tego nie widzą 🔒',
+                  SizedBox(height: 4),
+                  Text(context.tr('To tylko dla Ciebie – rodzice tego nie widzą 🔒'),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
@@ -387,9 +384,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
           Row(
             children: [
               Icon(Icons.today, color: planColor, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'Plan na dziś',
+              SizedBox(width: 8),
+              Text(context.tr('Plan na dziś'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -399,9 +395,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
             ],
           ),
           if (!hasPlan) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'Brak planu na dziś — rodzice mogą dodać coś w kalendarzu.',
+            SizedBox(height: 12),
+            Text(context.tr('Brak planu na dziś — rodzice mogą dodać coś w kalendarzu.'),
               style: TextStyle(
                 fontSize: 14,
                 color: AppTheme.textSecondary,
@@ -565,7 +560,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
         title: Row(
           children: [
             const Text('📝', style: TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 listTitle,
@@ -647,7 +642,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                       Icons.add,
                       color: AppTheme.childColor.withValues(alpha: 0.85),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: _listItemController,
@@ -698,7 +693,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                             size: 56,
                             color: AppTheme.childColor.withValues(alpha: 0.35),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             '$listTitle jest pusta',
                             style: const TextStyle(
@@ -707,9 +702,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
                               color: AppTheme.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Wpisz coś powyżej — jak w Google Keep.',
+                          SizedBox(height: 8),
+                          Text(context.tr('Wpisz coś powyżej — jak w Google Keep.'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
@@ -784,9 +778,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
           controller: titleController,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Tytuł listy',
-            hintText: 'np. Szkoła, Zakupy, Na wakacje',
+          decoration: InputDecoration(
+            labelText: context.tr('Tytuł listy'),
+            hintText: context.tr('np. Szkoła, Zakupy, Na wakacje'),
           ),
           onSubmitted: (_) => Navigator.pop(dialogContext, true),
         ),

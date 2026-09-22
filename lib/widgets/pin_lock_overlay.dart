@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../data/local/pin_lock_store.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class PinLockGate extends StatelessWidget {
   final Widget child;
@@ -81,14 +82,12 @@ class _PinLockOverlayState extends State<PinLockOverlay> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.lock_outline, size: 56, color: color),
-              const SizedBox(height: 20),
-              const Text(
-                'Wprowadź PIN',
+              SizedBox(height: 20),
+              Text(context.tr('Wprowadź PIN'),
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Aplikacja była w tle — potwierdź tożsamość',
+              SizedBox(height: 8),
+              Text(context.tr('Aplikacja była w tle — potwierdź tożsamość'),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppTheme.textSecondary),
               ),

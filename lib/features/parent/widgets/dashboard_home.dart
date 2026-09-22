@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/messaging_categories.dart';
+import '../../../../l10n/app_strings.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
@@ -147,7 +148,7 @@ class _DashboardHomeState extends State<DashboardHome> {
                       SizedBox(width: compact ? 8 : 10),
                       Flexible(
                         child: Text(
-                          'Dzień dobry, $firstName',
+                          '${context.tr('Dzień dobry')}, $firstName',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: compact ? 18 : 20,
@@ -168,7 +169,7 @@ class _DashboardHomeState extends State<DashboardHome> {
                     ),
                   ),
                   if (highConflict) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -178,8 +179,8 @@ class _DashboardHomeState extends State<DashboardHome> {
                         color: AppTheme.highConflictColor,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'Tryb HC aktywny',
+                      child: Text(
+                        context.tr('Tryb HC aktywny'),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -317,7 +318,7 @@ class _DashboardHomeState extends State<DashboardHome> {
     switch (_feedTab) {
       case _DashboardFeedTab.messages:
         if (parentThreads.isEmpty) {
-          return const _FeedEmpty(text: 'Brak wiadomości');
+          return _FeedEmpty(text: context.tr('Brak wiadomości'));
         }
         return Column(
           children: parentThreads
@@ -333,7 +334,7 @@ class _DashboardHomeState extends State<DashboardHome> {
         );
       case _DashboardFeedTab.finance:
         if (expenses.isEmpty) {
-          return const _FeedEmpty(text: 'Brak wydatków');
+          return _FeedEmpty(text: context.tr('Brak wydatków'));
         }
         return Column(
           children: expenses
@@ -356,8 +357,9 @@ class _DashboardHomeState extends State<DashboardHome> {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: _FeedEmpty(
-              text: 'Brak wiadomości ${familyCategoryDisplayLabel}',
-              actionLabel: 'Otwórz czat',
+              text:
+                  '${context.tr('Brak wiadomości')} · ${context.tr(familyCategoryDisplayLabel)}',
+              actionLabel: context.tr('Otwórz czat'),
               onAction: () =>
                   widget.onOpenChatCategory(familyCategoryChannel),
             ),
@@ -406,12 +408,12 @@ class _FeedTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <(_DashboardFeedTab, String, int)>[
-      (_DashboardFeedTab.messages, 'Wiadomości', messagesCount),
-      (_DashboardFeedTab.finance, 'Finanse', financeCount),
-      (_DashboardFeedTab.calendar, 'Kalendarz', calendarCount),
+      (_DashboardFeedTab.messages, context.tr('Wiadomości'), messagesCount),
+      (_DashboardFeedTab.finance, context.tr('Finanse'), financeCount),
+      (_DashboardFeedTab.calendar, context.tr('Kalendarz'), calendarCount),
       (
         _DashboardFeedTab.family,
-        familyCategoryDisplayLabel,
+        context.tr(familyCategoryDisplayLabel),
         familyCount,
       ),
     ];
@@ -603,7 +605,7 @@ class _CalendarFeed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (swaps.isEmpty && events.isEmpty) {
-      return const _FeedEmpty(text: 'Brak nadchodzących pozycji');
+      return _FeedEmpty(text: context.tr('Brak nadchodzących pozycji'));
     }
 
     return Column(

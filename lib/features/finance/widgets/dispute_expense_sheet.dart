@@ -62,9 +62,8 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Wydatek oznaczony jako sporny. Drugi rodzic zobaczy zmianę automatycznie.',
+          SnackBar(
+            content: Text(context.tr('Wydatek oznaczony jako sporny. Drugi rodzic zobaczy zmianę automatycznie.'),
             ),
             backgroundColor: AppTheme.successColor,
           ),
@@ -97,35 +96,34 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Zgłoś spór',
+          Text(context.tr('Zgłoś spór'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             widget.expense.title,
             style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _noteController,
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: 'Powód sporu',
+              labelText: context.tr('Powód sporu'),
               hintText: context.tr('Np. kwota przekracza uzgodniony limit'),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),

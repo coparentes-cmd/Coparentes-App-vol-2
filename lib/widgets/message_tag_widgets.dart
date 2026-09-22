@@ -198,22 +198,19 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Prywatne — widzisz je tylko Ty. Inni rodzice mogą mieć własne etykiety '
-            'na tej samej wiadomości. Szukaj: tag:paragon',
+          SizedBox(height: 6),
+          Text(context.tr('Prywatne — widzisz je tylko Ty. Inni rodzice mogą mieć własne etykiety na tej samej wiadomości. Szukaj: tag:paragon'),
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Sugerowane',
+          SizedBox(height: 16),
+          Text(context.tr('Sugerowane'),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -234,16 +231,15 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
                 .toList(),
           ),
           if (_tags.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Twoje etykiety na tej wiadomości',
+            SizedBox(height: 16),
+            Text(context.tr('Twoje etykiety na tej wiadomości'),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -265,16 +261,15 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
             ),
           ],
           if (customSuggestions.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Twoje wcześniejsze etykiety',
+            SizedBox(height: 16),
+            Text(context.tr('Twoje wcześniejsze etykiety'),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -288,12 +283,12 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
                   .toList(),
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _controller,
             textInputAction: TextInputAction.done,
             decoration: InputDecoration(
-              labelText: 'Utwórz własną etykietę',
+              labelText: context.tr('Utwórz własną etykietę'),
               hintText: 'np. paragon, pilne',
               prefixIcon: const Icon(Icons.new_label_outlined, size: 20),
               suffixIcon: IconButton(
@@ -304,7 +299,7 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
             ),
             onSubmitted: _addCustomTag,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             children: [
               TextButton(

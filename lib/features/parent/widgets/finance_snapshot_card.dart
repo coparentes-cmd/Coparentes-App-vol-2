@@ -26,6 +26,7 @@ import 'stat_card.dart';
 import 'message_thread_preview.dart';
 import 'child_chip.dart';
 import 'ai_coach_cta.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class FinanceSnapshotCard extends StatelessWidget {
   final FinanceProvider finance;
@@ -53,7 +54,7 @@ class FinanceSnapshotCard extends StatelessWidget {
             parentAName: parentA!.name,
             parentBName: parentB!.name,
           )
-        : 'Saldo niedostępne';
+        : context.tr('Saldo niedostępne');
 
     final pendingRefund = user != null
         ? finance.pendingRefundForUser(user!.id)
@@ -82,8 +83,7 @@ class FinanceSnapshotCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Wydatki w tym miesiącu',
+                    Text(context.tr('Wydatki w tym miesiącu'),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
@@ -102,15 +102,18 @@ class FinanceSnapshotCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      'Saldo netto',
-                      style: TextStyle(
+                    Text(
+                      context.tr('Saldo netto'),
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppTheme.textSecondary,
                       ),
                     ),
                     Text(
-                      balanceHeadline,
+                      context.tr(balanceHeadline).replaceAll(
+                            ' winien ',
+                            ' ${context.tr('winien')} ',
+                          ),
                       textAlign: TextAlign.right,
                       style: const TextStyle(
                         fontSize: 14,
@@ -120,7 +123,7 @@ class FinanceSnapshotCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Oczekujące: ${pendingRefund.toStringAsFixed(0)} PLN',
+                      '${context.tr('Oczekujące')}: ${pendingRefund.toStringAsFixed(0)} PLN',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppTheme.textSecondary,

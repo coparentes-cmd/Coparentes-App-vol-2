@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/messaging_categories.dart';
 import '../../../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class GeneralInboxTile extends StatelessWidget {
   final bool selected;
@@ -45,8 +46,8 @@ class GeneralInboxTile extends StatelessWidget {
                     size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
+                SizedBox(width: 12),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -59,8 +60,7 @@ class GeneralInboxTile extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 4),
-                      Text(
-                        'Wspólne wiadomości bez wyboru wątku',
+                      Text(context.tr('Wspólne wiadomości bez wyboru wątku'),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,

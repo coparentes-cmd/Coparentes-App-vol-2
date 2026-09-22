@@ -5,6 +5,7 @@ import '../config/consent_config.dart';
 import '../data/models/user_consent.dart';
 import '../theme/app_theme.dart';
 import '../utils/open_url.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ConsentRow extends StatefulWidget {
   final ConsentDefinition definition;
@@ -53,7 +54,7 @@ class _ConsentRowState extends State<ConsentRow> {
                   )
                 : switchWidget,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +93,7 @@ class _ConsentRowState extends State<ConsentRow> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   definition.description,
                   style: const TextStyle(
@@ -101,11 +102,11 @@ class _ConsentRowState extends State<ConsentRow> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 GestureDetector(
                   onTap: () => setState(() => _expanded = !_expanded),
                   child: Text(
-                    _expanded ? 'Zwiń' : 'Czytaj więcej',
+                    _expanded ? context.tr('Zwiń') : context.tr('Czytaj więcej'),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class EmailInviteSheet extends StatefulWidget {
   final Color color;
@@ -141,7 +142,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(context.tr(message)),
         backgroundColor:
             success ? AppTheme.successColor : AppTheme.errorColor,
         duration: const Duration(seconds: 5),
@@ -162,13 +163,11 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Zaproś partnera e-mailem',
+          Text(context.tr('Zaproś partnera e-mailem'),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Wyślemy kod dołączenia na podany adres. Jeśli automatyczna wysyłka nie zadziała, kod trafi do schowka — wklej go w mailu.',
+          SizedBox(height: 8),
+          Text(context.tr('Wyślemy kod dołączenia na podany adres. Jeśli automatyczna wysyłka nie zadziała, kod trafi do schowka — wklej go w mailu.'),
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 16),
@@ -181,19 +180,19 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
                 _submit();
               }
             },
-            decoration: const InputDecoration(
-              labelText: 'E-mail partnera',
+            decoration: InputDecoration(
+              labelText: context.tr('E-mail partnera'),
               prefixIcon: Icon(Icons.email_outlined),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _submitting ? null : _submit,
               style: ElevatedButton.styleFrom(backgroundColor: widget.color),
               child: _submitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
@@ -201,23 +200,21 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Wyślij zaproszenie',
+                  : Text(context.tr('Wyślij zaproszenie'),
                       style: TextStyle(color: Colors.white),
                     ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           const Text(
             'Ostatnie zaproszenia',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           if (_loadingInvites)
-            const Center(child: CircularProgressIndicator())
+            Center(child: CircularProgressIndicator())
           else if (_invites.isEmpty)
-            const Text(
-              'Brak wysłanych zaproszeń.',
+            Text(context.tr('Brak wysłanych zaproszeń.'),
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             )
           else

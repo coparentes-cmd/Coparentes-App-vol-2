@@ -407,9 +407,8 @@ class MessagingScreenState extends State<MessagingScreen> {
       );
     }
 
-    return const Center(
-      child: Text(
-        'Wybierz wątek z listy',
+    return Center(
+      child: Text(context.tr('Wybierz wątek z listy'),
         style: TextStyle(color: AppTheme.textSecondary),
       ),
     );
@@ -451,7 +450,7 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   Widget _buildNewThreadButton(BuildContext context) {
     return Tooltip(
-      message: 'Nowy wątek',
+      message: context.tr('Nowy wątek'),
       child: Material(
         color: AppTheme.brandHeaderBlue,
         shape: const CircleBorder(),
@@ -621,16 +620,16 @@ class MessagingScreenState extends State<MessagingScreen> {
     return RefreshIndicator(
       onRefresh: () async => _loadThreads(context),
       child: messaging.isLoading && messaging.threads.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : items.isEmpty
               ? ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  children: const [
-                    SizedBox(height: 80),
+                  children: [
+                    const SizedBox(height: 80),
                     Center(
                       child: Text(
-                        'Brak nieprzeczytanych wiadomości',
-                        style: TextStyle(color: AppTheme.textSecondary),
+                        context.tr('Brak nieprzeczytanych wiadomości'),
+                        style: const TextStyle(color: AppTheme.textSecondary),
                       ),
                     ),
                   ],
@@ -804,7 +803,7 @@ class _UnreadMessageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final preview = message.content.trim().isEmpty
-        ? (message.attachments.isNotEmpty ? 'Załącznik' : '…')
+        ? (message.attachments.isNotEmpty ? context.tr('Załącznik') : '…')
         : message.content;
     return InkWell(
       onTap: onTap,
@@ -826,7 +825,7 @@ class _UnreadMessageTile extends StatelessWidget {
                 size: 20,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

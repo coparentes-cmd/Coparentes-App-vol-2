@@ -192,8 +192,7 @@ class AddEventSheetState extends State<AddEventSheet> {
         SnackBar(
           content: Text(
             _isEditing
-                ? 'Zdarzenie zostało zaktualizowane'
-                : 'Zdarzenie zostało dodane',
+                ? context.tr('Zdarzenie zostało zaktualizowane') : context.tr('Zdarzenie zostało dodane'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -202,7 +201,7 @@ class AddEventSheetState extends State<AddEventSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(calendarActionError(error, 'zdarzenia')),
+          content: Text(context.tr(calendarActionError(error, 'zdarzenia'))),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -232,19 +231,19 @@ class AddEventSheetState extends State<AddEventSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _isEditing ? 'Edytuj zdarzenie' : 'Nowe zdarzenie',
+            _isEditing ? context.tr('Edytuj zdarzenie') : context.tr('Nowe zdarzenie'),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Data: ${widget.selectedDay.day}.${widget.selectedDay.month}.${widget.selectedDay.year}',
             style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading:
@@ -254,31 +253,31 @@ class AddEventSheetState extends State<AddEventSheet> {
             trailing: const Icon(Icons.chevron_right),
             onTap: _pickTime,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _titleController,
             focusNode: _titleFocusNode,
             textAlignVertical: TextAlignVertical.center,
             decoration: InputDecoration(
-              labelText: 'Tytuł zdarzenia',
+              labelText: context.tr('Tytuł zdarzenia'),
               floatingLabelBehavior: FloatingLabelBehavior.always,
               hintText: hintText,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
               child: _isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(_isEditing ? 'Zapisz zmiany' : 'Dodaj zdarzenie'),
+                  : Text(_isEditing ? context.tr('Zapisz zmiany') : context.tr('Dodaj zdarzenie')),
             ),
           ),
         ],

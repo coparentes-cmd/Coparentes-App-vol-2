@@ -67,25 +67,23 @@ class _ExportsScreenState extends State<ExportsScreen> {
               }).toList(),
             ),
 
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // History
-            const Text(
-              'Historia eksportów',
+            Text(context.tr('Historia eksportów'),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (exportsProvider.isLoading)
-              const Center(child: CircularProgressIndicator())
+              Center(child: CircularProgressIndicator())
             else if (exportsProvider.jobs.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 8),
-                child: Text(
-                  'Brak wygenerowanych eksportow.',
+                child: Text(context.tr('Brak wygenerowanych eksportow.'),
                   style: TextStyle(color: AppTheme.textSecondary),
                 ),
               )
@@ -122,7 +120,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
           saved
               ? 'Pakiet "${created.typeLabel}" zapisany jako PDF.'
               : context.read<ExportsProvider>().error ??
-                  'Eksport utworzony, ale nie udało się zapisać PDF.',
+                  context.tr('Eksport utworzony, ale nie udało się zapisać PDF.'),
         ),
         backgroundColor: saved ? AppTheme.successColor : AppTheme.errorColor,
       ),
@@ -278,9 +276,9 @@ class _ExportJobCard extends StatelessWidget {
                           SnackBar(
                             content: Text(
                               saved
-                                  ? 'PDF zapisany na urządzeniu.'
+                                  ? context.tr('PDF zapisany na urządzeniu.')
                                   : provider.error ??
-                                      'Nie udało się zapisać PDF.',
+                                      context.tr('Nie udało się zapisać PDF.'),
                             ),
                             backgroundColor: saved
                                 ? AppTheme.successColor
@@ -376,7 +374,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // Date range
           Row(
@@ -388,7 +386,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
                   onChanged: (d) => setState(() => _fromDate = d),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: _DatePickerField(
                   label: context.tr('Do'),
@@ -399,7 +397,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
             ],
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           SwitchListTile(
             title: Text(context.tr('Załącz pliki (paragony, dokumenty)')),
@@ -408,13 +406,13 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
             activeThumbColor: AppTheme.primaryTeal,
             contentPadding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               icon: _isGenerating
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
@@ -423,7 +421,7 @@ class _ExportConfigSheetState extends State<_ExportConfigSheet> {
                       ),
                     )
                   : const Icon(Icons.folder_special),
-              label: Text(_isGenerating ? 'Generuję...' : 'Generuj eksport'),
+              label: Text(_isGenerating ? context.tr('Generuję...') : 'Generuj eksport'),
               onPressed: _isGenerating ? null : _generate,
             ),
           ),

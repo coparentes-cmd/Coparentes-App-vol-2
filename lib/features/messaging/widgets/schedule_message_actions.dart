@@ -43,7 +43,7 @@ class ScheduleMessageActions extends StatelessWidget {
               ),
               child: Text(context.tr('Odrzuć')),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             ElevatedButton(
               onPressed: isLoading ? null : onAccept,
               style: ElevatedButton.styleFrom(
@@ -56,7 +56,7 @@ class ScheduleMessageActions extends StatelessWidget {
                 elevation: 0,
               ),
               child: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(

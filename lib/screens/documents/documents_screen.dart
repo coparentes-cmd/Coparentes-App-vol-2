@@ -98,7 +98,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -110,8 +110,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     ),
                   ),
                   SizedBox(height: 6),
-                  Text(
-                    'Przechowuj umowy, dokumenty szkolne, medyczne i wspólne pliki — w jednym miejscu.',
+                  Text(context.tr('Przechowuj umowy, dokumenty szkolne, medyczne i wspólne pliki — w jednym miejscu.'),
                     style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
@@ -121,20 +120,20 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ),
             ),
             if (documentsProvider.error != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 documentsProvider.error!,
                 style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _documentCategoryValues
                   .map(
                     (category) => ChoiceChip(
-                      label: Text(_documentCategoryLabel(category)),
+                      label: Text(context.tr(_documentCategoryLabel(category))),
                       selected: _selectedCategory == category,
                       onSelected: (_) {
                         setState(() => _selectedCategory = category);
@@ -144,7 +143,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   .toList(),
             ),
             if (_selectedCategory == FamilyDocument.privateCategory) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -155,13 +154,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     color: AppTheme.purpleColor.withValues(alpha: 0.2),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.lock_outline, size: 18, color: AppTheme.purpleColor),
                     SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        'Dokumenty prywatne widzi tylko osoba, która je dodała.',
+                      child: Text(context.tr('Dokumenty prywatne widzi tylko osoba, która je dodała.'),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -172,19 +170,18 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (documentsProvider.isLoading && documents.isEmpty)
-              const Center(
+              Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: CircularProgressIndicator(),
                 ),
               )
             else if (documents.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(24),
-                child: Text(
-                  'Brak dokumentów w tej kategorii. Dodaj pierwszy plik.',
+                child: Text(context.tr('Brak dokumentów w tej kategorii. Dodaj pierwszy plik.'),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppTheme.textSecondary),
                 ),
@@ -204,7 +201,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                     ),
                     title: Text(document.title),
                     subtitle: Text(
-                      '${_documentCategoryLabel(document.category)} · ${document.childName ?? 'Rodzina'} · ${_formatRelative(document.updatedAt)}',
+                      '${context.tr(_documentCategoryLabel(document.category))} · ${document.childName ?? 'Rodzina'} · ${context.tr(_formatRelative(document.updatedAt))}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _openDocument(context, document),
@@ -305,7 +302,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   String _formatRelative(DateTime date) {
     final diff = DateTime.now().difference(date);
     if (diff.inDays >= 1) {
-      return diff.inDays == 1 ? '1 dzień temu' : '${diff.inDays} dni temu';
+      return diff.inDays == 1 ? context.tr('1 dzień temu') : '${diff.inDays} dni temu';
     }
     if (diff.inHours >= 1) {
       return diff.inHours == 1 ? '1 godz. temu' : '${diff.inHours} godz. temu';
@@ -409,8 +406,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       SnackBar(
         content: Text(
           created == null
-              ? 'Nie udało się dodać dokumentu.'
-              : 'Dokument zapisany ✓',
+              ? context.tr('Nie udało się dodać dokumentu.') : 'Dokument zapisany ✓',
         ),
         backgroundColor:
             created == null ? AppTheme.errorColor : AppTheme.successColor,
@@ -429,14 +425,13 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Dodaj dokument',
+            Text(context.tr('Dodaj dokument'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (_pendingFile == null) ...[
               if (_isPicking)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 )
@@ -449,7 +444,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                     label: Text(context.tr('Zrób zdjęcie aparatem')),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -458,9 +453,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                     label: Text(context.tr('Dodaj plik')),
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Obsługiwane formaty: JPG, PNG, PDF, DOC, DOCX, TXT (max 5 MB).',
+                SizedBox(height: 8),
+                Text(context.tr('Obsługiwane formaty: JPG, PNG, PDF, DOC, DOCX, TXT (max 5 MB).'),
                   style: TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
@@ -478,7 +472,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ] else ...[
                 Container(
                   width: double.infinity,
@@ -494,7 +488,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                         Icons.insert_drive_file_outlined,
                         color: AppTheme.primaryTeal,
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _pendingFile!.fileName,
@@ -504,31 +498,31 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               TextButton.icon(
                 onPressed: _isSaving ? null : () => setState(() => _pendingFile = null),
                 icon: const Icon(Icons.refresh),
                 label: Text(context.tr('Wybierz inny plik')),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Tytuł',
-                  hintText: 'np. Projekt umowy wychowawczej',
+                decoration: InputDecoration(
+                  labelText: context.tr('Tytuł'),
+                  hintText: context.tr('np. Projekt umowy wychowawczej'),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _category,
-                decoration: const InputDecoration(labelText: 'Kategoria'),
+                decoration: InputDecoration(labelText: context.tr('Kategoria')),
                 items: _documentCategoryValues
                     .where((value) => value != _allCategoriesFilter)
                     .map(
                       (value) => DropdownMenuItem(
                         value: value,
-                        child: Text(_documentCategoryLabel(value)),
+                        child: Text(context.tr(_documentCategoryLabel(value))),
                       ),
                     )
                     .toList(),
@@ -542,11 +536,11 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
               ),
               if (widget.workspace != null &&
                   widget.workspace!.children.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
                   initialValue: _childId,
                   decoration:
-                      const InputDecoration(labelText: 'Dziecko (opcjonalnie)'),
+                      InputDecoration(labelText: context.tr('Dziecko (opcjonalnie)')),
                   items: [
                     DropdownMenuItem<String?>(
                       value: null,
@@ -564,13 +558,13 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                       : (value) => setState(() => _childId = value),
                 ),
               ],
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _save,
                   child: _isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),

@@ -34,14 +34,13 @@ class PendingScheduleBanner extends StatelessWidget {
             children: [
               Text(
                 canRespond
-                    ? 'Propozycja grafiku do akceptacji'
-                    : 'Grafik oczekuje na akceptację',
+                    ? context.tr('Propozycja grafiku do akceptacji') : context.tr('Grafik oczekuje na akceptację'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 schedule.endDate != null
                     ? '${schedule.patternLabel} · ${formatScheduleRange(schedule)}'
@@ -52,7 +51,7 @@ class PendingScheduleBanner extends StatelessWidget {
                 ),
               ),
               if (canRespond) ...[
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 EnterAcceptScope(
                   onAccept: onAccept,
                   autofocus: keyboardAcceptAutofocus,
@@ -64,7 +63,7 @@ class PendingScheduleBanner extends StatelessWidget {
                           child: Text(context.tr('Odrzuć')),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: onAccept,

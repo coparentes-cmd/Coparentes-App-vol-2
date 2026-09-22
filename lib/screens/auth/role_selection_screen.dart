@@ -180,9 +180,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                                 .withValues(alpha: 0.35),
                                           ),
                                         ),
-                                        child: Text(
-                                          'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). '
-                                          'Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
+                                        child: Text('Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
                                           style: const TextStyle(
                                             color: AppTheme.warningColor,
                                             fontSize: 12,
@@ -276,13 +274,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                             _mode = _AuthMode.join;
                                             _childJoinPreview = null;
                                           }),
-                                          child: const Text(
-                                            '← Powrót do dołączania rodzica',
+                                          child: Text(context.tr('← Powrót do dołączania rodzica'),
                                           ),
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(height: 14),
+                                    SizedBox(height: 14),
                                     if (_mode != _AuthMode.register)
                                       Text(
                                         'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną ${LegalConfig.websiteUrl}.',
@@ -310,8 +307,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                       .withValues(alpha: 0.45),
                                 ),
                               ),
-                              child: const Text(
-                                'Lokalny tryb debug jest aktywny. Użyj własnych danych seed skonfigurowanych po stronie backendu deweloperskiego.',
+                              child: Text(context.tr('Lokalny tryb debug jest aktywny. Użyj własnych danych seed skonfigurowanych po stronie backendu deweloperskiego.'),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.textPrimary,
@@ -445,7 +441,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     onTap: () => setState(() => _registerIsMama = true),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: _RoleChoiceChip(
                     label: context.tr('Tata'),
@@ -527,7 +523,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             child: TextButton(
               onPressed: _loadingChildPreview ? null : _loadChildPreview,
               child: _loadingChildPreview
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -554,15 +550,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Podaj datę urodzenia z profilu dodanego przez rodzica.',
+            SizedBox(height: 8),
+            Text(context.tr('Podaj datę urodzenia z profilu dodanego przez rodzica.'),
               style: TextStyle(
                 fontSize: 12,
                 color: AppTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(context.tr('Data urodzenia')),
@@ -664,22 +659,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Podaj e-mail konta. Wyślemy jednorazowe hasło — '
-                    'zaloguj się nim, a potem zmień hasło w Ustawieniach.',
+                  Text(context.tr('Podaj e-mail konta. Wyślemy jednorazowe hasło — zaloguj się nim, a potem zmień hasło w Ustawieniach.'),
                     style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     autofocus: true,
                     textInputAction: TextInputAction.send,
-                    decoration: const InputDecoration(
-                      labelText: 'E-mail',
+                    decoration: InputDecoration(
+                      labelText: context.tr('E-mail'),
                       hintText: 'twoj@email.pl',
                     ),
                   ),
@@ -726,10 +719,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             _passwordController.clear();
                             setState(() => _obscureLoginPassword = false);
                             messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Wysłaliśmy 12-cyfrowe hasło. Użyj TYLKO najnowszego maila, '
-                                  'wklej same cyfry (oko przy haśle pokazuje je jawnie), potem zmień hasło w Ustawieniach.',
+                              SnackBar(
+                                content: Text(context.tr('Wysłaliśmy 12-cyfrowe hasło. Użyj TYLKO najnowszego maila, wklej same cyfry (oko przy haśle pokazuje je jawnie), potem zmień hasło w Ustawieniach.'),
                                 ),
                                 backgroundColor: AppTheme.successColor,
                                 duration: Duration(seconds: 8),
@@ -740,7 +731,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               SnackBar(
                                 content: Text(
                                   appProvider.authError ??
-                                      'Nie udało się wysłać hasła.',
+                                      context.tr('Nie udało się wysłać hasła.'),
                                 ),
                                 backgroundColor: AppTheme.errorColor,
                               ),
@@ -752,7 +743,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     foregroundColor: Colors.white,
                   ),
                   child: sending
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
@@ -905,7 +896,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr(message))));
   }
 
   String _buttonLabel(_AuthMode mode) {
@@ -947,7 +938,7 @@ class _BrandIntroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const BrandLogo(width: 220, height: 56),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Text(
             context.tr('Spokojne rodzicielstwo po rozstaniu'),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -955,7 +946,7 @@ class _BrandIntroCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           _FeatureBullet(
             icon: Icons.chat_bubble_outline,
             title: context.tr('Komunikacja'),
@@ -963,7 +954,7 @@ class _BrandIntroCard extends StatelessWidget {
               'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.',
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           _FeatureBullet(
             icon: Icons.calendar_month_outlined,
             title: context.tr('Organizacja'),
@@ -971,7 +962,7 @@ class _BrandIntroCard extends StatelessWidget {
               'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           _FeatureBullet(
             icon: Icons.account_balance_wallet_outlined,
             title: context.tr('Finanse'),
@@ -979,7 +970,7 @@ class _BrandIntroCard extends StatelessWidget {
               'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
             ),
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -1000,7 +991,7 @@ class _BrandIntroCard extends StatelessWidget {
                         size: 28,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         context.tr(
@@ -1025,14 +1016,14 @@ class _BrandIntroCard extends StatelessWidget {
             ),
           ),
           if (demoPickerOpen) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Text(
               context.tr('Wybierz tryb wersji demo'),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _DemoRoleButton(
               label: context.tr('Anna — matka'),
               icon: Icons.person_outline,
@@ -1040,7 +1031,7 @@ class _BrandIntroCard extends StatelessWidget {
                   ? null
                   : () => onDemoRoleSelected!(UserRole.parentA),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _DemoRoleButton(
               label: context.tr('Marek — ojciec'),
               icon: Icons.person,
@@ -1048,7 +1039,7 @@ class _BrandIntroCard extends StatelessWidget {
                   ? null
                   : () => onDemoRoleSelected!(UserRole.parentB),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _DemoRoleButton(
               label: context.tr('Franek — dziecko'),
               icon: Icons.child_care,
@@ -1299,7 +1290,7 @@ class _Field extends StatelessWidget {
           suffixIcon: onToggleObscure == null
               ? null
               : IconButton(
-                  tooltip: obscureText ? 'Pokaż hasło' : 'Ukryj hasło',
+                  tooltip: obscureText ? context.tr('Pokaż hasło') : context.tr('Ukryj hasło'),
                   onPressed: onToggleObscure,
                   icon: Icon(
                     obscureText

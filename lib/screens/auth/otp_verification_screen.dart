@@ -231,9 +231,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Wysłaliśmy 6-cyfrowy kod na adres ${widget.challenge.maskedEmail}. '
-                        'Wpisz go poniżej. Kod jest ważny przez 10 minut.',
+                      Text('Wysłaliśmy 6-cyfrowy kod na adres ${widget.challenge.maskedEmail}. Wpisz go poniżej. Kod jest ważny przez 10 minut.',
                         style: const TextStyle(
                           fontSize: 14,
                           height: 1.45,
@@ -300,10 +298,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           );
                         }),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       Text(
                         _remaining == Duration.zero
-                            ? 'Kod wygasł'
+                            ? context.tr('Kod wygasł')
                             : 'Kod wygasa za ${_formatDuration(_remaining)}',
                         style: const TextStyle(
                           fontSize: 12,
@@ -311,10 +309,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ),
                       ),
                       if (_inlineError != null || _locked) ...[
-                        const SizedBox(height: 10),
+                        SizedBox(height: 10),
                         Text(
                           _locked
-                              ? 'Zbyt wiele prób. Poproś o nowy kod.'
+                              ? context.tr('Zbyt wiele prób. Poproś o nowy kod.')
                               : _attemptsRemaining != null
                                   ? 'Nieprawidłowy kod. Pozostało prób: $_attemptsRemaining'
                                   : (_inlineError ?? 'Nieprawidłowy kod.'),
@@ -324,12 +322,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       BrandGradientPill(
                         child: ElevatedButton(
                           onPressed: _canSubmit ? _submit : null,
                           child: _submitting
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 20,
                                   height: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2),
@@ -337,12 +335,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                               : Text(context.tr('Potwierdź')),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Center(
                         child: TextButton(
                           onPressed: _canResend ? _resend : null,
-                          child: Text(
-                            'Nie otrzymałeś kodu? Wyślij ponownie',
+                          child: Text(context.tr('Nie otrzymałeś kodu? Wyślij ponownie'),
                             style: TextStyle(
                               color: _canResend
                                   ? AppTheme.textSecondary
@@ -359,8 +356,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         onChanged: _locked || _submitting
                             ? null
                             : (value) => setState(() => _trustDevice = value ?? false),
-                        title: const Text(
-                          'Zaufaj temu urządzeniu przez 30 dni',
+                        title: Text(context.tr('Zaufaj temu urządzeniu przez 30 dni'),
                           style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                         ),
                       ),

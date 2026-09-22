@@ -111,8 +111,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       context: context,
       mode: BookingCalendarMode.range,
       accentColor: AppTheme.accentColor,
-      title: 'Okres obowiązywania',
-      subtitle: 'Kliknij datę początkową, potem końcową.',
+      title: context.tr('Okres obowiązywania'),
+      subtitle: context.tr('Kliknij datę początkową, potem końcową.'),
       initialMonth: _normalizedStartDate,
       rangeStart: _normalizedStartDate,
       rangeEnd: _normalizedEndDate,
@@ -137,7 +137,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       mode: BookingCalendarMode.range,
       accentColor: AppTheme.accentColor,
       title: title,
-      subtitle: 'Wybierz dzień.',
+      subtitle: context.tr('Wybierz dzień.'),
       initialMonth: initial,
       rangeStart: initial,
       rangeEnd: initial,
@@ -219,20 +219,18 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       }
       if (_usesTemplateDateRange) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Data końca musi być taka sama lub późniejsza niż data startu.',
+          SnackBar(
+            content: Text(context.tr('Data końca musi być taka sama lub późniejsza niż data startu.'),
             ),
             backgroundColor: AppTheme.errorColor,
           ),
         );
       } else if (_usesCustomRecurrence) {
         final message = _customWeekdays.isEmpty
-            ? 'Wybierz co najmniej jeden dzień tygodnia.'
-            : 'Sprawdź datę końca grafiku.';
+            ? context.tr('Wybierz co najmniej jeden dzień tygodnia.') : context.tr('Sprawdź datę końca grafiku.');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
+            content: Text(context.tr(message)),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -305,15 +303,14 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Szablon, kalendarz i przekazanie',
+              Text(context.tr('Szablon, kalendarz i przekazanie'),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Expanded(
                 child: SingleChildScrollView(
                   child: _buildPatternStep(
@@ -322,17 +319,15 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Po wysłaniu drugi rodzic dostanie wiadomość z prośbą o akceptację. '
-                'Po zatwierdzeniu kolory opieki pojawią się automatycznie w obu kalendarzach.',
+              SizedBox(height: 12),
+              Text(context.tr('Po wysłaniu drugi rodzic dostanie wiadomość z prośbą o akceptację. Po zatwierdzeniu kolory opieki pojawią się automatycznie w obu kalendarzach.'),
                 style: TextStyle(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
                   height: 1.35,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -343,7 +338,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                     foregroundColor: Colors.white,
                   ),
                   child: Text(
-                    _isSubmitting ? 'Wysyłam…' : 'Wyślij propozycję',
+                    _isSubmitting ? context.tr('Wysyłam…') : context.tr('Wyślij propozycję'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -451,8 +446,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _PatternOption(
-          title: 'Co tydzień na zmianę',
-          subtitle: 'Cały tydzień u jednego rodzica, potem u drugiego',
+          title: context.tr('Co tydzień na zmianę'),
+          subtitle: context.tr('Cały tydzień u jednego rodzica, potem u drugiego'),
           value: CustodySchedulePattern.weekAlternating,
           groupValue: _pattern,
           accentColor: creatorColor,
@@ -460,28 +455,28 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ),
         _PatternOption(
           title: 'Co drugi weekend',
-          subtitle: 'Tygodnie robocze i weekendy na zmianę',
+          subtitle: context.tr('Tygodnie robocze i weekendy na zmianę'),
           value: CustodySchedulePattern.everyOtherWeekend,
           groupValue: _pattern,
           accentColor: creatorColor,
           onChanged: _selectPattern,
         ),
         _PatternOption(
-          title: 'Własny tydzień',
-          subtitle: 'Wybierz dni tygodnia, co ile się powtarza i kiedy kończy',
+          title: context.tr('Własny tydzień'),
+          subtitle: context.tr('Wybierz dni tygodnia, co ile się powtarza i kiedy kończy'),
           value: CustodySchedulePattern.customWeek,
           groupValue: _pattern,
           accentColor: creatorColor,
           onChanged: _selectPattern,
         ),
         if (_showsDateSection) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (_usesTemplateDateRange) ...[
             const Text(
               'Daty',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             DecoratedBox(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -508,11 +503,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
               ),
             ),
             if (_calendarSaved) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Icon(Icons.check_circle, color: creatorColor, size: 18),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Text(
                     'Okres ${_formatDate(_normalizedStartDate)} – ${_formatDate(_normalizedEndDate)}',
                     style: TextStyle(
@@ -530,24 +525,24 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
               creatorLabel: creatorLabel,
             ),
         ],
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         const Text(
           'Przekazanie dziecka',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         TextField(
-          decoration: const InputDecoration(
-            labelText: 'Godzina przekazania',
+          decoration: InputDecoration(
+            labelText: context.tr('Godzina przekazania'),
             hintText: '17:00',
           ),
           controller: _handoverTimeController,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         TextField(
-          decoration: const InputDecoration(
-            labelText: 'Miejsce przekazania',
-            hintText: 'Szkoła, dom...',
+          decoration: InputDecoration(
+            labelText: context.tr('Miejsce przekazania'),
+            hintText: context.tr('Szkoła, dom...'),
           ),
           controller: _handoverLocationController,
         ),
@@ -566,7 +561,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
           'Powtarzanie niestandardowe',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -581,7 +576,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   label: context.tr('Początek'),
                   value: _formatDate(_normalizedStartDate),
                   onTap: () => _openSingleDatePicker(
-                    title: 'Data rozpoczęcia',
+                    title: context.tr('Data rozpoczęcia'),
                     initial: _normalizedStartDate,
                     onPicked: (date) => setState(() {
                       _startDate = date;
@@ -665,12 +660,11 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                   ),
                 ),
                 const Divider(height: 1, indent: 16),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Kończy się',
+                    child: Text(context.tr('Kończy się'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -700,7 +694,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                       TextButton(
                         onPressed: _customEndRule == _CustomEndRule.onDate
                             ? () => _openSingleDatePicker(
-                                  title: 'Data końca',
+                                  title: context.tr('Data końca'),
                                   initial: _normalizedEndDate
                                           .isBefore(_normalizedStartDate)
                                       ? _normalizedStartDate
@@ -739,8 +733,8 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
                           _calendarSaved = false;
                         }),
                       ),
-                      const SizedBox(width: 8),
-                      const Text('wystąpieniach'),
+                      SizedBox(width: 8),
+                      Text(context.tr('wystąpieniach')),
                     ],
                   ),
                   onChanged: (value) => setState(() {

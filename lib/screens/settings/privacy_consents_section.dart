@@ -64,7 +64,7 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appProvider.authError ?? 'Nie udało się zaktualizować zgody.',
+            appProvider.authError ?? context.tr('Nie udało się zaktualizować zgody.'),
           ),
           backgroundColor: AppTheme.errorColor,
         ),
@@ -103,7 +103,7 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
                 color: widget.isDark ? Colors.white70 : AppTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextButton(onPressed: _loadConsents, child: Text(context.tr('Spróbuj ponownie'))),
           ],
         ),

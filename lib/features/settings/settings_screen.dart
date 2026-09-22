@@ -101,21 +101,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                user?.name ?? 'Użytkownik',
+                                user?.name ?? context.tr('Użytkownik'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2),
                               Text(
                                 user?.email ?? '',
                                 style: TextStyle(
@@ -123,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   fontSize: 13,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 3),
@@ -160,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   // ── Profil osobisty ──────────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Profil osobisty',
+                    title: context.tr('Profil osobisty'),
                     icon: Icons.person_outline,
                     isDark: isDark,
                     accent: roleColor,
@@ -267,8 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.person_add_outlined,
                         label: context.tr('Dodaj dziecko'),
                         subtitle: workspace?.children.isEmpty ?? true
-                            ? 'Dodaj pierwszy profil dziecka'
-                            : 'Dodaj kolejny profil dziecka',
+                            ? context.tr('Dodaj pierwszy profil dziecka') : context.tr('Dodaj kolejny profil dziecka'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => showChildOnboardingSheet(context),
@@ -294,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ]),
 
                   if (user?.role == UserRole.parentA) ...[
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     IosSettingsAccordion(
                     title: 'Zaproszenia e-mail',
                     icon: Icons.mail_outline,
@@ -306,7 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ActionTile(
                         icon: Icons.send_outlined,
                         label: context.tr('Zaproś drugiego rodzica mailem'),
-                        subtitle: 'Wyślij link akceptacji na e-mail',
+                        subtitle: context.tr('Wyślij link akceptacji na e-mail'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showEmailInviteSheet(context, roleColor),
@@ -314,11 +313,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ]),
                   ],
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── Wygląd ────────────────────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Wygląd',
+                    title: context.tr('Wygląd'),
                     icon: Icons.palette_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -331,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ? Icons.dark_mode
                           : Icons.light_mode_outlined,
                       label: context.tr('Tryb ciemny'),
-                      subtitle: isDark ? 'Ciemne tło aktywne' : 'Jasne tło aktywne',
+                      subtitle: isDark ? context.tr('Ciemne tło aktywne') : context.tr('Jasne tło aktywne'),
                       value: isDark,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -409,7 +408,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               );
                             }).toList(),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             'Wybrano: ${ap.colorScheme.label}',
                             style: TextStyle(
@@ -424,11 +423,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── Bezpieczeństwo i logowanie ────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Bezpieczeństwo',
+                    title: context.tr('Bezpieczeństwo'),
                     icon: Icons.security_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -439,8 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.lock_outline,
                       label: context.tr('PIN przy wznowieniu'),
                       subtitle: ap.hasPinSet
-                          ? 'Wymagaj PIN-u po przejściu aplikacji w tło'
-                          : 'Najpierw ustaw PIN w „Zmień PIN logowania”',
+                          ? context.tr('Wymagaj PIN-u po przejściu aplikacji w tło') : context.tr('Najpierw ustaw PIN w „Zmień PIN logowania”'),
                       value: ap.requirePinOnResume,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -473,7 +471,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   SnackBar(
                                     content: Text(
                                       ap.authError ??
-                                          'Nie udało się zaktualizować 2FA.',
+                                          context.tr('Nie udało się zaktualizować 2FA.'),
                                     ),
                                     backgroundColor: AppTheme.errorColor,
                                   ),
@@ -486,8 +484,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.pin_outlined,
                       label: context.tr('Zmień PIN logowania'),
                       subtitle: ap.hasPinSet
-                          ? 'Zmień 4-cyfrowy PIN'
-                          : 'Ustaw 4-cyfrowy PIN',
+                          ? context.tr('Zmień 4-cyfrowy PIN') : 'Ustaw 4-cyfrowy PIN',
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showChangePinDialog(context, roleColor, ap),
@@ -504,7 +501,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ActionTile(
                         icon: Icons.devices_outlined,
                         label: context.tr('Zaufane urządzenia'),
-                        subtitle: '1 urządzenie zarejestrowane',
+                        subtitle: context.tr('1 urządzenie zarejestrowane'),
                         color: roleColor,
                         isDark: isDark,
                         onTap: () => _showFeatureInfo(
@@ -516,7 +513,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ]),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── Powiadomienia ─────────────────────────────────────────
                   IosSettingsAccordion(
@@ -530,7 +527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.chat_bubble_outline,
                       label: context.tr('Nowe wiadomości'),
-                      subtitle: 'Alert przy każdej nowej wiadomości',
+                      subtitle: context.tr('Alert przy każdej nowej wiadomości'),
                       value: ap.notifyMessages,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -540,7 +537,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.calendar_today_outlined,
                       label: context.tr('Zdarzenia kalendarza'),
-                      subtitle: 'Przypomnienia o przekazaniach i zajęciach',
+                      subtitle: context.tr('Przypomnienia o przekazaniach i zajęciach'),
                       value: ap.notifyCalendar,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -550,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.swap_horiz_outlined,
                       label: context.tr('Wnioski o zamianę'),
-                      subtitle: 'Alert o nowych wnioskach o zamianę',
+                      subtitle: context.tr('Alert o nowych wnioskach o zamianę'),
                       value: ap.notifySwaps,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -560,7 +557,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.account_balance_wallet_outlined,
                       label: context.tr('Finanse'),
-                      subtitle: 'Nowe wydatki wymagające uwagi',
+                      subtitle: context.tr('Nowe wydatki wymagające uwagi'),
                       value: ap.notifyFinance,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -568,11 +565,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── AI & Prywatność ────────────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'AI i prywatność',
+                    title: context.tr('AI i prywatność'),
                     icon: Icons.auto_awesome_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -582,7 +579,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.psychology_outlined,
                       label: 'AI Coach (pre-send)',
-                      subtitle: 'Analiza tonu przed wysłaniem wiadomości',
+                      subtitle: context.tr('Analiza tonu przed wysłaniem wiadomości'),
                       value: ap.aiCoachEnabled,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -592,7 +589,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.shield_outlined,
                       label: 'AI Shield (post-receive)',
-                      subtitle: 'Filtrowanie toksycznych treści',
+                      subtitle: context.tr('Filtrowanie toksycznych treści'),
                       value: ap.aiShieldEnabled,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -616,7 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   SnackBar(
                                     content: Text(
                                       ap.authError ??
-                                          'Nie udało się zaktualizować trybu konfliktu.',
+                                          context.tr('Nie udało się zaktualizować trybu konfliktu.'),
                                     ),
                                     backgroundColor: AppTheme.errorColor,
                                   ),
@@ -638,11 +635,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── Prywatność i zgody ───────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Prywatność i zgody',
+                    title: context.tr('Prywatność i zgody'),
                     icon: Icons.verified_user_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -657,7 +654,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   if (_showPreLaunchPlaceholderSections) ...[
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     IosSettingsAccordion(
                     title: 'Subskrypcja i rozliczenia',
                     icon: Icons.credit_card_outlined,
@@ -718,7 +715,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ]),
                   ],
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── Eksport danych ────────────────────────────────────────
                   IosSettingsAccordion(
@@ -732,7 +729,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ActionTile(
                       icon: Icons.download_outlined,
                       label: context.tr('Pobierz moje dane (RODO)'),
-                      subtitle: 'Wyślij wniosek e-mailem do supportu',
+                      subtitle: context.tr('Wyślij wniosek e-mailem do supportu'),
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showRodoExportDialog(context, ap, roleColor),
@@ -748,7 +745,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── Aplikacja ─────────────────────────────────────────────
                   IosSettingsAccordion(
@@ -830,7 +827,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ]),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
 
                   // ── Wyloguj (iOS-style destructive row) ───────────────────
                   DecoratedBox(
@@ -843,11 +840,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTap: () => _logout(context),
-                        child: const Padding(
+                        child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 14),
                           child: Center(
-                            child: Text(
-                              'Wyloguj się',
+                            child: Text(context.tr('Wyloguj się'),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -956,7 +952,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorColor),
-            child: const Text('Wyloguj',
+            child: Text(context.tr('Wyloguj'),
                 style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1045,7 +1041,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(title),
-        content: Text(msg, style: const TextStyle(fontSize: 14)),
+        content: Text(context.tr(msg), style: const TextStyle(fontSize: 14)),
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
@@ -1156,15 +1152,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Historia płatności',
+            Text(context.tr('Historia płatności'),
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _billingRow('15 kwi 2025', '39,99 PLN', 'Opłacona', color),
             _billingRow('15 mar 2025', '39,99 PLN', 'Opłacona', color),
             _billingRow('15 lut 2025', '39,99 PLN', 'Opłacona', color),
             _billingRow('15 sty 2025', '39,99 PLN', 'Opłacona', color),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -1218,8 +1214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(context.tr('Anuluj subskrypcję')),
-        content: const Text(
-            'Czy na pewno chcesz anulować? Stracisz dostęp do wszystkich funkcji Pro po zakończeniu okresu rozliczeniowego (15 maja 2025).'),
+        content: Text(context.tr('Czy na pewno chcesz anulować? Stracisz dostęp do wszystkich funkcji Pro po zakończeniu okresu rozliczeniowego (15 maja 2025).')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1228,14 +1223,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
                   content: Text(
                       'Subskrypcja zostanie anulowana 15 maja 2025'),
                   backgroundColor: AppTheme.warningColor,
                 ),
               );
             },
-            child: const Text('Anuluj subskrypcję',
+            child: Text(context.tr('Anuluj subskrypcję'),
                 style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
@@ -1265,9 +1260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(context.tr('Eksport danych RODO')),
-        content: Text(
-          'Wyślemy wniosek o kopię Twoich danych (art. 20 RODO) na adres '
-          '${LegalConfig.supportEmail}. Odpowiemy na e-mail powiązany z kontem.',
+        content: Text('Wyślemy wniosek o kopię Twoich danych (art. 20 RODO) na adres ${LegalConfig.supportEmail}. Odpowiemy na e-mail powiązany z kontem.',
         ),
         actions: [
           TextButton(
@@ -1284,7 +1277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: color),
-            child: const Text('Wyślij e-mail', style: TextStyle(color: Colors.white)),
+            child: Text(context.tr('Wyślij e-mail'), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1297,9 +1290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(context.tr('Usuń konto')),
-        content: const Text(
-          'Ta operacja jest nieodwracalna. Aby usunąć konto, wyślij wniosek '
-          'e-mailem do supportu. Potwierdzimy usunięcie danych po weryfikacji.',
+        content: Text(context.tr('Ta operacja jest nieodwracalna. Aby usunąć konto, wyślij wniosek e-mailem do supportu. Potwierdzimy usunięcie danych po weryfikacji.'),
         ),
         actions: [
           TextButton(
@@ -1309,14 +1300,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               Navigator.pop(context);
               _openSupportMailto(
-                subject: 'Wniosek o usunięcie konta — Coparentes',
-                body: 'Proszę o trwałe usunięcie mojego konta Coparentes.\n\n'
-                    'E-mail konta: $email\n',
+                subject: context.tr('Wniosek o usunięcie konta — Coparentes'),
+                body:
+                    '${context.tr('Proszę o trwałe usunięcie mojego konta Coparentes.')}\n\n'
+                    '${context.tr('E-mail konta')}: $email\n',
               );
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorColor),
-            child: const Text('Wyślij wniosek e-mailem',
+            child: Text(context.tr('Wyślij wniosek e-mailem'),
                 style: TextStyle(color: Colors.white)),
           ),
         ],

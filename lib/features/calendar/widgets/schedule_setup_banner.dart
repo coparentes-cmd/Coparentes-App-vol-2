@@ -37,8 +37,7 @@ class ScheduleSetupBanner extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: MaterialBanner(
         backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.08),
-        content: const Text(
-          'Ustawcie wspólny grafik opieki — drugi rodzic musi go zaakceptować.',
+        content: Text(context.tr('Ustawcie wspólny grafik opieki — drugi rodzic musi go zaakceptować.'),
         ),
         leading: const Icon(Icons.view_week, color: AppTheme.primaryTeal),
         actions: [

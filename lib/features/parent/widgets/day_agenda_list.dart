@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_strings.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
@@ -27,11 +28,11 @@ class DayAgendaList extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onEmptyTap,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'Brak wydarzeń na dziś',
-              style: TextStyle(
+              context.tr('Brak wydarzeń na dziś'),
+              style: const TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
               ),

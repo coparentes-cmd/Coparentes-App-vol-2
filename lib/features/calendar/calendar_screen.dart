@@ -130,7 +130,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     };
 
     return ParentTabScaffold(
-      title: 'Kalendarz opieki',
+      title: context.tr('Kalendarz opieki'),
       actions: isChild || isReadOnly
           ? null
           : [
@@ -174,8 +174,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             calendar.isEmpty &&
             !calendar.loadedFromApi)
           MaterialBanner(
-            content: const Text(
-              'Nie udało się załadować kalendarza. Sprawdź połączenie i spróbuj ponownie.',
+            content: Text(context.tr('Nie udało się załadować kalendarza. Sprawdź połączenie i spróbuj ponownie.'),
             ),
             actions: [
               TextButton(
@@ -237,7 +236,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 color: AppTheme.parentAColor,
                 label: context.tr('U Mamy'),
               ),
-              const SizedBox(width: 20),
+              SizedBox(width: 20),
               LegendItem(
                 color: AppTheme.parentBColor,
                 label: context.tr('U Taty'),
@@ -371,17 +370,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
             )
           else if (calendar.hasPendingScheduleApproval &&
               !calendar.canRequestDayCustodyChange)
-            const Text(
-              'Grafik oczekuje na akceptację. Po zatwierdzeniu '
-              'zmiany dni będą możliwe tylko przez prośby.',
+            Text(context.tr('Grafik oczekuje na akceptację. Po zatwierdzeniu zmiany dni będą możliwe tylko przez prośby.'),
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
               ),
             )
           else if (isPending)
-            const Text(
-              'Ten dzień ma już oczekującą prośbę o zmianę opieki.',
+            Text(context.tr('Ten dzień ma już oczekującą prośbę o zmianę opieki.'),
               style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -401,8 +397,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           title: Text(context.tr('Zmiana grafiku wymaga akceptacji')),
           content: Text(
             calendar.hasActiveSchedule
-                ? 'Obecny grafik pozostaje w mocy do czasu akceptacji nowej propozycji przez drugiego rodzica.'
-                : 'Masz już oczekującą propozycję grafiku. Nowa propozycja zastąpi poprzednią w oczekiwaniu.',
+                ? context.tr('Obecny grafik pozostaje w mocy do czasu akceptacji nowej propozycji przez drugiego rodzica.') : context.tr('Masz już oczekującą propozycję grafiku. Nowa propozycja zastąpi poprzednią w oczekiwaniu.'),
           ),
           actions: [
             TextButton(
@@ -425,9 +420,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (accepted == true && context.mounted) {
       await _refreshSwapMessaging(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Grafik wysłany do akceptacji. Drugi rodzic zobaczy go w banerze kalendarza i w czacie.',
+        SnackBar(
+          content: Text(context.tr('Grafik wysłany do akceptacji. Drugi rodzic zobaczy go w banerze kalendarza i w czacie.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -467,8 +461,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         SnackBar(
           content: Text(
             approve
-                ? 'Grafik zaakceptowany — kalendarz został zaktualizowany.'
-                : 'Propozycja grafiku została odrzucona.',
+                ? context.tr('Grafik zaakceptowany — kalendarz został zaktualizowany.') : context.tr('Propozycja grafiku została odrzucona.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -477,7 +470,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(calendarActionError(error, 'odpowiedzi na grafik')),
+          content: Text(context.tr(calendarActionError(error, 'odpowiedzi na grafik'))),
           backgroundColor: AppTheme.errorColor,
         ),
       );

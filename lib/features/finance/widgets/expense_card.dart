@@ -189,7 +189,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +236,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 StatusChip(
@@ -247,9 +247,9 @@ class ExpenseCardState extends State<ExpenseCard> {
                   ),
                   color: expense.statusColor,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
-                  'Zapłacił: $payerName · ${_splitLabel(expense.splitRatio)}',
+                  '${context.tr('Zapłacił')}: $payerName · ${_splitLabel(expense.splitRatio)}',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppTheme.textSecondary,
@@ -269,9 +269,8 @@ class ExpenseCardState extends State<ExpenseCard> {
               ],
             ),
             if (expense.status == ExpenseStatus.settled) ...[
-              const SizedBox(height: 6),
-              const Text(
-                'Uregulowane poza aplikacją',
+              SizedBox(height: 6),
+              Text(context.tr('Uregulowane poza aplikacją'),
                 style: TextStyle(
                   fontSize: 11,
                   color: AppTheme.textSecondary,
@@ -280,7 +279,7 @@ class ExpenseCardState extends State<ExpenseCard> {
               ),
             ],
             if (expense.note != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 expense.note!,
                 style: const TextStyle(
@@ -291,7 +290,7 @@ class ExpenseCardState extends State<ExpenseCard> {
               ),
             ],
             if (_showDetails) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Hash integralności: ${expense.hash}',
                 style: const TextStyle(
@@ -302,7 +301,7 @@ class ExpenseCardState extends State<ExpenseCard> {
               ),
             ],
             if (expense.hasReceipt) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -316,7 +315,7 @@ class ExpenseCardState extends State<ExpenseCard> {
               ),
             ],
             if (awaitingOther) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -334,7 +333,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                       size: 16,
                       color: AppTheme.warningColor,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Oczekuje na akceptację od $otherParentName',
@@ -349,13 +348,13 @@ class ExpenseCardState extends State<ExpenseCard> {
               ),
             ],
             if (canRespond) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.close, size: 14),
-                      label: const Text('Spór', style: TextStyle(fontSize: 12)),
+                      label: Text(context.tr('Spór'), style: TextStyle(fontSize: 12)),
                       onPressed: widget.onDispute,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.errorColor,
@@ -364,12 +363,11 @@ class ExpenseCardState extends State<ExpenseCard> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.check, size: 14),
-                      label: const Text(
-                        'Akceptuj',
+                      label: Text(context.tr('Akceptuj'),
                         style: TextStyle(fontSize: 12),
                       ),
                       onPressed: () => widget.onAccept(),

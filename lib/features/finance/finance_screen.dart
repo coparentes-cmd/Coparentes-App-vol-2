@@ -342,8 +342,7 @@ class FinanceScreenState extends State<FinanceScreen>
                     },
                   ),
                   if (invalidRange)
-                    const Text(
-                      'Data „Od” nie może być późniejsza niż „Do”.',
+                    Text(context.tr('Data „Od” nie może być późniejsza niż „Do”.'),
                       style: TextStyle(
                         color: AppTheme.errorColor,
                         fontSize: 12,
@@ -392,7 +391,7 @@ class FinanceScreenState extends State<FinanceScreen>
             parentAName: parentA.name,
             parentBName: parentB.name,
           )
-        : 'Saldo niedostępne';
+        : context.tr('Saldo niedostępne');
 
     final signedBalance = user != null && parentA != null && parentB != null
         ? finance.signedBalanceForUser(
@@ -434,27 +433,29 @@ class FinanceScreenState extends State<FinanceScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        balanceHeadline,
+                        context.tr(balanceHeadline).replaceAll(
+                              ' winien ',
+                              ' ${context.tr('winien')} ',
+                            ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         signedBalance.abs() < 0.01
-                            ? 'Po zaakceptowanych wydatkach oboje jesteście na zero.'
+                            ? context.tr('Po zaakceptowanych wydatkach oboje jesteście na zero.')
                             : signedBalance > 0
-                            ? 'Drugi rodzic winien Tobie po akceptacji wydatków.'
-                            : 'Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.',
+                            ? context.tr('Drugi rodzic winien Tobie po akceptacji wydatków.') : context.tr('Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.'),
                         style:
                             const TextStyle(color: Colors.white70, fontSize: 11),
                       ),
                       if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         Text(
-                          'Ostatnia synchronizacja: ${_formatSyncTime(finance.lastSyncedAt!)}',
+                          'Ostatnia synchronizacja: ${context.tr(_formatSyncTime(finance.lastSyncedAt!))}',
                           style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 10,
@@ -478,7 +479,7 @@ class FinanceScreenState extends State<FinanceScreen>
                   onTap: () => _openExpensesFiltered(ExpenseStatus.accepted),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: StatusCountChip(
                   label: context.tr('Oczekujące'),
@@ -487,7 +488,7 @@ class FinanceScreenState extends State<FinanceScreen>
                   onTap: () => _openExpensesFiltered(ExpenseStatus.pending),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: StatusCountChip(
                   label: context.tr('Sporne'),
@@ -510,10 +511,10 @@ class FinanceScreenState extends State<FinanceScreen>
                   currencyCode: currencyCode,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: SummaryCard(
-                  title: 'Do zwrotu (oczekujące)',
+                  title: context.tr('Do zwrotu (oczekujące)'),
                   amount: pendingRefund,
                   color: AppTheme.warningColor,
                   icon: Icons.account_balance_wallet,
@@ -527,8 +528,7 @@ class FinanceScreenState extends State<FinanceScreen>
     final categorySection = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          const Text(
-            'Podział po kategoriach',
+          Text(context.tr('Podział po kategoriach'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -561,13 +561,11 @@ class FinanceScreenState extends State<FinanceScreen>
               ),
             )
           else
-            const Text(
-              'Brak wydatków do podsumowania.',
+            Text(context.tr('Brak wydatków do podsumowania.'),
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
-          const SizedBox(height: 20),
-          const Text(
-            'Kto zapłacił (wszystkie wydatki)',
+          SizedBox(height: 20),
+          Text(context.tr('Kto zapłacił (wszystkie wydatki)'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -676,11 +674,9 @@ class FinanceScreenState extends State<FinanceScreen>
               ? EmptyState(
                   icon: Icons.receipt_long,
                   title: _expenseFilter == null
-                      ? 'Brak wydatków'
-                      : 'Brak wydatków w tym filtrze',
+                      ? context.tr('Brak wydatków') : context.tr('Brak wydatków w tym filtrze'),
                   subtitle: _expenseFilter == null
-                      ? 'Dodaj pierwszy wydatek ręcznie lub z paragonu'
-                      : 'Spróbuj innego filtra statusu',
+                      ? context.tr('Dodaj pierwszy wydatek ręcznie lub z paragonu') : context.tr('Spróbuj innego filtra statusu'),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -710,9 +706,8 @@ class FinanceScreenState extends State<FinanceScreen>
                           );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Wydatek zaakceptowany. Saldo zostało zaktualizowane.',
+                              SnackBar(
+                                content: Text(context.tr('Wydatek zaakceptowany. Saldo zostało zaktualizowane.'),
                                 ),
                                 backgroundColor: AppTheme.successColor,
                               ),
@@ -737,9 +732,8 @@ class FinanceScreenState extends State<FinanceScreen>
                           );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Oznaczono jako rozliczone poza aplikacją.',
+                              SnackBar(
+                                content: Text(context.tr('Oznaczono jako rozliczone poza aplikacją.'),
                                 ),
                                 backgroundColor: AppTheme.successColor,
                               ),
@@ -768,8 +762,7 @@ class FinanceScreenState extends State<FinanceScreen>
     switch (_reportType) {
       case _FinanceReportType.chronological:
         reportContent = rangeExpenses.isEmpty
-            ? const Text(
-                'Brak wydatków w wybranym okresie.',
+            ? Text(context.tr('Brak wydatków w wybranym okresie.'),
                 style: TextStyle(color: AppTheme.textSecondary),
               )
             : Column(
@@ -799,8 +792,7 @@ class FinanceScreenState extends State<FinanceScreen>
       case _FinanceReportType.statistical:
         final totals = finance.categoryTotalsInRange(from, to);
         reportContent = totals.isEmpty
-            ? const Text(
-                'Brak danych statystycznych w tym okresie.',
+            ? Text(context.tr('Brak danych statystycznych w tym okresie.'),
                 style: TextStyle(color: AppTheme.textSecondary),
               )
             : Column(
@@ -811,7 +803,7 @@ class FinanceScreenState extends State<FinanceScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(e.key),
+                            Text(context.tr(e.key)),
                             Text(
                               '${e.value.toStringAsFixed(0)} $currencyCode',
                               style: const TextStyle(fontWeight: FontWeight.w600),
@@ -838,16 +830,18 @@ class FinanceScreenState extends State<FinanceScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              headline,
+              context.tr(headline).replaceAll(
+                    ' winien ',
+                    ' ${context.tr('winien')} ',
+                  ),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Saldo liczone tylko z zaakceptowanych wydatków w wybranym okresie.',
+            SizedBox(height: 8),
+            Text(context.tr('Saldo liczone tylko z zaakceptowanych wydatków w wybranym okresie.'),
               style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
             ),
           ],
@@ -865,15 +859,14 @@ class FinanceScreenState extends State<FinanceScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Okres raportu',
+          Text(context.tr('Okres raportu'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Wrap(
             spacing: 8,
             children: [
@@ -906,7 +899,7 @@ class FinanceScreenState extends State<FinanceScreen>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Zakres: ${_formatReportDate(from)} – ${_formatReportDate(to)}',
             style: const TextStyle(
@@ -914,7 +907,7 @@ class FinanceScreenState extends State<FinanceScreen>
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           const Text(
             'Typ raportu',
             style: TextStyle(
@@ -923,7 +916,7 @@ class FinanceScreenState extends State<FinanceScreen>
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Wrap(
             spacing: 8,
             children: [
@@ -950,7 +943,7 @@ class FinanceScreenState extends State<FinanceScreen>
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -960,7 +953,7 @@ class FinanceScreenState extends State<FinanceScreen>
             ),
             child: reportContent,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -972,16 +965,15 @@ class FinanceScreenState extends State<FinanceScreen>
             ),
           ),
           if (exports.error != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               exports.error!,
               style: const TextStyle(color: AppTheme.errorColor, fontSize: 12),
             ),
           ],
           if (financeExports.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Ostatnie eksporty finansów',
+            SizedBox(height: 24),
+            Text(context.tr('Ostatnie eksporty finansów'),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -1024,9 +1016,9 @@ class FinanceScreenState extends State<FinanceScreen>
                               SnackBar(
                                 content: Text(
                                   saved
-                                      ? 'PDF zapisany na urządzeniu.'
+                                      ? context.tr('PDF zapisany na urządzeniu.')
                                       : provider.error ??
-                                          'Nie udało się zapisać PDF.',
+                                          context.tr('Nie udało się zapisać PDF.'),
                                 ),
                                 backgroundColor: saved
                                     ? AppTheme.successColor
@@ -1066,10 +1058,10 @@ class FinanceScreenState extends State<FinanceScreen>
         SnackBar(
           content: Text(
             saved
-                ? 'Raport finansowy zapisany jako PDF.'
+                ? context.tr('Raport finansowy zapisany jako PDF.')
                 : job.status == 'completed'
-                    ? provider.error ?? 'Nie udało się zapisać PDF.'
-                    : 'Eksport finansów dodany do kolejki.',
+                    ? provider.error ?? context.tr('Nie udało się zapisać PDF.')
+                    : context.tr('Eksport finansów dodany do kolejki.'),
           ),
           backgroundColor: saved || job.status != 'completed'
               ? AppTheme.successColor
@@ -1139,8 +1131,7 @@ class FinanceScreenState extends State<FinanceScreen>
             saved
                 ? 'Raport finansowy zapisany jako PDF.'
                 : job.status == 'completed'
-                    ? provider.error ?? 'Nie udało się zapisać PDF.'
-                    : 'Raport finansowy dodany do kolejki eksportów.',
+                    ? provider.error ?? context.tr('Nie udało się zapisać PDF.') : context.tr('Raport finansowy dodany do kolejki eksportów.'),
           ),
           backgroundColor: saved || job.status != 'completed'
               ? AppTheme.successColor

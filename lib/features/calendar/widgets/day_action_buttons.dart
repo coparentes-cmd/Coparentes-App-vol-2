@@ -16,11 +16,13 @@ class DayActionButtons extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Zmiany w zatwierdzonym grafiku wymagają akceptacji drugiego rodzica.',
-          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        Text(
+          context.tr(
+            'Zmiany w zatwierdzonym grafiku wymagają akceptacji drugiego rodzica.',
+          ),
+          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: onRequestSwap,
           icon: const Icon(Icons.swap_horiz, size: 18),

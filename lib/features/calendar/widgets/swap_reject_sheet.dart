@@ -146,7 +146,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
           content: Text(
             useCounter
                 ? 'Wysłano kontrpropozycję dat do ${widget.swap.requesterName}.'
-                : 'Wniosek o zamianę został odrzucony.',
+                : context.tr('Wniosek o zamianę został odrzucony.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -157,7 +157,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(calendarActionError(error, 'odpowiedzi na wymianę')),
+          content: Text(context.tr(calendarActionError(error, 'odpowiedzi na wymianę'))),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -181,20 +181,19 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Odrzuć wniosek o zamianę',
+          Text(context.tr('Odrzuć wniosek o zamianę'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Wniosek od ${widget.swap.requesterName}',
             style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -210,7 +209,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
                   icon: Icons.event,
                   color: AppTheme.errorColor,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SwapDateRow(
                   label: context.tr('Proponowany dzień we wniosku'),
                   date: widget.swap.proposedDate,
@@ -220,19 +219,17 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'Proponuję inne daty',
+            title: Text(context.tr('Proponuję inne daty'),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
               ),
             ),
-            subtitle: const Text(
-              'Wyślij kontrpropozycję zamiast samego odrzucenia',
+            subtitle: Text(context.tr('Wyślij kontrpropozycję zamiast samego odrzucenia'),
               style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
             ),
             value: _proposeAlternativeDates,
@@ -263,23 +260,23 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _reasonController,
             maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Powód (opcjonalnie)',
-              hintText: 'np. Mam wtedy wyjazd służbowy…',
+            decoration: InputDecoration(
+              labelText: context.tr('Powód (opcjonalnie)'),
+              hintText: context.tr('np. Mam wtedy wyjazd służbowy…'),
               alignLabelWithHint: true,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _isSubmitting ? null : _submit,
               icon: _isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -287,8 +284,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
                   : const Icon(Icons.close, size: 18),
               label: Text(
                 _proposeAlternativeDates && _counterDatesChanged
-                    ? 'Odrzuć i wyślij kontrpropozycję'
-                    : 'Odrzuć wniosek',
+                    ? context.tr('Odrzuć i wyślij kontrpropozycję') : context.tr('Odrzuć wniosek'),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.errorColor,

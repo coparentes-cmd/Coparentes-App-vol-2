@@ -19,6 +19,7 @@ import 'action_tile.dart';
 import 'switch_tile.dart';
 import 'setup_pin_sheet.dart';
 import 'change_pin_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class EditProfileSheet extends StatefulWidget {
   final AppUser? user;
@@ -59,24 +60,23 @@ class EditProfileSheetState extends State<EditProfileSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Edytuj profil',
+          Text(context.tr('Edytuj profil'),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Imię i nazwisko',
+            decoration: InputDecoration(
+              labelText: context.tr('Imię i nazwisko'),
               prefixIcon: Icon(Icons.person_outline),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             enabled: false,
             controller: TextEditingController(text: widget.user?.email ?? ''),
-            decoration: const InputDecoration(
-              labelText: 'Adres e-mail (tylko odczyt)',
+            decoration: InputDecoration(
+              labelText: context.tr('Adres e-mail (tylko odczyt)'),
               prefixIcon: Icon(Icons.email_outlined),
             ),
           ),
@@ -97,7 +97,7 @@ class EditProfileSheetState extends State<EditProfileSheet> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            ok ? 'Profil zaktualizowany ✓' : 'Nie udało się zapisać profilu.',
+                            ok ? 'Profil zaktualizowany ✓' : context.tr('Nie udało się zapisać profilu.'),
                           ),
                           backgroundColor:
                               ok ? AppTheme.successColor : AppTheme.errorColor,
@@ -106,7 +106,7 @@ class EditProfileSheetState extends State<EditProfileSheet> {
                     },
               style: ElevatedButton.styleFrom(backgroundColor: widget.color),
               child: _submitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
@@ -114,7 +114,7 @@ class EditProfileSheetState extends State<EditProfileSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Zapisz zmiany', style: TextStyle(color: Colors.white)),
+                  : Text(context.tr('Zapisz zmiany'), style: TextStyle(color: Colors.white)),
             ),
           ),
         ],

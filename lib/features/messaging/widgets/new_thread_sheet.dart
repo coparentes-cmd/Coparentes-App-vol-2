@@ -41,38 +41,35 @@ class NewThreadSheetState extends State<NewThreadSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Nowy wątek',
+          Text(context.tr('Nowy wątek'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Wątek pojawi się w zakładce $allTabDisplayLabel. Możesz oznaczać wiadomości '
-            'prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
+          SizedBox(height: 8),
+          Text('Wątek pojawi się w zakładce $allTabDisplayLabel. Możesz oznaczać wiadomości prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.textSecondary,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _subjectController,
             enabled: !_creating,
-            decoration: const InputDecoration(
-              labelText: 'Temat wątku',
+            decoration: InputDecoration(
+              labelText: context.tr('Temat wątku'),
               hintText: 'np. Angielski – zmiana terminu',
             ),
             onSubmitted: (_) => _createThread(),
           ),
           if (children.length > 1) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _selectedChildId ?? children.first.id,
-              decoration: const InputDecoration(labelText: 'Dotyczy dziecka'),
+              decoration: InputDecoration(labelText: 'Dotyczy dziecka'),
               items: children
                   .map(
                     (child) => DropdownMenuItem(
@@ -85,13 +82,13 @@ class NewThreadSheetState extends State<NewThreadSheet> {
                   _creating ? null : (value) => setState(() => _selectedChildId = value),
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _creating ? null : _createThread,
               child: _creating
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
@@ -111,9 +108,8 @@ class NewThreadSheetState extends State<NewThreadSheet> {
     }
     if (messagingCategoryChannels.contains(subject)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Ten temat jest zarezerwowany dla kanału systemowego.',
+        SnackBar(
+          content: Text(context.tr('Ten temat jest zarezerwowany dla kanału systemowego.'),
           ),
         ),
       );

@@ -159,7 +159,7 @@ class MessageBubbleState extends State<MessageBubble> {
                           size: 12,
                           color: bubbleStyle.secondaryTextColor,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             'AI Shield – wersja logistyczna',
@@ -172,7 +172,7 @@ class MessageBubbleState extends State<MessageBubble> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       _extractLogistics(widget.message.content),
                       style: TextStyle(
@@ -181,11 +181,10 @@ class MessageBubbleState extends State<MessageBubble> {
                         color: bubbleStyle.textColor,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     GestureDetector(
                       onTap: () => setState(() => _showOriginal = true),
-                      child: Text(
-                        'Pokaż oryginał',
+                      child: Text(context.tr('Pokaż oryginał'),
                         style: TextStyle(
                           fontSize: 11,
                           color: bubbleStyle.senderNameColor,
@@ -204,11 +203,10 @@ class MessageBubbleState extends State<MessageBubble> {
                         ),
                       ),
                     if (_isShielded && _showOriginal) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       GestureDetector(
                         onTap: () => setState(() => _showOriginal = false),
-                        child: Text(
-                          'Ukryj oryginał',
+                        child: Text(context.tr('Ukryj oryginał'),
                           style: TextStyle(
                             fontSize: 11,
                             color: bubbleStyle.senderNameColor,
@@ -410,8 +408,7 @@ class MessageBubbleState extends State<MessageBubble> {
         SnackBar(
           content: Text(
             approve
-                ? 'Grafik zaakceptowany — kalendarz zaktualizowany.'
-                : 'Propozycja grafiku odrzucona.',
+                ? context.tr('Grafik zaakceptowany — kalendarz zaktualizowany.') : context.tr('Propozycja grafiku odrzucona.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -459,8 +456,7 @@ class MessageBubbleState extends State<MessageBubble> {
         SnackBar(
           content: Text(
             approve
-                ? 'Wyjątek zaakceptowany — kalendarz zaktualizowany.'
-                : 'Wniosek o wyjątek odrzucony.',
+                ? context.tr('Wyjątek zaakceptowany — kalendarz zaktualizowany.') : context.tr('Wniosek o wyjątek odrzucony.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -513,11 +509,10 @@ class MessageBubbleState extends State<MessageBubble> {
         return;
       }
       final message = error is ApiException && error.message == 'message_not_found'
-          ? 'Nie udało się zapisać etykiet — odśwież wiadomości i spróbuj ponownie.'
-          : 'Nie udało się zapisać etykiet.';
+          ? context.tr('Nie udało się zapisać etykiet — odśwież wiadomości i spróbuj ponownie.') : context.tr('Nie udało się zapisać etykiet.');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(context.tr(message)),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -559,8 +554,7 @@ class MessageBubbleState extends State<MessageBubble> {
         SnackBar(
           content: Text(
             status == SwapStatus.accepted
-                ? 'Zamiana zaakceptowana — kalendarz zaktualizowany.'
-                : 'Wniosek o zamianę odrzucony.',
+                ? 'Zamiana zaakceptowana — kalendarz zaktualizowany.' : context.tr('Wniosek o zamianę odrzucony.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),

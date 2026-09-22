@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 Future<void> showChildOnboardingSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -94,7 +95,7 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(context.tr(message))),
     );
   }
 
@@ -108,33 +109,32 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Dodaj dziecko do przestrzeni',
+          Text(context.tr('Dodaj dziecko do przestrzeni'),
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             _addedCount == 0
-                ? 'Profil dziecka ułatwi wątki, kalendarz i rozliczenia. Możesz pominąć ten krok i dodać dziecko później.'
+                ? context.tr('Profil dziecka ułatwi wątki, kalendarz i rozliczenia. Możesz pominąć ten krok i dodać dziecko później.')
                 : 'Dodano $_addedCount ${_addedCount == 1 ? 'dziecko' : 'dzieci'}. Dodaj kolejne lub przejdź dalej.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           TextField(
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Imię i nazwisko dziecka',
+            decoration: InputDecoration(
+              labelText: context.tr('Imię i nazwisko dziecka'),
               hintText: 'np. Zosia Kowalska',
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           InkWell(
             onTap: _submitting ? null : _pickDateOfBirth,
             borderRadius: BorderRadius.circular(16),
             child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Data urodzenia',
+              decoration: InputDecoration(
+                labelText: context.tr('Data urodzenia'),
               ),
               child: Text(
                 '${_dateOfBirth.day.toString().padLeft(2, '0')}.'
@@ -143,12 +143,12 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _schoolController,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Szkoła (opcjonalnie)',
+            decoration: InputDecoration(
+              labelText: context.tr('Szkoła (opcjonalnie)'),
               hintText: 'np. SP nr 15 w Warszawie',
             ),
           ),
@@ -175,7 +175,7 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
                   shadowColor: Colors.transparent,
                 ),
                 child: _submitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
@@ -183,16 +183,16 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
                           color: Colors.white,
                         ),
                       )
-                    : Text(_addedCount == 0 ? 'Dodaj dziecko' : 'Dodaj kolejne dziecko'),
+                    : Text(_addedCount == 0 ? context.tr('Dodaj dziecko') : context.tr('Dodaj kolejne dziecko')),
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
               onPressed: _submitting ? null : _finish,
-              child: Text(_addedCount == 0 ? 'Pomiń na razie' : 'Gotowe'),
+              child: Text(_addedCount == 0 ? context.tr('Pomiń na razie') : 'Gotowe'),
             ),
           ),
         ],

@@ -34,7 +34,7 @@ class NextHandoverBar extends StatelessWidget {
     if (place == null || place.isEmpty) {
       return context.tr('Miejsce nieustalone');
     }
-    return place;
+    return context.tr(place);
   }
 
   @override
@@ -67,7 +67,7 @@ class NextHandoverBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Najbliższe przekazanie opieki',
+                context.tr('Najbliższe przekazanie opieki'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

@@ -292,7 +292,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            messaging.error ?? 'Nie udało się wysłać wiadomości.',
+            messaging.error ?? context.tr('Nie udało się wysłać wiadomości.'),
           ),
         ),
       );
@@ -370,7 +370,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
           padding: const EdgeInsets.all(24),
           child: Text(
             widget.threadId != null
-                ? 'Nie znaleziono wątku.'
+                ? context.tr('Nie znaleziono wątku.')
                 : 'Nie udało się otworzyć rozmowy „${widget.category}”.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.textSecondary),
@@ -421,21 +421,20 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                             size: 48,
                             color: thread.categoryColor.withValues(alpha: 0.5),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Text(
                             panelCategory == allTabLabel
-                                ? 'Brak wiadomości'
+                                ? context.tr('Brak wiadomości')
                                 : widget.threadId != null
-                                    ? 'Brak wiadomości w tym wątku'
+                                    ? context.tr('Brak wiadomości w tym wątku')
                                     : 'Brak wiadomości w „$panelCategory”',
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Napisz pierwszą wiadomość poniżej',
+                          SizedBox(height: 6),
+                          Text(context.tr('Napisz pierwszą wiadomość poniżej'),
                             style: TextStyle(
                               fontSize: 13,
                               color: AppTheme.textSecondary,
@@ -457,19 +456,17 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                                 size: 48,
                                 color: AppTheme.textHint.withValues(alpha: 0.7),
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Brak wyników',
+                              SizedBox(height: 12),
+                              Text(context.tr('Brak wyników'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              SizedBox(height: 6),
                               Text(
                                 hasSearchFilter
-                                    ? 'Spróbuj innej frazy lub tagu, np. tag:paragon'
-                                    : 'Brak wiadomości do wyświetlenia',
+                                    ? context.tr('Spróbuj innej frazy lub tagu, np. tag:paragon') : context.tr('Brak wiadomości do wyświetlenia'),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontSize: 13,

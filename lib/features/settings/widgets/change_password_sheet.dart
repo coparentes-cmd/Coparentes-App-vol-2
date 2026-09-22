@@ -57,38 +57,37 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Zmień hasło',
+          Text(context.tr('Zmień hasło'),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _currentController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Aktualne hasło',
+            decoration: InputDecoration(
+              labelText: context.tr('Aktualne hasło'),
               prefixIcon: Icon(Icons.lock_outline),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _newController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Nowe hasło',
+            decoration: InputDecoration(
+              labelText: context.tr('Nowe hasło'),
               prefixIcon: Icon(Icons.lock_reset_outlined),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _confirmController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Powtórz nowe hasło',
+            decoration: InputDecoration(
+              labelText: context.tr('Powtórz nowe hasło'),
               prefixIcon: Icon(Icons.lock_reset_outlined),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -123,8 +122,8 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
                         SnackBar(
                           content: Text(
                             ok
-                                ? 'Hasło zostało zmienione ✓'
-                                : (ap.authError ?? 'Nie udało się zmienić hasła.'),
+                                ? context.tr('Hasło zostało zmienione ✓')
+                                : (ap.authError ?? context.tr('Nie udało się zmienić hasła.')),
                           ),
                           backgroundColor:
                               ok ? AppTheme.successColor : AppTheme.errorColor,
@@ -133,7 +132,7 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
                     },
               style: ElevatedButton.styleFrom(backgroundColor: widget.color),
               child: _submitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
@@ -141,7 +140,7 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Zapisz hasło', style: TextStyle(color: Colors.white)),
+                  : Text(context.tr('Zapisz hasło'), style: TextStyle(color: Colors.white)),
             ),
           ),
         ],

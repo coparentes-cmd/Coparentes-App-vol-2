@@ -186,8 +186,8 @@ class _ObserverHome extends StatelessWidget {
         title: Row(
           children: [
             const BrandLogo(width: 108, height: 30, onDarkBackground: true),
-            const SizedBox(width: 10),
-            const Expanded(
+            SizedBox(width: 10),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -272,7 +272,7 @@ class _ObserverHome extends StatelessWidget {
                       color: AppTheme.observerColor,
                       size: 22,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +316,7 @@ class _ObserverHome extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               if (workspace != null) ...[
                 Text(
                   workspace.name,
@@ -326,7 +326,7 @@ class _ObserverHome extends StatelessWidget {
                     color: AppTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '${workspace.children.length} dzieci · ${workspace.members.length} rodziców',
                   style: const TextStyle(
@@ -334,7 +334,7 @@ class _ObserverHome extends StatelessWidget {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ],
               const Text(
                 'Podsumowanie sprawy',
@@ -344,7 +344,7 @@ class _ObserverHome extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               GridView.count(
                 crossAxisCount: gridCrossAxisCountFor(context).clamp(2, 4),
                 shrinkWrap: true,
@@ -354,13 +354,13 @@ class _ObserverHome extends StatelessWidget {
                 childAspectRatio: 1.5,
                 children: [
                   _StatBlock(
-                    title: 'Wątki wiadomości',
+                    title: context.tr('Wątki wiadomości'),
                     value: '$threads',
                     icon: Icons.chat,
                     color: AppTheme.primaryTeal,
                   ),
                   _StatBlock(
-                    title: 'Wydatki (miesiąc)',
+                    title: context.tr('Wydatki (miesiąc)'),
                     value: '${totalExpenses.toStringAsFixed(0)} PLN',
                     icon: Icons.receipt_long,
                     color: AppTheme.successColor,
@@ -372,7 +372,7 @@ class _ObserverHome extends StatelessWidget {
                     color: AppTheme.warningColor,
                   ),
                   _StatBlock(
-                    title: 'Wydatki sporne',
+                    title: context.tr('Wydatki sporne'),
                     value:
                         '${finance.expenses.where((e) => e.status == ExpenseStatus.disputed).length}',
                     icon: Icons.warning_amber,
@@ -380,18 +380,17 @@ class _ObserverHome extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Ostatnia aktywność',
+              SizedBox(height: 20),
+              Text(context.tr('Ostatnia aktywność'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               ..._buildTimeline(context, messaging, finance, calendar),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -410,7 +409,7 @@ class _ObserverHome extends StatelessWidget {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(

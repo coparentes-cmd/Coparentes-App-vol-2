@@ -26,6 +26,7 @@ import 'stat_card.dart';
 import 'message_thread_preview.dart';
 import 'finance_snapshot_card.dart';
 import 'child_chip.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class AiCoachCta extends StatelessWidget {
   @override
@@ -62,8 +63,7 @@ class AiCoachCta extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: compact ? 2 : 4),
-                Text(
-                  'Napisz neutralną wiadomość z pomocą AI. Pamiętaj: AI może się mylić — zawsze sprawdź przed wysłaniem.',
+                Text(context.tr('Napisz neutralną wiadomość z pomocą AI. Pamiętaj: AI może się mylić — zawsze sprawdź przed wysłaniem.'),
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: compact ? 11 : 12,
@@ -96,8 +96,7 @@ class AiCoachCta extends StatelessWidget {
                 borderRadius: BorderRadius.circular(compact ? 6 : 8),
               ),
             ),
-            child: Text(
-              'Otwórz',
+            child: Text(context.tr('Otwórz'),
               style: TextStyle(
                 fontSize: compact ? 11 : 13,
                 fontWeight: FontWeight.w600,

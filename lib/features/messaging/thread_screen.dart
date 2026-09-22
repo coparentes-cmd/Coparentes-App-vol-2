@@ -418,7 +418,7 @@ class ThreadScreenState extends State<ThreadScreen> {
       final err = context.read<MessagingProvider>().error;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(err ?? 'Nie udało się wysłać wiadomości.'),
+          content: Text(err ?? context.tr('Nie udało się wysłać wiadomości.')),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -446,7 +446,7 @@ class ThreadScreenState extends State<ThreadScreen> {
           children: [
             Text('Watek: ${thread?.subject ?? 'Brak'}'),
             Text('Wiadomosci: ${thread?.messages.length ?? 0}'),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             const Text(
               'Eksport bedzie zawieral:',
               style: TextStyle(fontWeight: FontWeight.w600),
@@ -500,9 +500,9 @@ class ThreadScreenState extends State<ThreadScreen> {
                 SnackBar(
                   content: Text(
                     saved
-                        ? 'Eksport wątku zapisany jako PDF.'
+                        ? context.tr('Eksport wątku zapisany jako PDF.')
                         : provider.error ??
-                            'Eksport utworzony, ale nie udało się zapisać PDF.',
+                            context.tr('Eksport utworzony, ale nie udało się zapisać PDF.'),
                   ),
                   backgroundColor:
                       saved ? AppTheme.successColor : AppTheme.errorColor,

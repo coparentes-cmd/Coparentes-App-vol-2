@@ -75,7 +75,7 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appProvider.authError ?? 'Nie udało się zakończyć rejestracji.',
+            appProvider.authError ?? context.tr('Nie udało się zakończyć rejestracji.'),
           ),
           backgroundColor: AppTheme.errorColor,
         ),
@@ -100,15 +100,14 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Center(child: BrandLogo(width: 168, height: 54)),
-                      const SizedBox(height: 24),
+                      Center(child: BrandLogo(width: 168, height: 54)),
+                      SizedBox(height: 24),
                       Text(
                         'Zanim zaczniesz',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Przeczytaj i zaakceptuj poniższe zgody. Niektóre są wymagane do działania aplikacji.',
+                      SizedBox(height: 8),
+                      Text(context.tr('Przeczytaj i zaakceptuj poniższe zgody. Niektóre są wymagane do działania aplikacji.'),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTheme.textSecondary,
                             ),
@@ -131,16 +130,15 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                           ],
                         );
                       }),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Możesz wycofać zgody opcjonalne w dowolnym momencie w Ustawieniach → Prywatność.',
+                      SizedBox(height: 18),
+                      Text(context.tr('Możesz wycofać zgody opcjonalne w dowolnym momencie w Ustawieniach → Prywatność.'),
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.45,
                           color: AppTheme.textHint,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         child: DecoratedBox(
@@ -160,7 +158,7 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                                   _canSubmit ? Colors.white : AppTheme.textHint,
                             ),
                             child: _submitting
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
@@ -172,14 +170,13 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Center(
                         child: TextButton(
                           onPressed: _submitting
                               ? null
                               : () => Navigator.of(context).pop(),
-                          child: const Text(
-                            'Anuluj rejestrację',
+                          child: Text(context.tr('Anuluj rejestrację'),
                             style: TextStyle(
                               fontSize: 13,
                               color: AppTheme.textHint,

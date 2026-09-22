@@ -19,6 +19,7 @@ import 'info_tile.dart';
 import 'action_tile.dart';
 import 'switch_tile.dart';
 import 'change_pin_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class SetupPinSheet extends StatefulWidget {
   final Color color;
@@ -74,8 +75,7 @@ class SetupPinSheetState extends State<SetupPinSheet> {
       SnackBar(
         content: Text(
           widget.enableOnResume
-              ? 'PIN ustawiony i blokada po wznowieniu włączona ✓'
-              : 'PIN ustawiony ✓',
+              ? context.tr('PIN ustawiony i blokada po wznowieniu włączona ✓') : 'PIN ustawiony ✓',
         ),
         backgroundColor: AppTheme.successColor,
       ),
@@ -99,24 +99,24 @@ class SetupPinSheetState extends State<SetupPinSheet> {
             'Ustaw PIN',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           const Text(
             'Wpisz 4-cyfrowy PIN logowania',
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextFormField(
             controller: _newPinController,
             obscureText: true,
             keyboardType: TextInputType.number,
             maxLength: 4,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
-              labelText: 'Nowy PIN',
+            decoration: InputDecoration(
+              labelText: context.tr('Nowy PIN'),
               prefixIcon: Icon(Icons.lock_reset_outlined),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _confirmPinController,
             obscureText: true,
@@ -124,19 +124,19 @@ class SetupPinSheetState extends State<SetupPinSheet> {
             maxLength: 4,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
-              labelText: 'Powtórz nowy PIN',
+              labelText: context.tr('Powtórz nowy PIN'),
               prefixIcon: const Icon(Icons.lock_reset_outlined),
               errorText: _error,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _saving ? null : _save,
               style: ElevatedButton.styleFrom(backgroundColor: widget.color),
               child: Text(
-                _saving ? 'Zapisywanie…' : 'Zapisz PIN',
+                _saving ? 'Zapisywanie…' : context.tr('Zapisz PIN'),
                 style: const TextStyle(color: Colors.white),
               ),
             ),

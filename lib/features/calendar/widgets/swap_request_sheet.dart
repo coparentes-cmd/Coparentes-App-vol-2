@@ -97,9 +97,8 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
       widget.onSubmitted?.call();
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Wniosek wysłany. Drugi rodzic zobaczy go w wiadomościach → Zmiana grafiku.',
+        SnackBar(
+          content: Text(context.tr('Wniosek wysłany. Drugi rodzic zobaczy go w wiadomościach → Zmiana grafiku.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -108,7 +107,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(calendarActionError(error, 'zmiany opieki')),
+          content: Text(context.tr(calendarActionError(error, 'zmiany opieki'))),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -140,12 +139,11 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Zaproponuj zmianę dnia opieki. Drugi rodzic otrzyma powiadomienie i będzie mógł zaakceptować lub odrzucić.',
+          SizedBox(height: 8),
+          Text(context.tr('Zaproponuj zmianę dnia opieki. Drugi rodzic otrzyma powiadomienie i będzie mógł zaakceptować lub odrzucić.'),
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(context.tr('Dzień do zmiany')),
@@ -170,22 +168,22 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
               onSelected: (value) => setState(() => _proposedDate = value),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _reasonController,
             maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Powód zmiany (opcjonalnie)',
-              hintText: 'np. Wyjazd służbowy, urodziny babci...',
+            decoration: InputDecoration(
+              labelText: context.tr('Powód zmiany (opcjonalnie)'),
+              hintText: context.tr('np. Wyjazd służbowy, urodziny babci...'),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
               child: _isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),

@@ -110,7 +110,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
         children: [
           // Disclaimer
           const AiDisclaimerBanner(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           if (!aiEnabled)
             Container(
@@ -119,13 +119,12 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                 color: AppTheme.warningColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.warning, color: AppTheme.warningColor, size: 18),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'AI Coach jest wyłączony. Włącz go w Ustawieniach.',
+                    child: Text(context.tr('AI Coach jest wyłączony. Włącz go w Ustawieniach.'),
                       style: TextStyle(
                         color: AppTheme.warningColor,
                         fontSize: 13,
@@ -136,31 +135,29 @@ class _AiCoachScreenState extends State<AiCoachScreen>
               ),
             ),
 
-          const SizedBox(height: 12),
-          const Text(
-            'Wklej treść wiadomości do analizy tonu',
+          SizedBox(height: 12),
+          Text(context.tr('Wklej treść wiadomości do analizy tonu'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _inputController,
             maxLines: 6,
-            decoration: const InputDecoration(
-              hintText:
-                  'np. "Musisz odebrać dzieci o 16:00 bo zawsze się spóźniasz i to jest nieakceptowalne..."',
+            decoration: InputDecoration(
+              hintText: context.tr('np. "Musisz odebrać dzieci o 16:00 bo zawsze się spóźniasz i to jest nieakceptowalne..."'),
             ),
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               icon: _isAnalyzing
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
@@ -169,7 +166,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                       ),
                     )
                   : const Icon(Icons.auto_awesome),
-              label: Text(_isAnalyzing ? 'Analizuję...' : 'Analizuj ton'),
+              label: Text(_isAnalyzing ? context.tr('Analizuję...') : 'Analizuj ton'),
               onPressed:
                   (_inputController.text.isEmpty || _isAnalyzing || !aiEnabled)
                   ? null
@@ -223,11 +220,10 @@ class _AiCoachScreenState extends State<AiCoachScreen>
             color: AppTheme.aiCoachColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Jak pisać neutralnie',
+              Text(context.tr('Jak pisać neutralnie'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -235,8 +231,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                 ),
               ),
               SizedBox(height: 4),
-              Text(
-                'Neutralna komunikacja redukuje konflikty i zwiększa szansę na współpracę. Każda wiadomość jest niezmiennie archiwizowana – warto dbać o jej formę.',
+              Text(context.tr('Neutralna komunikacja redukuje konflikty i zwiększa szansę na współpracę. Każda wiadomość jest niezmiennie archiwizowana – warto dbać o jej formę.'),
                 style: TextStyle(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
@@ -245,7 +240,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         ..._tips.map(
           (tip) => Card(
             margin: const EdgeInsets.only(bottom: 10),
@@ -255,16 +250,16 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    tip['title']!,
+                    context.tr(tip['title']!),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
-                    tip['desc']!,
+                    context.tr(tip['desc']!),
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
@@ -275,7 +270,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         // Psychological note
         Container(
           padding: const EdgeInsets.all(16),
@@ -284,7 +279,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFFFCC02).withValues(alpha: 0.5)),
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -302,8 +297,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                 ],
               ),
               SizedBox(height: 8),
-              Text(
-                'AI Coach to narzędzie komunikacyjne, nie psychologiczne. Jeśli odczuwasz silny stres lub lęk, skonsultuj się ze specjalistą – psychologiem lub mediatorem rodzinnym.',
+              Text(context.tr('AI Coach to narzędzie komunikacyjne, nie psychologiczne. Jeśli odczuwasz silny stres lub lęk, skonsultuj się ze specjalistą – psychologiem lub mediatorem rodzinnym.'),
                 style: TextStyle(
                   fontSize: 13,
                   color: Color(0xFFF57F17),
@@ -347,13 +341,13 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                       : AppTheme.textHint,
                   size: 28,
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        aiShield ? 'AI Shield AKTYWNY' : 'AI Shield WYŁĄCZONY',
+                        aiShield ? 'AI Shield AKTYWNY' : context.tr('AI Shield WYŁĄCZONY'),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -362,11 +356,10 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                               : AppTheme.textHint,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         aiShield
-                            ? 'Otrzymywane wiadomości są filtrowane – widzisz wersję logistyczną, oryginał jest dostępny na żądanie i archiwizowany.'
-                            : 'Włącz w Ustawieniach → AI Shield',
+                            ? context.tr('Otrzymywane wiadomości są filtrowane – widzisz wersję logistyczną, oryginał jest dostępny na żądanie i archiwizowany.') : context.tr('Włącz w Ustawieniach → AI Shield'),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -378,10 +371,9 @@ class _AiCoachScreenState extends State<AiCoachScreen>
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
-          const Text(
-            'Jak działa AI Shield',
+          Text(context.tr('Jak działa AI Shield'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -590,11 +582,10 @@ class _ToneResultCard extends StatelessWidget {
                 color: isNeutral ? AppTheme.successColor : AppTheme.warningColor,
                 size: 20,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 isNeutral
-                    ? 'Ton: Neutralny – można wysłać'
-                    : 'Ton: Napięty – rozważ przepisanie',
+                    ? context.tr('Ton: Neutralny – można wysłać') : context.tr('Ton: Napięty – rozważ przepisanie'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -606,7 +597,7 @@ class _ToneResultCard extends StatelessWidget {
             ],
           ),
           if (!isNeutral) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             const Text(
               'Proponowana wersja AI:',
               style: TextStyle(
@@ -615,7 +606,7 @@ class _ToneResultCard extends StatelessWidget {
                 color: AppTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               rewrite,
               style: const TextStyle(
@@ -623,9 +614,9 @@ class _ToneResultCard extends StatelessWidget {
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             const AiDisclaimerBanner(),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

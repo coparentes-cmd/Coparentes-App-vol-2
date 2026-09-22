@@ -272,7 +272,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 widget.title,
                 style: const TextStyle(
@@ -282,7 +282,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                 ),
               ),
               if (widget.subtitle != null) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   widget.subtitle!,
                   style: const TextStyle(
@@ -291,7 +291,7 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   IconButton(
@@ -334,9 +334,9 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
                     )
                     .toList(),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               ..._buildWeekRows(),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(
                 children: [
                   TextButton(

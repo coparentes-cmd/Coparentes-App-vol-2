@@ -82,7 +82,7 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(calendarActionError(error, 'wniosku o wyjątek')),
+          content: Text(context.tr(calendarActionError(error, 'wniosku o wyjątek'))),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -104,21 +104,19 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Zaproponuj zmianę opiekuna',
+          Text(context.tr('Zaproponuj zmianę opiekuna'),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Drugi rodzic musi zaakceptować zmianę, zanim zacznie obowiązywać.',
+          SizedBox(height: 4),
+          Text(context.tr('Drugi rodzic musi zaakceptować zmianę, zanim zacznie obowiązywać.'),
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Dzień: ${widget.day.day}.${widget.day.month}.${widget.day.year}',
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SegmentedButton<UserRole>(
             segments: [
               ButtonSegment(value: UserRole.parentA, label: Text(context.tr('Mama'))),
@@ -128,20 +126,20 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
             onSelectionChanged: (value) =>
                 setState(() => _custodian = value.first),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _reasonController,
             maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Powód (opcjonalnie)',
+            decoration: InputDecoration(
+              labelText: context.tr('Powód (opcjonalnie)'),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
-              child: Text(_isSubmitting ? 'Wysyłam...' : 'Wyślij do akceptacji'),
+              child: Text(_isSubmitting ? context.tr('Wysyłam...') : context.tr('Wyślij do akceptacji')),
             ),
           ),
         ],

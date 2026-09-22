@@ -169,11 +169,11 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
               Row(
                 children: [
                   Icon(Icons.calendar_month, color: widget.accentColor, size: 20),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       widget.mode == BookingCalendarMode.range
-                          ? 'Wybierz okres obowiązywania'
+                          ? context.tr('Wybierz okres obowiązywania')
                           : 'Zaznacz dni opieki (${widget.creatorLabel})',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
@@ -184,18 +184,17 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 widget.mode == BookingCalendarMode.range
-                    ? 'Kliknij datę początkową i końcową. Enter — zapisz.'
-                    : 'Kliknij dni pojedynczo. Enter — zapisz zaznaczenie.',
+                    ? context.tr('Kliknij datę początkową i końcową. Enter — zapisz.') : context.tr('Kliknij dni pojedynczo. Enter — zapisz zaznaczenie.'),
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
                 ),
               ),
               if (widget.mode == BookingCalendarMode.multiSelect) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
                     _LegendChip(color: AppTheme.parentAColor, label: context.tr('Mama')),
@@ -240,14 +239,13 @@ class _BookingStyleCalendarPickerState extends State<BookingStyleCalendarPicker>
                   );
                 },
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   onPressed: widget.onConfirm,
                   icon: Icon(Icons.check, size: 18, color: widget.accentColor),
-                  label: Text(
-                    'Zapisz (Enter)',
+                  label: Text(context.tr('Zapisz (Enter)'),
                     style: TextStyle(
                       color: widget.accentColor,
                       fontWeight: FontWeight.w600,

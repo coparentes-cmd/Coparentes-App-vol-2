@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../utils/layout_utils.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class ImmutableBadge extends StatelessWidget {
   const ImmutableBadge({super.key});
@@ -18,13 +19,12 @@ class ImmutableBadge extends StatelessWidget {
           color: AppTheme.immutableBadge.withValues(alpha: 0.3),
         ),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.lock, size: 10, color: AppTheme.immutableBadge),
           SizedBox(width: 3),
-          Text(
-            'Niezmienialny',
+          Text(context.tr('Niezmienialny'),
             style: TextStyle(
               fontSize: 9,
               color: AppTheme.immutableBadge,
@@ -49,13 +49,12 @@ class AiDisclaimerBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFFFCC02).withValues(alpha: 0.5)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(Icons.warning_amber, size: 14, color: Color(0xFFF57F17)),
           SizedBox(width: 6),
           Expanded(
-            child: Text(
-              'AI może się mylić. Zawsze sprawdź sugestię przed wysłaniem.',
+            child: Text(context.tr('AI może się mylić. Zawsze sprawdź sugestię przed wysłaniem.'),
               style: TextStyle(
                 fontSize: 11,
                 color: Color(0xFFF57F17),
@@ -316,8 +315,7 @@ class _AiContextualTipState extends State<AiContextualTip>
                     ],
                   ),
                   SizedBox(height: compact ? 2 : 3),
-                  Text(
-                    tip['title'] ?? '',
+                  Text(context.tr(tip['title'] ?? ''),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: compact ? 11 : 12,
@@ -325,8 +323,7 @@ class _AiContextualTipState extends State<AiContextualTip>
                     ),
                   ),
                   SizedBox(height: compact ? 1 : 2),
-                  Text(
-                    tip['body'] ?? '',
+                  Text(context.tr(tip['body'] ?? ''),
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.85),
                       fontSize: compact ? 10 : 11,

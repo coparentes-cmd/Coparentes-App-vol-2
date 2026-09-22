@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import '../l10n/locale_policy.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../utils/calendar_date_utils.dart';
@@ -311,7 +313,7 @@ class _MonthHeader extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              _formatMonthYear(focusedDay),
+              _formatMonthYear(context, focusedDay),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 18,
@@ -332,9 +334,9 @@ class _MonthHeader extends StatelessWidget {
               foregroundColor: AppTheme.accentColor,
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
-            child: const Text(
-              'Dziś',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            child: Text(
+              context.tr('Dziś'),
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -342,23 +344,13 @@ class _MonthHeader extends StatelessWidget {
     );
   }
 
-  String _formatMonthYear(DateTime date) {
-    const months = [
-      'styczeń',
-      'luty',
-      'marzec',
-      'kwiecień',
-      'maj',
-      'czerwiec',
-      'lipiec',
-      'sierpień',
-      'wrzesień',
-      'październik',
-      'listopad',
-      'grudzień',
-    ];
-    final name = months[date.month - 1];
-    return '${name[0].toUpperCase()}${name.substring(1)} ${date.year}';
+  String _formatMonthYear(BuildContext context, DateTime date) {
+    final locale = dateFormattingLocale(Localizations.localeOf(context));
+    final raw = DateFormat('LLLL yyyy', locale).format(date);
+    if (raw.isEmpty) {
+      return raw;
+    }
+    return '${raw[0].toUpperCase()}${raw.substring(1)}';
   }
 }
 
