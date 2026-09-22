@@ -382,7 +382,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: 'Hasło lub 12 cyfr z maila',
+            hint: context.tr('Hasło lub 12 cyfr z maila'),
             obscureText: _obscureLoginPassword,
             keyboardType: TextInputType.visiblePassword,
             textInputAction: TextInputAction.go,
@@ -468,7 +468,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: 'Minimum 10 znaków',
+            hint: context.tr('Minimum 10 znaków'),
             obscureText: true,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
@@ -501,7 +501,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: 'Minimum 10 znaków',
+            hint: context.tr('Minimum 10 znaków'),
             obscureText: true,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
@@ -578,7 +578,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: 'Minimum 10 znaków',
+            hint: context.tr('Minimum 10 znaków'),
             obscureText: true,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),

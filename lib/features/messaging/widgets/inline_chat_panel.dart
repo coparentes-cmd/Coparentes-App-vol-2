@@ -371,7 +371,9 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
           child: Text(
             widget.threadId != null
                 ? context.tr('Nie znaleziono wątku.')
-                : 'Nie udało się otworzyć rozmowy „${widget.category}”.',
+                : context
+                    .tr('Nie udało się otworzyć rozmowy „{category}”.')
+                    .replace('{category}', widget.category),
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
@@ -427,7 +429,9 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                                 ? context.tr('Brak wiadomości')
                                 : widget.threadId != null
                                     ? context.tr('Brak wiadomości w tym wątku')
-                                    : 'Brak wiadomości w „$panelCategory”',
+                                    : context
+                                        .tr('Brak wiadomości w „{category}”')
+                                        .replace('{category}', panelCategory),
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary,

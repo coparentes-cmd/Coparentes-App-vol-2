@@ -582,7 +582,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                 messaging,
                 user,
                 allThreads,
-                emptyLabel: 'Brak wątków',
+                emptyLabel: context.tr('Brak wątków'),
               ),
           },
         ),
@@ -708,7 +708,11 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Wątek „${thread.subject}” został utworzony'),
+        content: Text(
+          context
+              .tr('Wątek „{subject}” został utworzony')
+              .replace('{subject}', thread.subject),
+        ),
         backgroundColor: AppTheme.successColor,
       ),
     );

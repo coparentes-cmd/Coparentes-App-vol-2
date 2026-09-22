@@ -93,7 +93,7 @@ class SwapCard extends StatelessWidget {
                   if (swap.reason != null) ...[
                     SizedBox(height: 10),
                     Text(
-                      'Powód: ${swap.reason}',
+                      '${context.tr('Powód')}: ${swap.reason}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppTheme.textSecondary,
@@ -104,7 +104,7 @@ class SwapCard extends StatelessWidget {
                   if (swap.responseNote != null) ...[
                     SizedBox(height: 8),
                     Text(
-                      'Odpowiedź: ${swap.responseNote}',
+                      '${context.tr('Odpowiedź')}: ${swap.responseNote}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppTheme.textSecondary,

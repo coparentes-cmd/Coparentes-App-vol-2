@@ -193,11 +193,11 @@ class _ObserverHome extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Panel obserwatora',
+                    context.tr('Panel obserwatora'),
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                   Text(
-                    'Tryb tylko do odczytu',
+                    context.tr('Tryb tylko do odczytu'),
                     style: TextStyle(fontSize: 11, color: Colors.white70),
                   ),
                 ],
@@ -329,7 +329,7 @@ class _ObserverHome extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  '${workspace.children.length} dzieci · ${workspace.members.length} rodziców',
+                  '${workspace.children.length} ${context.tr('dzieci')} · ${workspace.members.length} ${context.tr('rodziców')}',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppTheme.textSecondary,
@@ -337,8 +337,8 @@ class _ObserverHome extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
               ],
-              const Text(
-                'Podsumowanie sprawy',
+              Text(
+                context.tr('Podsumowanie sprawy'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -367,8 +367,8 @@ class _ObserverHome extends StatelessWidget {
                     color: AppTheme.successColor,
                   ),
                   _StatBlock(
-                    title: 'Wnioski zamiany',
-                    value: '$pendingSwaps oczekujące',
+                    title: context.tr('Wnioski zamiany'),
+                    value: '$pendingSwaps ${context.tr('oczekujące')}',
                     icon: Icons.swap_horiz,
                     color: AppTheme.warningColor,
                   ),
@@ -457,7 +457,7 @@ class _ObserverHome extends StatelessWidget {
           'time': msg.sentAt,
           'icon': Icons.chat,
           'color': AppTheme.primaryTeal,
-          'title': 'Wiadomość w wątku: ${thread.subject}',
+          'title': '${context.tr('Wiadomość w wątku')}: ${thread.subject}',
           'subtitle':
               '${msg.senderName}: ${msg.content.substring(0, msg.content.length > 40 ? 40 : msg.content.length)}...',
         });
@@ -469,7 +469,7 @@ class _ObserverHome extends StatelessWidget {
         'time': exp.date,
         'icon': Icons.receipt_long,
         'color': AppTheme.successColor,
-        'title': 'Wydatek: ${exp.title}',
+        'title': '${context.tr('Wydatek')}: ${exp.title}',
         'subtitle':
             '${exp.amount.toStringAsFixed(0)} $currencyCode · ${context.tr(exp.statusLabel)}',
       });

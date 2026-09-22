@@ -240,7 +240,7 @@ class AddEventSheetState extends State<AddEventSheet> {
           ),
           SizedBox(height: 8),
           Text(
-            'Data: ${widget.selectedDay.day}.${widget.selectedDay.month}.${widget.selectedDay.year}',
+            '${context.tr('Data')}: ${widget.selectedDay.day}.${widget.selectedDay.month}.${widget.selectedDay.year}',
             style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           SizedBox(height: 12),

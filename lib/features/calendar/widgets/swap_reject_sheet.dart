@@ -98,22 +98,22 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
     if (status == SwapStatus.counterProposed) {
       final lines = <String>[
         'Kontrpropozycja dat:',
-        'Oryginalny dzień: ${formatSwapDate(_counterOriginalDate)}',
-        'Proponowany dzień: ${formatSwapDate(_counterProposedDate)}',
+        '${context.tr('Oryginalny dzień')}: ${formatSwapDate(_counterOriginalDate)}',
+        '${context.tr('Proponowany dzień')}: ${formatSwapDate(_counterProposedDate)}',
       ];
       if (reason.isNotEmpty) {
-        lines.add('Powód: $reason');
+        lines.add('${context.tr('Powód')}: $reason');
       }
       return lines.join('\n');
     }
 
     final lines = <String>[
       'Odrzucony wniosek:',
-      'Oryginalny dzień: ${formatSwapDate(widget.swap.originalDate)}',
-      'Proponowany dzień: ${formatSwapDate(widget.swap.proposedDate)}',
+      '${context.tr('Oryginalny dzień')}: ${formatSwapDate(widget.swap.originalDate)}',
+      '${context.tr('Proponowany dzień')}: ${formatSwapDate(widget.swap.proposedDate)}',
     ];
     if (reason.isNotEmpty) {
-      lines.add('Powód: $reason');
+      lines.add('${context.tr('Powód')}: $reason');
     }
     return lines.join('\n');
   }
@@ -145,7 +145,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
         SnackBar(
           content: Text(
             useCounter
-                ? 'Wysłano kontrpropozycję dat do ${widget.swap.requesterName}.'
+                ? '${context.tr('Wysłano kontrpropozycję dat do')} ${widget.swap.requesterName}.'
                 : context.tr('Wniosek o zamianę został odrzucony.'),
           ),
           backgroundColor: AppTheme.successColor,

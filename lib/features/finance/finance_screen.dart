@@ -894,8 +894,8 @@ class FinanceScreenState extends State<FinanceScreen>
                 label: _reportPeriod == _ReportPeriod.custom &&
                         _customReportFrom != null &&
                         _customReportTo != null
-                    ? 'Wybierz daty · ${_formatReportDate(_customReportFrom!)} – ${_formatReportDate(_customReportTo!)}'
-                    : 'Wybierz daty',
+                    ? '${context.tr('Wybierz daty')} · ${_formatReportDate(_customReportFrom!)} – ${_formatReportDate(_customReportTo!)}'
+                    : context.tr('Wybierz daty'),
                 selected: _reportPeriod == _ReportPeriod.custom,
                 onSelected: _selectCustomReportRange,
               ),
@@ -903,16 +903,16 @@ class FinanceScreenState extends State<FinanceScreen>
           ),
           SizedBox(height: 8),
           Text(
-            'Zakres: ${_formatReportDate(from)} – ${_formatReportDate(to)}',
+            '${context.tr('Zakres')}: ${_formatReportDate(from)} – ${_formatReportDate(to)}',
             style: const TextStyle(
               fontSize: 12,
               color: AppTheme.textSecondary,
             ),
           ),
           SizedBox(height: 20),
-          const Text(
-            'Typ raportu',
-            style: TextStyle(
+          Text(
+            context.tr('Typ raportu'),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppTheme.textPrimary,
@@ -923,14 +923,14 @@ class FinanceScreenState extends State<FinanceScreen>
             spacing: 8,
             children: [
               PeriodChip(
-                label: 'Chronologiczny',
+                label: context.tr('Chronologiczny'),
                 selected: _reportType == _FinanceReportType.chronological,
                 onSelected: () => setState(
                   () => _reportType = _FinanceReportType.chronological,
                 ),
               ),
               PeriodChip(
-                label: 'Statystyczny',
+                label: context.tr('Statystyczny'),
                 selected: _reportType == _FinanceReportType.statistical,
                 onSelected: () => setState(
                   () => _reportType = _FinanceReportType.statistical,

@@ -296,7 +296,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (user?.role == UserRole.parentA) ...[
                     SizedBox(height: 20),
                     IosSettingsAccordion(
-                    title: 'Zaproszenia e-mail',
+                    title: context.tr('Zaproszenia e-mail'),
                     icon: Icons.mail_outline,
                     isDark: isDark,
                     accent: roleColor,
@@ -456,7 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.verified_user_outlined,
                       label: context.tr('2FA (dwuetapowa weryfikacja)'),
-                      subtitle: 'Kod weryfikacyjny e-mail przy logowaniu',
+                      subtitle: context.tr('Kod weryfikacyjny e-mail przy logowaniu'),
                       value: user?.twoFactorEnabled ?? false,
                       activeColor: roleColor,
                       isDark: isDark,
@@ -485,7 +485,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.pin_outlined,
                       label: context.tr('Zmień PIN logowania'),
                       subtitle: ap.hasPinSet
-                          ? context.tr('Zmień 4-cyfrowy PIN') : 'Ustaw 4-cyfrowy PIN',
+                          ? context.tr('Zmień 4-cyfrowy PIN')
+                          : context.tr('Ustaw 4-cyfrowy PIN'),
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showChangePinDialog(context, roleColor, ap),
@@ -518,7 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // ── Powiadomienia ─────────────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Powiadomienia',
+                    title: context.tr('Powiadomienia'),
                     icon: Icons.notifications_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -600,7 +601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchTile(
                       icon: Icons.warning_amber_outlined,
                       label: context.tr('Tryb wysokiego konfliktu'),
-                      subtitle: 'HC – ograniczone powiadomienia',
+                      subtitle: context.tr('HC – ograniczone powiadomienia'),
                       value: ap.highConflictMode,
                       activeColor: AppTheme.highConflictColor,
                       isDark: isDark,
@@ -657,7 +658,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (_showPreLaunchPlaceholderSections) ...[
                     SizedBox(height: 20),
                     IosSettingsAccordion(
-                    title: 'Subskrypcja i rozliczenia',
+                    title: context.tr('Subskrypcja i rozliczenia'),
                     icon: Icons.credit_card_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -720,7 +721,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // ── Eksport danych ────────────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Dane i eksport',
+                    title: context.tr('Dane i eksport'),
                     icon: Icons.folder_special_outlined,
                     isDark: isDark,
                     accent: roleColor,
@@ -739,7 +740,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ActionTile(
                       icon: Icons.delete_outline,
                       label: context.tr('Usuń konto'),
-                      subtitle: 'Nieodwracalne – wymaga potwierdzenia',
+                      subtitle: context.tr('Nieodwracalne – wymaga potwierdzenia'),
                       color: AppTheme.errorColor,
                       isDark: isDark,
                       onTap: () => _showDeleteDialog(context, ap, roleColor),
@@ -750,7 +751,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   // ── Aplikacja ─────────────────────────────────────────────
                   IosSettingsAccordion(
-                    title: 'Aplikacja',
+                    title: context.tr('Aplikacja'),
                     icon: Icons.info_outline,
                     isDark: isDark,
                     accent: roleColor,
@@ -1044,7 +1045,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(title),
+        title: Text(context.tr(title)),
         content: Text(context.tr(msg), style: const TextStyle(fontSize: 14)),
         actions: [
           ElevatedButton(
@@ -1203,7 +1204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(status,
+            child: Text(context.tr(status),
                 style: TextStyle(
                     fontSize: 11,
                     color: color,

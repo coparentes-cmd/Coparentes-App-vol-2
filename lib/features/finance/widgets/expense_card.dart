@@ -155,7 +155,7 @@ class ExpenseCardState extends State<ExpenseCard> {
   Widget build(BuildContext context) {
     final expense = widget.expense;
     final currencyCode = context.watch<AppProvider>().currencyCode;
-    final payerName = _memberName(expense.paidBy);
+    final payerName = context.tr(_memberName(expense.paidBy));
     final childName = _childName(expense.childId);
     final otherShare = expense.amountDue;
     final userId = widget.currentUserId;
@@ -165,7 +165,7 @@ class ExpenseCardState extends State<ExpenseCard> {
     final awaitingOther = !widget.isReadOnly &&
         userId != null &&
         widget.finance.isAwaitingOtherParent(expense, userId);
-    final otherParentName = _otherParentName(expense.paidBy);
+    final otherParentName = context.tr(_otherParentName(expense.paidBy));
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -226,7 +226,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                       ),
                     ),
                     Text(
-                      'Udział: ${otherShare.toStringAsFixed(0)} $currencyCode',
+                      '${context.tr('Udział')}: ${otherShare.toStringAsFixed(0)} $currencyCode',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppTheme.warningColor,
@@ -292,7 +292,7 @@ class ExpenseCardState extends State<ExpenseCard> {
             if (_showDetails) ...[
               SizedBox(height: 8),
               Text(
-                'Hash integralności: ${expense.hash}',
+                '${context.tr('Hash integralności')}: ${expense.hash}',
                 style: const TextStyle(
                   fontSize: 10,
                   color: AppTheme.textHint,
@@ -307,9 +307,9 @@ class ExpenseCardState extends State<ExpenseCard> {
                 child: TextButton.icon(
                   onPressed: () => _showReceipt(context, expense.id),
                   icon: const Icon(Icons.receipt, size: 16),
-                  label: const Text(
-                    'Zobacz paragon',
-                    style: TextStyle(fontSize: 12),
+                  label: Text(
+                    context.tr('Zobacz paragon'),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
               ),
@@ -336,7 +336,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Oczekuje na akceptację od $otherParentName',
+                        '${context.tr('Oczekuje na akceptację od')} $otherParentName',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textPrimary,

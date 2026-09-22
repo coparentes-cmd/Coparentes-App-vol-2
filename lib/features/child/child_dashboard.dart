@@ -248,7 +248,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Cześć, $firstName! 👋',
+                          '${context.tr('Cześć')}, $firstName! 👋',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,

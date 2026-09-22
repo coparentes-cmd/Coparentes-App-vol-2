@@ -75,10 +75,10 @@ class ExceptionRequestCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 8),
-                  Text('Okres: $_rangeLabel'),
-                  Text('Opiekun: $_custodianLabel'),
+                  Text('${context.tr('Okres')}: $_rangeLabel'),
+                  Text('${context.tr('Opiekun')}: $_custodianLabel'),
                   if (exception.reason != null)
-                    Text('Powód: ${exception.reason}'),
+                    Text('${context.tr('Powód')}: ${exception.reason}'),
                 ],
               ),
             ),

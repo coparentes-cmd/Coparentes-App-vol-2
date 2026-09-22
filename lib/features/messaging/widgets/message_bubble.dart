@@ -554,7 +554,8 @@ class MessageBubbleState extends State<MessageBubble> {
         SnackBar(
           content: Text(
             status == SwapStatus.accepted
-                ? 'Zamiana zaakceptowana — kalendarz zaktualizowany.' : context.tr('Wniosek o zamianę odrzucony.'),
+                ? context.tr('Zamiana zaakceptowana — kalendarz zaktualizowany.')
+                : context.tr('Wniosek o zamianę odrzucony.'),
           ),
           backgroundColor: AppTheme.successColor,
         ),
@@ -631,10 +632,10 @@ class ToneIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNeutral = tone == MessageTone.neutral || tone == MessageTone.positive;
     final label = switch (tone) {
-      MessageTone.neutral => 'Ton: Neutralny',
-      MessageTone.positive => 'Ton: Pozytywny',
-      MessageTone.tense => 'Ton: Napięty – rozważ AI Coach',
-      MessageTone.aggressive => 'Ton: Agresywny – rozważ AI Coach',
+      MessageTone.neutral => context.tr('Ton: Neutralny'),
+      MessageTone.positive => context.tr('Ton: Pozytywny'),
+      MessageTone.tense => context.tr('Ton: Napięty – rozważ AI Coach'),
+      MessageTone.aggressive => context.tr('Ton: Agresywny – rozważ AI Coach'),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

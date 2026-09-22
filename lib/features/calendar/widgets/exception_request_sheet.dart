@@ -113,7 +113,7 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
           ),
           SizedBox(height: 8),
           Text(
-            'Dzień: ${widget.day.day}.${widget.day.month}.${widget.day.year}',
+            '${context.tr('Dzień')}: ${widget.day.day}.${widget.day.month}.${widget.day.year}',
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
           SizedBox(height: 16),

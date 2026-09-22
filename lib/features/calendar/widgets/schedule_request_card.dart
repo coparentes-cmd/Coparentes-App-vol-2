@@ -66,7 +66,7 @@ class ScheduleRequestCard extends StatelessWidget {
                   Text('Szablon: ${schedule.patternLabel}'),
                   Text(
                     schedule.endDate != null
-                        ? 'Okres: ${formatScheduleRange(schedule)}'
+                        ? '${context.tr('Okres')}: ${formatScheduleRange(schedule)}'
                         : 'Start: ${schedule.startDate.day}.${schedule.startDate.month}.${schedule.startDate.year}',
                   ),
                   if (schedule.handoverTime != null)

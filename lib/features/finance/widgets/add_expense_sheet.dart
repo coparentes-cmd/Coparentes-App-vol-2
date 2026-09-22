@@ -165,7 +165,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
       setState(() => _isParsingReceipt = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_receiptParseErrorMessage(error)),
+          content: Text(context.tr(_receiptParseErrorMessage(error))),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -188,7 +188,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
           if (error.statusCode >= 500) {
             return 'Serwer OCR chwilowo niedostępny. Spróbuj za chwilę.';
           }
-          return 'Nie udało się odczytać paragonu (${error.message}).';
+          return 'Nie udało się odczytać paragonu.';
       }
     }
     if (error is TimeoutException) {
@@ -298,7 +298,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Paragon: ${_pendingReceipt!.fileName}',
+                  '${context.tr('Paragon')}: ${_pendingReceipt!.fileName}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
@@ -342,9 +342,9 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
               ),
               if (children.isNotEmpty) ...[
                 SizedBox(height: 12),
-                const Text(
-                  'Dziecko',
-                  style: TextStyle(
+                Text(
+                  context.tr('Dziecko'),
+                  style: const TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
                   ),
@@ -371,9 +371,9 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
               ],
               SizedBox(height: 12),
-              const Text(
-                'Kategoria',
-                style: TextStyle(
+              Text(
+                context.tr('Kategoria'),
+                style: const TextStyle(
                   fontSize: 14,
                   color: AppTheme.textSecondary,
                 ),

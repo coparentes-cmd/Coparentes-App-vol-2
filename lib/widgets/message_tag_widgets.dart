@@ -289,7 +289,7 @@ class _MessageTagEditorSheetState extends State<MessageTagEditorSheet> {
             textInputAction: TextInputAction.done,
             decoration: InputDecoration(
               labelText: context.tr('Utwórz własną etykietę'),
-              hintText: 'np. paragon, pilne',
+              hintText: context.tr('np. paragon, pilne'),
               prefixIcon: const Icon(Icons.new_label_outlined, size: 20),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.add),
