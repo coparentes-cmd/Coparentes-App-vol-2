@@ -259,7 +259,12 @@ class _AiCoachScreenState extends State<AiCoachScreen>
                   ),
                   SizedBox(height: 6),
                   Text(
-                    context.tr(tip['desc']!),
+                    context
+                        .tr(tip['desc']!)
+                        .replaceAll(
+                          'PLN',
+                          context.watch<AppProvider>().currencyCode,
+                        ),
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
@@ -489,11 +494,14 @@ class _AiCoachScreenState extends State<AiCoachScreen>
     ];
 
     return templates.map((t) {
+      final currencyCode = context.watch<AppProvider>().currencyCode;
+      final localizedText =
+          context.tr(t['text']!).replaceAll('PLN', currencyCode);
       return Card(
         margin: const EdgeInsets.only(bottom: 8),
         child: ListTile(
           title: Text(
-            t['label']!,
+            context.tr(t['label']!),
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -501,7 +509,7 @@ class _AiCoachScreenState extends State<AiCoachScreen>
             ),
           ),
           subtitle: Text(
-            t['text']!,
+            localizedText,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
@@ -513,9 +521,15 @@ class _AiCoachScreenState extends State<AiCoachScreen>
               size: 18,
             ),
             onPressed: () {
-              _inputController.text = t['text']!;
+              _inputController.text = localizedText;
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Szablon "${t['label']}" wklejony')),
+                SnackBar(
+                  content: Text(
+                    context
+                        .tr('Szablon "{label}" wklejony')
+                        .replaceAll('{label}', context.tr(t['label']!)),
+                  ),
+                ),
               );
             },
           ),

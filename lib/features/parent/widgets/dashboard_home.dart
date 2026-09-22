@@ -516,6 +516,7 @@ class _FinanceFeedTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currencyCode = context.watch<AppProvider>().currencyCode;
     final statusColor = switch (expense.status) {
       ExpenseStatus.pending => AppTheme.warningColor,
       ExpenseStatus.accepted => AppTheme.successColor,
@@ -575,7 +576,7 @@ class _FinanceFeedTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${expense.amount.toStringAsFixed(0)} PLN',
+                  '${expense.amount.toStringAsFixed(0)} $currencyCode',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

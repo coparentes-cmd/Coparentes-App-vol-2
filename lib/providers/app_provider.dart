@@ -198,7 +198,9 @@ class AppProvider extends ChangeNotifier {
   bool get otpLocked => _otpLocked;
   Locale get locale => _locale;
   CountryProfile get countryProfile => _countryProfile;
-  String get currencyCode => _countryProfile.currencyCode;
+  /// Demo EN always shows EUR (label only; amounts unchanged).
+  String get currencyCode =>
+      (_isDemoMode && _language == 'en') ? 'EUR' : _countryProfile.currencyCode;
 
   bool get isDark => _themeMode == ThemeMode.dark;
 

@@ -168,6 +168,7 @@ class _ObserverHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
     final workspace = context.watch<AppProvider>().currentWorkspace;
+    final currencyCode = context.watch<AppProvider>().currencyCode;
     final messaging = context.watch<MessagingProvider>();
     final finance = context.watch<FinanceProvider>();
     final calendar = context.watch<CalendarProvider>();
@@ -361,7 +362,7 @@ class _ObserverHome extends StatelessWidget {
                   ),
                   _StatBlock(
                     title: context.tr('Wydatki (miesiąc)'),
-                    value: '${totalExpenses.toStringAsFixed(0)} PLN',
+                    value: '${totalExpenses.toStringAsFixed(0)} $currencyCode',
                     icon: Icons.receipt_long,
                     color: AppTheme.successColor,
                   ),
@@ -446,6 +447,7 @@ class _ObserverHome extends StatelessWidget {
     FinanceProvider finance,
     CalendarProvider calendar,
   ) {
+    final currencyCode = context.watch<AppProvider>().currencyCode;
     final items = <Map<String, dynamic>>[];
 
     for (final thread in messaging.threads.take(3)) {
@@ -468,7 +470,8 @@ class _ObserverHome extends StatelessWidget {
         'icon': Icons.receipt_long,
         'color': AppTheme.successColor,
         'title': 'Wydatek: ${exp.title}',
-        'subtitle': '${exp.amount.toStringAsFixed(0)} PLN · ${exp.statusLabel}',
+        'subtitle':
+            '${exp.amount.toStringAsFixed(0)} $currencyCode · ${context.tr(exp.statusLabel)}',
       });
     }
 

@@ -180,6 +180,7 @@ class FinanceProvider extends ChangeNotifier {
     required String parentBId,
     required String parentAName,
     required String parentBName,
+    String currencyCode = 'PLN',
     DateTime? from,
     DateTime? to,
   }) {
@@ -196,7 +197,7 @@ class FinanceProvider extends ChangeNotifier {
     }
     final debtorFirst = balance.debtorName.split(' ').first;
     final creditorFirst = balance.creditorName.split(' ').first;
-    return '$debtorFirst winien $creditorFirst: ${balance.amount.toStringAsFixed(0)} PLN';
+    return '$debtorFirst winien $creditorFirst: ${balance.amount.toStringAsFixed(0)} $currencyCode';
   }
 
   /// Signed amount from the viewer's perspective (positive = others owe the viewer).

@@ -752,4 +752,7 @@ const enOverlay = <String, String>{
   'Raport finansowy zapisany jako PDF.': 'Finance report saved as PDF.',
   'E-mail konta': 'Account email',
   'Proszę o trwałe usunięcie mojego konta Coparentes.': 'Please permanently delete my Coparentes account.',
+  'miesiąc': 'month',
+  'Raporty': 'Reports',
+  'Inne': 'Other',
 };

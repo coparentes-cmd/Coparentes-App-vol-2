@@ -195,7 +195,7 @@ class FinanceScreenState extends State<FinanceScreen>
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white70,
         tabs: [
-          const Tab(text: 'Saldo'),
+          Tab(text: context.tr('Saldo')),
           Tab(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -228,7 +228,7 @@ class FinanceScreenState extends State<FinanceScreen>
               ],
             ),
           ),
-          const Tab(text: 'Raporty'),
+          Tab(text: context.tr('Raporty')),
         ],
       ),
       body: TabBarView(
@@ -390,6 +390,7 @@ class FinanceScreenState extends State<FinanceScreen>
             parentBId: parentB.id,
             parentAName: parentA.name,
             parentBName: parentB.name,
+            currencyCode: currencyCode,
           )
         : context.tr('Saldo niedostępne');
 
@@ -822,6 +823,7 @@ class FinanceScreenState extends State<FinanceScreen>
                 parentBId: parentB.id,
                 parentAName: parentA.name,
                 parentBName: parentB.name,
+                currencyCode: currencyCode,
                 from: from,
                 to: to,
               )

@@ -682,7 +682,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       InfoTile(
                         icon: Icons.payments_outlined,
                         label: context.tr('Kwota'),
-                        value: '39,99 PLN / miesiąc',
+                        value: '39,99 ${ap.currencyCode} / ${context.tr('miesiąc')}',
                         isDark: isDark,
                       ),
                       SettingsDivider(),
@@ -1145,6 +1145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showBillingHistory(BuildContext context, Color color) {
+    final currencyCode = context.read<AppProvider>().currencyCode;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1160,10 +1161,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w700)),
             SizedBox(height: 16),
-            _billingRow('15 kwi 2025', '39,99 PLN', 'Opłacona', color),
-            _billingRow('15 mar 2025', '39,99 PLN', 'Opłacona', color),
-            _billingRow('15 lut 2025', '39,99 PLN', 'Opłacona', color),
-            _billingRow('15 sty 2025', '39,99 PLN', 'Opłacona', color),
+            _billingRow('15 kwi 2025', '39,99 $currencyCode', 'Opłacona', color),
+            _billingRow('15 mar 2025', '39,99 $currencyCode', 'Opłacona', color),
+            _billingRow('15 lut 2025', '39,99 $currencyCode', 'Opłacona', color),
+            _billingRow('15 sty 2025', '39,99 $currencyCode', 'Opłacona', color),
             SizedBox(height: 20),
             SizedBox(
               width: double.infinity,

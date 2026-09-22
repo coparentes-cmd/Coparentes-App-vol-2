@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
+import '../../../../providers/finance_provider.dart';
 import '../../../../providers/offline_sync_provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../utils/calendar_date_utils.dart';
@@ -43,6 +44,7 @@ class FinanceSnapshotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currencyCode = context.watch<AppProvider>().currencyCode;
     final pending = finance.expenses
         .where((e) => e.status == ExpenseStatus.pending)
         .toList();
@@ -53,6 +55,7 @@ class FinanceSnapshotCard extends StatelessWidget {
             parentBId: parentB!.id,
             parentAName: parentA!.name,
             parentBName: parentB!.name,
+            currencyCode: currencyCode,
           )
         : context.tr('Saldo niedostępne');
 
@@ -90,7 +93,7 @@ class FinanceSnapshotCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${finance.totalThisMonth.toStringAsFixed(0)} PLN',
+                      '${finance.totalThisMonth.toStringAsFixed(0)} $currencyCode',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -123,7 +126,7 @@ class FinanceSnapshotCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${context.tr('Oczekujące')}: ${pendingRefund.toStringAsFixed(0)} PLN',
+                      '${context.tr('Oczekujące')}: ${pendingRefund.toStringAsFixed(0)} $currencyCode',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppTheme.textSecondary,
@@ -154,7 +157,7 @@ class FinanceSnapshotCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${e.amountDue.toStringAsFixed(0)} PLN',
+                        '${e.amountDue.toStringAsFixed(0)} $currencyCode',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

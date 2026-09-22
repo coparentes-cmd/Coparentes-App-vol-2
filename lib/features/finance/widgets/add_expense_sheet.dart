@@ -313,13 +313,20 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
               ),
               SizedBox(height: 12),
-              TextField(
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: context.tr('Kwota (PLN)'),
-                  suffixText: 'PLN',
-                ),
+              Builder(
+                builder: (context) {
+                  final currencyCode =
+                      context.watch<AppProvider>().currencyCode;
+                  return TextField(
+                    controller: _amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: '${context.tr('Kwota')} ($currencyCode)',
+                      suffixText: currencyCode,
+                    ),
+                  );
+                },
               ),
               SizedBox(height: 12),
               InkWell(
@@ -378,7 +385,10 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 children: _categories
                     .map(
                       (cat) => ChoiceChip(
-                        label: Text(cat, style: const TextStyle(fontSize: 12)),
+                        label: Text(
+                          context.tr(cat),
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         selected: _selectedCategory == cat,
                         onSelected: (_) =>
                             setState(() => _selectedCategory = cat),
@@ -466,6 +476,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
           id: 'exp_${DateTime.now().millisecondsSinceEpoch}',
           title: title,
           amount: amount,
+          currency: app.currencyCode,
           category: _selectedCategory,
           childId: _selectedChildId,
           paidBy: user?.id ?? 'unknown',

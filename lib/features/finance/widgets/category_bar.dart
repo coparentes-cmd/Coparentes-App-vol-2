@@ -19,6 +19,7 @@ import 'split_overview_card.dart';
 import 'expense_card.dart';
 import 'dispute_expense_sheet.dart';
 import 'add_expense_sheet.dart';
+import 'package:coparentes/l10n/app_strings.dart';
 
 class CategoryBar extends StatelessWidget {
   final String category;
@@ -43,7 +44,7 @@ class CategoryBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              category,
+              context.tr(category),
               style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
             ),
             Text(
