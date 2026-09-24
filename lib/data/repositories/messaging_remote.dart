@@ -47,18 +47,24 @@ class MessagingRemote {
     required String subject,
     required String category,
     String? childId,
+    required List<Map<String, String>> threadKeys,
   }) async {
     final payload = await _apiClient.postJson('/threads', {
       'subject': subject,
       'category': category,
       'childId': childId,
+      'threadKeys': threadKeys,
     });
     return messageThreadFromJson(payload);
   }
 
-  Future<MessageThread> createChannel({required String category}) async {
+  Future<MessageThread> createChannel({
+    required String category,
+    List<Map<String, String>>? threadKeys,
+  }) async {
     final payload = await _apiClient.postJson('/threads/channel', {
       'category': category,
+      if (threadKeys != null) 'threadKeys': threadKeys,
     });
     return messageThreadFromJson(payload);
   }
@@ -67,16 +73,19 @@ class MessagingRemote {
     required String subject,
     required String category,
     Object? childId,
+    List<Map<String, String>>? threadKeys,
   }) {
     if (subject == category) {
       if (category == allTabLabel || category == familyCategoryChannel) {
         return _apiClient.postJson('/threads/channel', {
           'category': category,
+          if (threadKeys != null) 'threadKeys': threadKeys,
         });
       }
       if (messagingCategoryChannels.contains(category)) {
         return _apiClient.postJson('/threads/channel', {
           'category': category,
+          if (threadKeys != null) 'threadKeys': threadKeys,
         });
       }
     }
@@ -85,18 +94,21 @@ class MessagingRemote {
       'subject': subject,
       'category': category,
       'childId': childId,
+      if (threadKeys != null) 'threadKeys': threadKeys,
     });
   }
 
   Future<MessageThread> sendMessage({
     required String threadId,
-    required String content,
+    required String ciphertext,
+    required String nonce,
     required MessageTone tone,
     List<Map<String, dynamic>> attachments = const [],
   }) async {
     return sendMessageWithApiTone(
       threadId: threadId,
-      content: content,
+      ciphertext: ciphertext,
+      nonce: nonce,
       tone: messageToneToApi(tone),
       attachments: attachments,
     );
@@ -104,14 +116,16 @@ class MessagingRemote {
 
   Future<MessageThread> sendMessageWithApiTone({
     required String threadId,
-    required String content,
+    required String ciphertext,
+    required String nonce,
     required String tone,
     List<Map<String, dynamic>> attachments = const [],
   }) async {
     final payload = await _apiClient.postJson(
       '/threads/$threadId/messages',
       {
-        'content': content,
+        'ciphertext': ciphertext,
+        'nonce': nonce,
         'tone': tone,
         if (attachments.isNotEmpty) 'attachments': attachments,
       },

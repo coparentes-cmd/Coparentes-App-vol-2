@@ -326,10 +326,13 @@ class AuthRepository {
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
+    String? newPrivateKeyEnvelope,
   }) async {
     await _apiClient.postJson('/auth/password', {
       'currentPassword': currentPassword,
       'newPassword': newPassword,
+      if (newPrivateKeyEnvelope != null)
+        'newPrivateKeyEnvelope': newPrivateKeyEnvelope,
     });
   }
 

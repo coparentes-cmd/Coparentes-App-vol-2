@@ -215,12 +215,23 @@ Map<String, dynamic> messageThreadToJson(MessageThread thread) {
 }
 
 Message messageFromJson(Map<String, dynamic> json) {
+  final messageType = json['messageType'] as String? ?? 'user';
+  final ciphertext = json['ciphertext'] as String?;
+  final nonce = json['nonce'] as String?;
+  final isSystem = messageType == 'system';
+  final isE2E = !isSystem &&
+      ciphertext != null &&
+      ciphertext.isNotEmpty &&
+      nonce != null &&
+      nonce.isNotEmpty;
+
   return Message(
     id: json['id'] as String,
     threadId: json['threadId'] as String,
     senderId: json['senderId'] as String,
     senderName: json['senderName'] as String,
-    content: json['content'] as String? ?? '',
+    // E2E payloads have no server-side plaintext `content`.
+    content: isE2E ? '' : (json['content'] as String? ?? ''),
     aiSuggestedContent: json['aiSuggestedContent'] as String?,
     tone: messageToneFromApi(json['tone'] as String? ?? 'neutral'),
     attachments: (json['attachments'] as List<dynamic>? ?? [])
@@ -239,6 +250,10 @@ Message messageFromJson(Map<String, dynamic> json) {
     isRead: _jsonBool(json['isRead'], fallback: false),
     hash: json['hash'] as String? ?? '',
     isShielded: _jsonBool(json['isShielded'], fallback: false),
+    messageType: messageType,
+    isE2E: isE2E,
+    ciphertext: isE2E ? ciphertext : null,
+    nonce: isE2E ? nonce : null,
   );
 }
 
@@ -249,6 +264,9 @@ Map<String, dynamic> messageToJson(Message message) {
     'senderId': message.senderId,
     'senderName': message.senderName,
     'content': message.content,
+    'messageType': message.messageType,
+    if (message.ciphertext != null) 'ciphertext': message.ciphertext,
+    if (message.nonce != null) 'nonce': message.nonce,
     'aiSuggestedContent': message.aiSuggestedContent,
     'tone': messageToneToApi(message.tone),
     'attachments': message.attachments

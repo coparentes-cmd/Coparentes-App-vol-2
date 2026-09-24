@@ -17,6 +17,7 @@ import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
+import 'widgets/e2e_chat_gate.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/thread_messages_list.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -47,6 +48,9 @@ class ThreadScreenState extends State<ThreadScreen> {
   bool _sending = false;
   bool _initialScrollDone = false;
   final List<PendingMessageAttachment> _pendingAttachments = [];
+
+  /// null = still gating E2E; true = ready; false = cancelled (navigating away).
+  bool? _e2eReady;
 
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
@@ -111,26 +115,45 @@ class ThreadScreenState extends State<ThreadScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      final userId = context.read<AppProvider>().currentUser?.id;
-      if (userId == null) {
-        return;
-      }
-      context.read<MessagingProvider>().markThreadRead(
-            widget.threadId,
-            viewerUserId: userId,
-          );
-      final thread =
-          context.read<MessagingProvider>().getThreadById(widget.threadId);
-      if (isSwapScheduleThread(thread?.category)) {
-        unawaited(context.read<CalendarProvider>().load(silent: true));
-      }
-      _pollThreadMessages();
-      context.read<OfflineSyncProvider>().pollMessagingNow();
+      unawaited(_gateE2eThenStart());
     });
+  }
 
+  Future<void> _gateE2eThenStart() async {
+    if (!mounted) {
+      return;
+    }
+    final ready = await ensureE2eUnlockedForChat(context);
+    if (!mounted) {
+      return;
+    }
+    if (!ready) {
+      setState(() => _e2eReady = false);
+      _handleBack();
+      return;
+    }
+    setState(() => _e2eReady = true);
+    _startThreadSession();
+  }
+
+  void _startThreadSession() {
+    final userId = context.read<AppProvider>().currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+    context.read<MessagingProvider>().markThreadRead(
+          widget.threadId,
+          viewerUserId: userId,
+        );
+    final thread =
+        context.read<MessagingProvider>().getThreadById(widget.threadId);
+    if (isSwapScheduleThread(thread?.category)) {
+      unawaited(context.read<CalendarProvider>().load(silent: true));
+    }
+    _pollThreadMessages();
+    context.read<OfflineSyncProvider>().pollMessagingNow();
+
+    _livePollTimer?.cancel();
     _livePollTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) {
@@ -152,6 +175,12 @@ class ThreadScreenState extends State<ThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_e2eReady != true) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final user = context.watch<AppProvider>().currentUser;
     final isChild = user?.role == UserRole.child;
     final aiCoach =
@@ -407,6 +436,7 @@ class ThreadScreenState extends State<ThreadScreen> {
           tone: _analyzedTone,
           attachments: attachments,
           channelCategory: channelCategory,
+          parentUserIds: context.read<AppProvider>().parentMemberIds,
         );
 
     if (!mounted) {

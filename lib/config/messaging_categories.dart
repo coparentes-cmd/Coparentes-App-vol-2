@@ -3,6 +3,12 @@ import '../models/models.dart';
 const String familyCategoryChannel = 'Rodzina';
 /// UI label for [familyCategoryChannel] — channel id stays unchanged for API/data.
 const String familyCategoryDisplayLabel = 'Z dziećmi';
+// UWAGA: ta stała musi pozostać zgodna z SYSTEM_SCHEDULE_CATEGORY po stronie backendu
+// (src/services/threads.js). Jeśli backend doda nowy kanał systemowy (pisany tylko
+// przez serwer, bez E2E threadKeys), trzeba go też dodać tutaj i zaktualizować
+// _threadKeysForCategory w messaging_provider.dart - inaczej klient albo niepotrzebnie
+// wygeneruje threadKeys dla kanału systemowego, albo pominie je dla kanału który
+// faktycznie ich wymaga (co zablokuje tworzenie tego wątku po stronie backendu).
 const String scheduleCategoryChannel = 'Zmiana grafiku';
 /// Channel id / API value — keep stable for backend compatibility.
 const String allTabLabel = 'Wszystkie';

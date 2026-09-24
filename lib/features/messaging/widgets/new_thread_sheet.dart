@@ -124,21 +124,25 @@ class NewThreadSheetState extends State<NewThreadSheet> {
 
     setState(() => _creating = true);
     final app = context.read<AppProvider>();
-    final thread = await context.read<MessagingProvider>().createThread(
-          subject: subject,
-          category: 'Ogólne',
-          childId: childId,
-          localOnly: app.isDemoMode,
-        );
+    final messaging = context.read<MessagingProvider>();
+    final thread = await messaging.createThread(
+      subject: subject,
+      category: 'Ogólne',
+      childId: childId,
+      localOnly: app.isDemoMode,
+      parentUserIds: app.parentMemberIds,
+    );
     if (!mounted) {
       return;
     }
     setState(() => _creating = false);
 
     if (thread == null) {
+      final detail = messaging.error ??
+          'Nie udało się utworzyć wątku.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.tr('Nie udało się utworzyć wątku.')),
+          content: Text(context.tr(detail)),
           backgroundColor: AppTheme.errorColor,
         ),
       );

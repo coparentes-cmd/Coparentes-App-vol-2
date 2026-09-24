@@ -1,6 +1,9 @@
 import '../../config/messaging_categories.dart';
 import '../../config/message_tags.dart';
 import '../../models/models.dart';
+import '../../services/e2e_crypto_service.dart';
+import '../../services/e2e_key_storage_service.dart';
+import '../../services/e2e_session_service.dart';
 import '../api/app_api_client.dart';
 import '../local/offline_store.dart';
 import '../serializers/api_serializers.dart';
@@ -21,13 +24,16 @@ class MessagingRepository {
   final MessagingRemote _remote;
   final MessagingLocalCache _cache;
   final OfflineStore _offlineStore;
+  final E2eSessionService? _e2eSession;
 
   MessagingRepository({
     required AppApiClient apiClient,
     required OfflineStore offlineStore,
+    E2eSessionService? e2eSessionService,
   })  : _remote = MessagingRemote(apiClient: apiClient),
         _cache = MessagingLocalCache(offlineStore: offlineStore),
-        _offlineStore = offlineStore;
+        _offlineStore = offlineStore,
+        _e2eSession = e2eSessionService;
 
   Future<MessagingLoadResult> getThreads() async {
     if (_offlineStore.getPendingActions().isNotEmpty) {
@@ -94,12 +100,14 @@ class MessagingRepository {
     required String subject,
     required String category,
     String? childId,
+    required List<Map<String, String>> threadKeys,
   }) async {
     try {
       final thread = await _remote.createThread(
         subject: subject,
         category: category,
         childId: childId,
+        threadKeys: threadKeys,
       );
       await _cache.upsertThread(thread);
       return thread;
@@ -128,15 +136,19 @@ class MessagingRepository {
           'subject': subject,
           'category': category,
           'childId': childId,
+          'threadKeys': threadKeys,
         },
       });
       return localThread;
     }
   }
 
-  Future<MessageThread> getOrCreateCategoryThread(String category) async {
+  Future<MessageThread> getOrCreateCategoryThread(
+    String category, {
+    List<Map<String, String>>? threadKeys,
+  }) async {
     if (category == allTabLabel) {
-      return _getOrCreateParentsInboxThread();
+      return _getOrCreateParentsInboxThread(threadKeys: threadKeys);
     }
 
     final cachedThread = _cache.findCachedCategoryThread(category);
@@ -145,7 +157,10 @@ class MessagingRepository {
     }
 
     try {
-      final thread = await _remote.createChannel(category: category);
+      final thread = await _remote.createChannel(
+        category: category,
+        threadKeys: threadKeys,
+      );
       await _cache.replaceChannelThreadInCache(thread);
       return thread;
     } on ApiException catch (error) {
@@ -167,7 +182,11 @@ class MessagingRepository {
         return offlineExisting;
       }
 
-      return createThread(subject: category, category: category);
+      return createThread(
+        subject: category,
+        category: category,
+        threadKeys: threadKeys ?? const [],
+      );
     } catch (error) {
       if (!_remote.isNetworkError(error)) {
         rethrow;
@@ -181,16 +200,24 @@ class MessagingRepository {
         return offlineExisting;
       }
 
-      return createThread(subject: category, category: category);
+      return createThread(
+        subject: category,
+        category: category,
+        threadKeys: threadKeys ?? const [],
+      );
     }
   }
 
   Future<String> _resolveThreadIdForSend(
     String threadId, {
     String? channelCategory,
+    List<Map<String, String>>? threadKeys,
   }) async {
     if (channelCategory != null) {
-      final channelThread = await getOrCreateCategoryThread(channelCategory);
+      final channelThread = await getOrCreateCategoryThread(
+        channelCategory,
+        threadKeys: threadKeys,
+      );
       if (!_cache.isLocalThreadId(channelThread.id)) {
         return channelThread.id;
       }
@@ -213,7 +240,10 @@ class MessagingRepository {
     final category =
         localThread != null ? _cache.inferChannelCategory(localThread) : null;
     if (category != null) {
-      final thread = await getOrCreateCategoryThread(category);
+      final thread = await getOrCreateCategoryThread(
+        category,
+        threadKeys: threadKeys,
+      );
       if (!_cache.isLocalThreadId(thread.id)) {
         return thread.id;
       }
@@ -229,9 +259,14 @@ class MessagingRepository {
     required MessageTone tone,
     required List<Map<String, dynamic>> attachments,
   }) async {
+    final encrypted = await _encryptPlaintextForThread(
+      threadId: resolvedThreadId,
+      plaintext: content,
+    );
     final thread = await _remote.sendMessage(
       threadId: resolvedThreadId,
-      content: content,
+      ciphertext: encrypted.ciphertext,
+      nonce: encrypted.nonce,
       tone: tone,
       attachments: attachments,
     );
@@ -249,16 +284,32 @@ class MessagingRepository {
     return thread;
   }
 
+  Future<({String ciphertext, String nonce})> _encryptPlaintextForThread({
+    required String threadId,
+    required String plaintext,
+  }) async {
+    final e2e = _e2eSession;
+    if (e2e == null) {
+      throw StateError('E2E session required to send messages');
+    }
+    return e2e.encryptMessageForThread(
+      threadId: threadId,
+      plaintext: plaintext,
+    );
+  }
+
   Future<MessageThread> sendMessage({
     required String threadId,
     required String content,
     required MessageTone tone,
     List<Map<String, dynamic>> attachments = const [],
     String? channelCategory,
+    List<Map<String, String>>? threadKeys,
   }) async {
     final resolvedThreadId = await _resolveThreadIdForSend(
       threadId,
       channelCategory: channelCategory,
+      threadKeys: threadKeys,
     );
 
     try {
@@ -277,7 +328,10 @@ class MessagingRepository {
 
       await _cache.removeThreadFromCache(resolvedThreadId);
 
-      final channelThread = await getOrCreateCategoryThread(channelCategory);
+      final channelThread = await getOrCreateCategoryThread(
+        channelCategory,
+        threadKeys: threadKeys,
+      );
       if (_cache.isLocalThreadId(channelThread.id)) {
         rethrow;
       }
@@ -290,14 +344,25 @@ class MessagingRepository {
         attachments: attachments,
       );
     } catch (error) {
-      if (!_remote.isNetworkError(error)) {
+      if (error is NoUnlockedKeyException ||
+          error is SealedBoxDecryptionException ||
+          error is MessageDecryptionException ||
+          error is StateError ||
+          !_remote.isNetworkError(error)) {
         rethrow;
       }
+
+      final encrypted = await _encryptPlaintextForThread(
+        threadId: resolvedThreadId,
+        plaintext: content,
+      );
 
       final now = DateTime.now();
       final cachedThreads = _cache.getCachedThreads();
       final threadIndex =
           cachedThreads.indexWhere((thread) => thread.id == resolvedThreadId);
+      // Optimistic UI: keep plaintext in memory for display; durable queue
+      // stores only ciphertext+nonce (no plaintext body on disk pending sync).
       final optimisticMessage = Message(
         id: 'local_msg_${now.microsecondsSinceEpoch}',
         threadId: resolvedThreadId,
@@ -320,6 +385,10 @@ class MessagingRepository {
         isRead: false,
         hash: 'pending_${now.microsecondsSinceEpoch}',
         isShielded: tone == MessageTone.aggressive,
+        messageType: 'user',
+        isE2E: true,
+        ciphertext: encrypted.ciphertext,
+        nonce: encrypted.nonce,
       );
 
       late final MessageThread optimisticThread;
@@ -348,13 +417,16 @@ class MessagingRepository {
         cachedThreads.insert(0, optimisticThread);
       }
 
-      await _cache.saveThreads(cachedThreads);
+      // Persist ciphertext form only (strip plaintext before disk).
+      final diskSafe = _threadsWithE2ePlaintextStripped(cachedThreads);
+      await _cache.saveThreads(diskSafe);
       await _offlineStore.appendPendingAction({
         'type': 'messaging.sendMessage',
         'createdAt': now.toIso8601String(),
         'payload': {
           'threadId': resolvedThreadId,
-          'content': content,
+          'ciphertext': encrypted.ciphertext,
+          'nonce': encrypted.nonce,
           'tone': messageToneToApi(tone),
           if (attachments.isNotEmpty) 'attachments': attachments,
         },
@@ -364,9 +436,45 @@ class MessagingRepository {
     }
   }
 
-  Future<MessageThread> _getOrCreateParentsInboxThread() async {
+  /// Local cache must not keep plaintext of E2E messages on disk.
+  List<MessageThread> _threadsWithE2ePlaintextStripped(
+    List<MessageThread> threads,
+  ) {
+    return threads
+        .map(
+          (thread) => MessageThread(
+            id: thread.id,
+            subject: thread.subject,
+            category: thread.category,
+            childId: thread.childId,
+            audience: thread.audience,
+            lastActivity: thread.lastActivity,
+            hasUnread: thread.hasUnread,
+            messages: thread.messages
+                .map(
+                  (message) {
+                    if (!message.isE2E ||
+                        message.ciphertext == null ||
+                        message.nonce == null) {
+                      return message;
+                    }
+                    return message.copyWith(content: '');
+                  },
+                )
+                .toList(),
+          ),
+        )
+        .toList();
+  }
+
+  Future<MessageThread> _getOrCreateParentsInboxThread({
+    List<Map<String, String>>? threadKeys,
+  }) async {
     try {
-      final thread = await _remote.createChannel(category: allTabLabel);
+      final thread = await _remote.createChannel(
+        category: allTabLabel,
+        threadKeys: threadKeys,
+      );
       await _cache.replaceChannelThreadInCache(thread);
       return thread;
     } catch (error) {
@@ -375,6 +483,7 @@ class MessagingRepository {
           final thread = await createThread(
             subject: allTabLabel,
             category: allTabLabel,
+            threadKeys: threadKeys ?? const [],
           );
           if (!_cache.isLocalThreadId(thread.id)) {
             await _cache.replaceChannelThreadInCache(thread);
@@ -391,7 +500,11 @@ class MessagingRepository {
         return offlineExisting;
       }
 
-      return createThread(subject: allTabLabel, category: allTabLabel);
+      return createThread(
+        subject: allTabLabel,
+        category: allTabLabel,
+        threadKeys: threadKeys ?? const [],
+      );
     }
   }
 
@@ -446,10 +559,23 @@ class MessagingRepository {
         switch (type) {
           case 'messaging.createThread':
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
+            final rawKeys = payload['threadKeys'];
+            final threadKeys = rawKeys is List
+                ? rawKeys
+                    .map(
+                      (item) => Map<String, String>.from(
+                        (item as Map).map(
+                          (key, value) => MapEntry('$key', '$value'),
+                        ),
+                      ),
+                    )
+                    .toList()
+                : null;
             final response = await _remote.createThreadViaApi(
               subject: payload['subject'] as String,
               category: payload['category'] as String,
               childId: payload['childId'],
+              threadKeys: threadKeys,
             );
             final createdThread = messageThreadFromJson(response);
             final clientThreadId = payload['clientThreadId'] as String;
@@ -460,9 +586,20 @@ class MessagingRepository {
             final payload = Map<String, dynamic>.from(action['payload'] as Map);
             final requestedThreadId = payload['threadId'] as String;
             final resolvedThreadId = localThreadIdMap[requestedThreadId] ?? requestedThreadId;
+            final ciphertext = payload['ciphertext'] as String?;
+            final nonce = payload['nonce'] as String?;
+            if (ciphertext == null ||
+                ciphertext.isEmpty ||
+                nonce == null ||
+                nonce.isEmpty) {
+              // Legacy plaintext pending actions cannot be sent under E2E API.
+              rewrittenQueue.add(action);
+              break;
+            }
             final updatedThread = await _remote.sendMessageWithApiTone(
               threadId: resolvedThreadId,
-              content: payload['content'] as String,
+              ciphertext: ciphertext,
+              nonce: nonce,
               tone: payload['tone'] as String,
               attachments: payload['attachments'] != null
                   ? List<Map<String, dynamic>>.from(

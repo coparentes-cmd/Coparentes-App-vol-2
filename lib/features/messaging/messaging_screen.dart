@@ -15,6 +15,7 @@ import '../../utils/messaging_helpers.dart';
 import '../../widgets/app_content_shell.dart';
 import 'messaging_navigation.dart';
 import 'thread_screen.dart';
+import 'widgets/e2e_message_text.dart';
 import 'widgets/inline_chat_panel.dart';
 import 'widgets/new_thread_sheet.dart';
 import 'widgets/thread_tile.dart';
@@ -711,7 +712,7 @@ class MessagingScreenState extends State<MessagingScreen> {
         content: Text(
           context
               .tr('Wątek „{subject}” został utworzony')
-              .replace('{subject}', thread.subject),
+              .replaceAll('{subject}', thread.subject),
         ),
         backgroundColor: AppTheme.successColor,
       ),
@@ -806,9 +807,6 @@ class _UnreadMessageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preview = message.content.trim().isEmpty
-        ? (message.attachments.isNotEmpty ? context.tr('Załącznik') : '…')
-        : message.content;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -845,14 +843,42 @@ class _UnreadMessageTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '${message.senderName}: $preview',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${message.senderName}: ',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      Expanded(
+                        child: message.needsDecryption
+                            ? E2eMessageText(
+                                message: message,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              )
+                            : Text(
+                                message.content.trim().isEmpty
+                                    ? (message.attachments.isNotEmpty
+                                        ? context.tr('Załącznik')
+                                        : '…')
+                                    : message.content,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                      ),
+                    ],
                   ),
                 ],
               ),

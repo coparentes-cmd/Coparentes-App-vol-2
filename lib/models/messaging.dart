@@ -83,6 +83,7 @@ class Message {
   final String threadId;
   final String senderId;
   final String senderName;
+  /// Plaintext body when available (system messages, demo, decrypted cache).
   final String content;
   final String? aiSuggestedContent;
   final MessageTone tone;
@@ -92,6 +93,11 @@ class Message {
   final bool isRead;
   final String hash;
   final bool isShielded;
+  /// Backend `messageType`: `user` (E2E) or `system` (plaintext).
+  final String messageType;
+  final bool isE2E;
+  final String? ciphertext;
+  final String? nonce;
 
   Message({
     required this.id,
@@ -107,7 +113,18 @@ class Message {
     this.isRead = false,
     required this.hash,
     this.isShielded = false,
+    this.messageType = 'user',
+    this.isE2E = false,
+    this.ciphertext,
+    this.nonce,
   });
+
+  /// True when UI must decrypt [ciphertext]/[nonce] before showing text.
+  bool get needsDecryption =>
+      isE2E &&
+      (ciphertext != null && ciphertext!.isNotEmpty) &&
+      (nonce != null && nonce!.isNotEmpty) &&
+      content.isEmpty;
 
   Message copyWith({
     String? id,
@@ -123,6 +140,10 @@ class Message {
     bool? isRead,
     String? hash,
     bool? isShielded,
+    String? messageType,
+    bool? isE2E,
+    String? ciphertext,
+    String? nonce,
   }) {
     return Message(
       id: id ?? this.id,
@@ -138,6 +159,10 @@ class Message {
       isRead: isRead ?? this.isRead,
       hash: hash ?? this.hash,
       isShielded: isShielded ?? this.isShielded,
+      messageType: messageType ?? this.messageType,
+      isE2E: isE2E ?? this.isE2E,
+      ciphertext: ciphertext ?? this.ciphertext,
+      nonce: nonce ?? this.nonce,
     );
   }
 }

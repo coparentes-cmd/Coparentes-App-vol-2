@@ -6,6 +6,7 @@ import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../widgets/message_tag_widgets.dart';
+import 'e2e_message_text.dart';
 
 class ThreadTile extends StatelessWidget {
   final MessageThread thread;
@@ -94,14 +95,27 @@ class ThreadTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       if (lastMsg != null)
-                        Text(
-                          '${lastMsg.senderName}: ${lastMsg.content}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '${lastMsg.senderName}: ',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            Expanded(
+                              child: E2eMessageText(
+                                message: lastMsg,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       if (userTags.isNotEmpty) ...[
                         const SizedBox(height: 6),

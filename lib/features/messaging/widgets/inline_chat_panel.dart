@@ -17,6 +17,7 @@ import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
+import 'e2e_chat_gate.dart';
 import 'thread_messages_list.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
@@ -51,6 +52,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   Timer? _livePollTimer;
   String? _threadId;
   bool _initializing = true;
+  bool _e2eBlocked = false;
   bool _sending = false;
   final List<PendingMessageAttachment> _pendingAttachments = [];
 
@@ -90,8 +92,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureThread();
-      _startLivePollIfNeeded();
+      unawaited(_ensureThread());
     });
   }
 
@@ -117,21 +118,49 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   }
 
   Future<void> _ensureThread() async {
-    final messaging = context.read<MessagingProvider>();
+    if (!mounted) {
+      return;
+    }
     final appProvider = context.read<AppProvider>();
 
-    if (!appProvider.isDemoMode && messaging.threads.isEmpty) {
-      await messaging.loadThreads(
-        viewerUserId: appProvider.currentUser?.id,
+    if (!appProvider.isDemoMode) {
+      final unlocked = await ensureE2eUnlockedForChat(context);
+      if (!mounted) {
+        return;
+      }
+      if (!unlocked) {
+        setState(() {
+          _e2eBlocked = true;
+          _initializing = false;
+        });
+        return;
+      }
+      setState(() => _e2eBlocked = false);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final messagingFresh = context.read<MessagingProvider>();
+    final appFresh = context.read<AppProvider>();
+
+    if (!appFresh.isDemoMode && messagingFresh.threads.isEmpty) {
+      await messagingFresh.loadThreads(
+        viewerUserId: appFresh.currentUser?.id,
         notifyEnabled: false,
       );
     }
 
+    if (!mounted) {
+      return;
+    }
+
     MessageThread? thread;
     if (widget.threadId != null) {
-      thread = messaging.getThreadById(widget.threadId!);
-    } else if (appProvider.isDemoMode) {
-      thread = messaging.getCategoryChannel(widget.category!);
+      thread = messagingFresh.getThreadById(widget.threadId!);
+    } else if (appFresh.isDemoMode) {
+      thread = messagingFresh.getCategoryChannel(widget.category!);
       // Demo seed can land after this panel mounts; wait briefly for hydrate.
       if (thread == null) {
         for (var attempt = 0; attempt < 8 && mounted; attempt++) {
@@ -148,7 +177,10 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
         }
       }
     } else {
-      thread = await messaging.openCategoryChannel(widget.category!);
+      thread = await messagingFresh.openCategoryChannel(
+        widget.category!,
+        parentUserIds: appFresh.parentMemberIds,
+      );
     }
 
     if (!mounted) {
@@ -162,8 +194,8 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
 
     final userId = context.read<AppProvider>().currentUser?.id;
     _threadId = thread.id;
-    if (userId != null && !appProvider.isDemoMode) {
-      await messaging.markThreadRead(thread.id, viewerUserId: userId);
+    if (userId != null && !appFresh.isDemoMode) {
+      await messagingFresh.markThreadRead(thread.id, viewerUserId: userId);
     }
 
     final category = widget.category ?? thread.category;
@@ -173,9 +205,11 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
 
     setState(() => _initializing = false);
     _scrollToBottom();
-    if (!appProvider.isDemoMode) {
+    if (!appFresh.isDemoMode) {
       context.read<OfflineSyncProvider>().pollMessagingNow();
     }
+    // Gate OK + wątek gotowy — dopiero wtedy live poll (jak ThreadScreen).
+    _startLivePollIfNeeded();
   }
 
   void _pollMessages() {
@@ -224,7 +258,10 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       return null;
     }
 
-    final thread = await messaging.openCategoryChannel(widget.category!);
+    final thread = await messaging.openCategoryChannel(
+      widget.category!,
+      parentUserIds: context.read<AppProvider>().parentMemberIds,
+    );
     if (thread != null) {
       _threadId = thread.id;
       return thread.id;
@@ -274,6 +311,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
           attachments: attachments,
           localOnly: appProvider.isDemoMode,
           demoSender: appProvider.currentUser,
+          parentUserIds: appProvider.parentMemberIds,
         );
     if (!mounted) {
       return;
@@ -320,6 +358,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
           tone: MessageTone.neutral,
           localOnly: appProvider.isDemoMode,
           demoSender: appProvider.currentUser,
+          parentUserIds: appProvider.parentMemberIds,
         );
     if (!mounted) {
       return;
@@ -364,6 +403,38 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    if (_e2eBlocked) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.tr('Podaj hasło, aby odblokować wiadomości'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _e2eBlocked = false;
+                    _initializing = true;
+                  });
+                  unawaited(_ensureThread());
+                },
+                child: Text(context.tr('Odblokuj')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (thread == null) {
       return Center(
         child: Padding(
@@ -373,7 +444,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                 ? context.tr('Nie znaleziono wątku.')
                 : context
                     .tr('Nie udało się otworzyć rozmowy „{category}”.')
-                    .replace('{category}', widget.category),
+                    .replaceAll('{category}', widget.category ?? ''),
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
@@ -431,7 +502,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                                     ? context.tr('Brak wiadomości w tym wątku')
                                     : context
                                         .tr('Brak wiadomości w „{category}”')
-                                        .replace('{category}', panelCategory),
+                                        .replaceAll('{category}', panelCategory),
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary,

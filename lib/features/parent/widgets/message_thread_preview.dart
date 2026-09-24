@@ -8,6 +8,7 @@ import '../../../../theme/app_theme.dart';
 import '../../../../utils/calendar_date_utils.dart';
 import '../../../../config/messaging_categories.dart';
 import '../../../../utils/messaging_helpers.dart';
+import '../../messaging/widgets/e2e_message_text.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import '../../../../utils/layout_utils.dart';
 import '../../../../utils/app_browser_back.dart';
@@ -103,19 +104,37 @@ class MessageThreadPreview extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       if (lastMsg != null)
-                        Text(
-                          '${lastMsg.senderName}: ${lastMsg.content}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _hasUnread
-                                ? AppTheme.textPrimary
-                                : AppTheme.textSecondary,
-                            fontWeight: _hasUnread
-                                ? FontWeight.w500
-                                : FontWeight.normal,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '${lastMsg.senderName}: ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _hasUnread
+                                    ? AppTheme.textPrimary
+                                    : AppTheme.textSecondary,
+                                fontWeight: _hasUnread
+                                    ? FontWeight.w500
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            Expanded(
+                              child: E2eMessageText(
+                                message: lastMsg,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: _hasUnread
+                                      ? AppTheme.textPrimary
+                                      : AppTheme.textSecondary,
+                                  fontWeight: _hasUnread
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                     ],
                   ),

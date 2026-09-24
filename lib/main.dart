@@ -33,6 +33,7 @@ import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
 import 'widgets/pin_lock_overlay.dart';
 import 'data/local/locale_store.dart';
+import 'services/e2e_session_service.dart';
 import 'utils/app_browser_back.dart';
 
 Future<void> main() async {
@@ -46,9 +47,11 @@ Future<void> main() async {
   await offlineStore.initialize();
   final pinLockStore = PinLockStore(preferences: preferences);
   final apiClient = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
+  final e2eSessionService = E2eSessionService(apiClient: apiClient);
   final messagingRepository = MessagingRepository(
     apiClient: apiClient,
     offlineStore: offlineStore,
+    e2eSessionService: e2eSessionService,
   );
   final exportRepository = ExportRepository(
     apiClient: apiClient,
@@ -85,6 +88,7 @@ Future<void> main() async {
       pinLockStore: pinLockStore,
       apiClient: apiClient,
       localeStore: localeStore,
+      e2eSessionService: e2eSessionService,
     ),
   );
 }
@@ -101,6 +105,7 @@ class CoparentesApp extends StatelessWidget {
   final PinLockStore pinLockStore;
   final AppApiClient apiClient;
   final LocaleStore localeStore;
+  final E2eSessionService e2eSessionService;
 
   const CoparentesApp({
     super.key,
@@ -115,6 +120,7 @@ class CoparentesApp extends StatelessWidget {
     required this.pinLockStore,
     required this.apiClient,
     required this.localeStore,
+    required this.e2eSessionService,
   });
 
   @override
@@ -128,10 +134,14 @@ class CoparentesApp extends StatelessWidget {
             pinLockStore: pinLockStore,
             localeStore: localeStore,
             initialLocale: localeStore.read(),
+            e2eSessionService: e2eSessionService,
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => MessagingProvider(repository: messagingRepository),
+          create: (_) => MessagingProvider(
+            repository: messagingRepository,
+            e2eSessionService: e2eSessionService,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => CalendarProvider(repository: calendarRepository),
@@ -266,6 +276,18 @@ class _AppGate extends StatefulWidget {
 class _AppGateState extends State<_AppGate> {
   String? _hydratedUserId;
   String? _onboardingPromptUserId;
+  bool _e2eCacheBridgeWired = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_e2eCacheBridgeWired) {
+      return;
+    }
+    _e2eCacheBridgeWired = true;
+    context.read<AppProvider>().onE2eSessionChanged =
+        context.read<MessagingProvider>().clearDecryptCaches;
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -17,6 +17,7 @@ import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/message_status_indicator.dart';
 import '../../../widgets/message_tag_widgets.dart';
+import 'e2e_message_text.dart';
 import 'schedule_message_actions.dart';
 import 'swap_message_actions.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -173,8 +174,8 @@ class MessageBubbleState extends State<MessageBubble> {
                       ],
                     ),
                     SizedBox(height: 6),
-                    Text(
-                      _extractLogistics(widget.message.content),
+                    E2eMessageText(
+                      message: widget.message,
                       style: TextStyle(
                         fontSize: 16,
                         height: 1.35,
@@ -193,9 +194,10 @@ class MessageBubbleState extends State<MessageBubble> {
                       ),
                     ),
                   ] else ...[
-                    if (widget.message.content.isNotEmpty)
-                      Text(
-                        widget.message.content,
+                    if (widget.message.content.isNotEmpty ||
+                        widget.message.needsDecryption)
+                      E2eMessageText(
+                        message: widget.message,
                         style: TextStyle(
                           fontSize: 16,
                           height: 1.35,

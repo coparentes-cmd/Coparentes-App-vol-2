@@ -17,6 +17,8 @@ import '../data/repositories/auth_repository.dart';
 import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../models/models.dart';
+import '../services/e2e_key_storage_service.dart';
+import '../services/e2e_session_service.dart';
 import '../utils/demo_time.dart';
 
 export 'calendar_provider.dart';
@@ -111,6 +113,13 @@ class AppProvider extends ChangeNotifier {
   final ConsentRepository _consentRepository;
   final PinLockStore _pinLockStore;
   final LocaleStore? _localeStore;
+  final E2eSessionService? _e2eSession;
+
+  /// Called after E2E unlock/reset so MessagingProvider can drop decrypt caches.
+  VoidCallback? onE2eSessionChanged;
+
+  /// Held only while an OTP challenge is pending — cleared after unlock / cancel.
+  String? _pendingE2ePassword;
 
   AppProvider({
     required AuthRepository authRepository,
@@ -118,10 +127,12 @@ class AppProvider extends ChangeNotifier {
     required PinLockStore pinLockStore,
     LocaleStore? localeStore,
     Locale? initialLocale,
+    E2eSessionService? e2eSessionService,
   })  : _authRepository = authRepository,
         _consentRepository = consentRepository,
         _pinLockStore = pinLockStore,
-        _localeStore = localeStore {
+        _localeStore = localeStore,
+        _e2eSession = e2eSessionService {
     if (initialLocale != null) {
       _locale = localeFromStoredCode(initialLocale.languageCode);
       _language = _locale.languageCode;
@@ -314,17 +325,22 @@ class AppProvider extends ChangeNotifier {
         password: password,
       );
       if (response.requiresOtp) {
+        // Keep password in memory only until OTP completes (invisible E2E unlock).
+        _pendingE2ePassword = password;
         _pendingLoginChallenge = response.challenge;
         _setDemoMode(false);
         notifyListeners();
         return true;
       }
       _pendingLoginChallenge = null;
+      _pendingE2ePassword = null;
       _setDemoMode(false);
       _applySession(response.session!);
+      await _e2eUnlockAfterAuth(password);
       notifyListeners();
       return true;
     } catch (error) {
+      _pendingE2ePassword = null;
       _authError = _mapAuthError(
         error,
         fallback: 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.',
@@ -350,11 +366,16 @@ class AppProvider extends ChangeNotifier {
         code: code,
         trustDevice: trustDevice,
       );
+      final e2ePassword = _pendingE2ePassword;
+      _pendingE2ePassword = null;
       _pendingLoginChallenge = null;
       _otpAttemptsRemaining = null;
       _otpLocked = false;
       _setDemoMode(false);
       _applySession(session);
+      if (e2ePassword != null && e2ePassword.isNotEmpty) {
+        await _e2eUnlockAfterAuth(e2ePassword);
+      }
       notifyListeners();
       return true;
     } catch (error) {
@@ -397,6 +418,7 @@ class AppProvider extends ChangeNotifier {
 
   void clearLoginChallenge() {
     _pendingLoginChallenge = null;
+    _pendingE2ePassword = null;
     _otpAttemptsRemaining = null;
     _otpLocked = false;
     _authError = null;
@@ -422,6 +444,7 @@ class AppProvider extends ChangeNotifier {
       _setDemoMode(false);
       _needsChildOnboarding = true;
       _applySession(session);
+      await _e2eSetupNewKeys(password);
       await loadUserConsents();
       notifyListeners();
       return true;
@@ -546,15 +569,46 @@ class AppProvider extends ChangeNotifier {
   }) async {
     try {
       _authError = null;
+
+      String? newPrivateKeyEnvelope;
+      final e2e = _e2eSession;
+      if (e2e != null) {
+        try {
+          newPrivateKeyEnvelope =
+              await e2e.rewrapEnvelopeForNewPassword(newPassword);
+        } on NoUnlockedKeyException {
+          _authError =
+              'Zaloguj się ponownie przed zmianą hasła (wymagane odblokowanie kluczy E2E).';
+          notifyListeners();
+          return false;
+        } catch (error) {
+          debugPrint('[e2e] rewrap before password change failed: $error');
+          _authError =
+              'Zaloguj się ponownie przed zmianą hasła (wymagane odblokowanie kluczy E2E).';
+          notifyListeners();
+          return false;
+        }
+      }
+
       await _authRepository.changePassword(
         currentPassword: currentPassword,
         newPassword: newPassword,
+        newPrivateKeyEnvelope: newPrivateKeyEnvelope,
       );
+
+      if (newPrivateKeyEnvelope != null) {
+        await e2e?.cacheEnvelope(newPrivateKeyEnvelope);
+      }
       return true;
     } on ApiException catch (error) {
-      _authError = error.statusCode == 401
-          ? 'Aktualne hasło jest nieprawidłowe.'
-          : 'Nie udało się zmienić hasła.';
+      if (error.message == 'private_key_envelope_required') {
+        _authError =
+            'Zaloguj się ponownie przed zmianą hasła (wymagane odblokowanie kluczy E2E).';
+      } else {
+        _authError = error.statusCode == 401
+            ? 'Aktualne hasło jest nieprawidłowe.'
+            : 'Nie udało się zmienić hasła.';
+      }
       notifyListeners();
       return false;
     } catch (_) {
@@ -654,6 +708,7 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
+      await _e2eSetupNewKeys(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -984,11 +1039,14 @@ class AppProvider extends ChangeNotifier {
     _currentUser = null;
     _currentWorkspace = null;
     _authError = null;
+    _pendingE2ePassword = null;
     _setDemoMode(false);
     _needsChildOnboarding = false;
     _requirePinOnResume = false;
     _hasPinSet = false;
     _isPinLocked = false;
+    unawaited(_e2eSession?.clearAll());
+    onE2eSessionChanged?.call();
     unawaited(_authRepository.logout());
     notifyListeners();
   }
@@ -999,6 +1057,70 @@ class AppProvider extends ChangeNotifier {
     _highConflictMode = session.user.highConflictMode;
     _isPinLocked = false;
     unawaited(_loadPinSettings());
+  }
+
+  Future<void> _e2eSetupNewKeys(String password) async {
+    final e2e = _e2eSession;
+    if (e2e == null || password.isEmpty) {
+      return;
+    }
+    try {
+      await e2e.setupNewKeys(password);
+    } catch (error) {
+      debugPrint('[e2e] setupNewKeys failed (best-effort): $error');
+    }
+  }
+
+  Future<void> _e2eUnlockAfterAuth(String password) async {
+    final e2e = _e2eSession;
+    if (e2e == null || password.isEmpty) {
+      return;
+    }
+    try {
+      await e2e.unlockAfterAuthentication(password);
+      onE2eSessionChanged?.call();
+    } catch (error) {
+      debugPrint('[e2e] unlockAfterAuthentication failed (best-effort): $error');
+    }
+  }
+
+  bool get hasE2eSession => _e2eSession != null;
+
+  /// Parent A/B member ids in the current workspace (for E2E threadKeys).
+  ///
+  /// Family threads still use only these ids at create time — child keys are
+  /// synced later via `/threads/:id/keys/family-sync`.
+  List<String> get parentMemberIds {
+    final workspace = _currentWorkspace;
+    if (workspace == null) {
+      return const [];
+    }
+    return workspace.members
+        .where(
+          (member) =>
+              member.role == UserRole.parentA ||
+              member.role == UserRole.parentB,
+        )
+        .map((member) => member.id)
+        .toList();
+  }
+
+  Future<bool> isE2eUnlocked() async {
+    final e2e = _e2eSession;
+    if (e2e == null) {
+      return true;
+    }
+    return e2e.hasUnlockedKey();
+  }
+
+  /// Throws [InvalidPasswordException] on wrong password.
+  Future<void> unlockE2eWithPassword(String password) async {
+    final e2e = _e2eSession;
+    if (e2e == null) {
+      return;
+    }
+    await e2e.unlockWithPassword(password);
+    onE2eSessionChanged?.call();
   }
 
   Workspace _buildDemoWorkspace() {
