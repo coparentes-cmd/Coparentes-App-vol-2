@@ -618,6 +618,30 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Soft-deletes the account on the server. Does **not** clear local session —
+  /// caller must call [logout] after dismissing UI (same cleanup path as manual logout).
+  Future<bool> deleteAccount({required String password}) async {
+    try {
+      _authError = null;
+      await _authRepository.deleteAccount(password: password);
+      return true;
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 || error.message == 'invalid_password') {
+        _authError = 'Nieprawidłowe hasło';
+      } else {
+        _authError =
+            'Nie udało się usunąć konta, spróbuj ponownie później';
+      }
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _authError =
+          'Nie udało się usunąć konta, spróbuj ponownie później';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Sends a one-time temporary password to [email] (if the account exists).
   Future<bool> requestPasswordReset(String email) async {
     try {

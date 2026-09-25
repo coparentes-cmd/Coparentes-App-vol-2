@@ -12,6 +12,7 @@ import '../../screens/auth/child_onboarding_sheet.dart';
 import '../../screens/settings/privacy_consents_section.dart';
 import 'widgets/edit_profile_sheet.dart';
 import 'widgets/change_password_sheet.dart';
+import 'widgets/delete_account_sheet.dart';
 import 'widgets/email_invite_sheet.dart';
 import 'widgets/settings_divider.dart';
 import 'widgets/info_tile.dart';
@@ -1291,31 +1292,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeleteDialog(BuildContext context, AppProvider ap, Color color) {
-    final email = ap.currentUser?.email ?? '';
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(context.tr('Usuń konto')),
-        content: Text(context.tr('Ta operacja jest nieodwracalna. Aby usunąć konto, wyślij wniosek e-mailem do supportu. Potwierdzimy usunięcie danych po weryfikacji.'),
+        content: Text(
+          context.tr(
+            'Ta operacja jest nieodwracalna. Twoje konto zostanie trwale usunięte, nie będziesz mógł się już zalogować. Historia wiadomości i wspólnych danych (kalendarz, wydatki, dokumenty) zostanie zachowana dla drugiego rodzica, ale bez możliwości przypisania jej do Ciebie z powrotem.',
+          ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.tr('Anuluj'))),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.tr('Anuluj')),
+          ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              _openSupportMailto(
-                subject: context.tr('Wniosek o usunięcie konta — Coparentes'),
-                body:
-                    '${context.tr('Proszę o trwałe usunięcie mojego konta Coparentes.')}\n\n'
-                    '${context.tr('E-mail konta')}: $email\n',
+              Navigator.pop(dialogContext);
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (_) => DeleteAccountSheet(color: color),
               );
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.errorColor),
-            child: Text(context.tr('Wyślij wniosek e-mailem'),
-                style: TextStyle(color: Colors.white)),
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: Text(
+              context.tr('Kontynuuj'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

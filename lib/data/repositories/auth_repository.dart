@@ -336,6 +336,13 @@ class AuthRepository {
     });
   }
 
+  /// Soft-delete + anonymize the authenticated account (password confirmation).
+  Future<void> deleteAccount({required String password}) async {
+    await _apiClient.postJson('/account/delete', {
+      'password': password,
+    });
+  }
+
   /// Requests a one-time temporary password by e-mail.
   Future<void> requestPasswordReset({required String email}) async {
     await _apiClient.postJson(
