@@ -724,6 +724,8 @@ const enOverlay = <String, String>{
   'Aktualny PIN': 'Current PIN',
   'Nowy PIN': 'New PIN',
   'Dziecko (opcjonalnie)': 'Child (optional)',
+  'Północ (00:00) będzie wyświetlana jako wydarzenie całodniowe':
+      'Midnight (00:00) will be shown as an all-day event',
   'Godzina przekazania': 'Handover time',
   'Miejsce przekazania': 'Handover place',
   'E-mail': 'Email',

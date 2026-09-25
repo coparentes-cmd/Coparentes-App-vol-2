@@ -49,6 +49,8 @@ class SelectedDayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final sortedEvents = List<CalendarEvent>.from(events)
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
+    final children =
+        context.watch<AppProvider>().currentWorkspace?.children ?? const [];
     final isParentA = slot?.custodian == UserRole.parentA;
     final color = slot == null
         ? AppTheme.textSecondary
@@ -151,6 +153,21 @@ class SelectedDayCard extends StatelessWidget {
                 ...sortedEvents.map(
                   (e) {
                     final timeLabel = formatEventTimeLabel(e.startDate);
+                    String? childLabel;
+                    if (e.childId != null) {
+                      for (final child in children) {
+                        if (child.id == e.childId) {
+                          childLabel = child.name.split(' ').first;
+                          break;
+                        }
+                      }
+                    }
+                    final titleCore = timeLabel == null
+                        ? e.title
+                        : '$timeLabel  ${e.title}';
+                    final titleText = childLabel == null
+                        ? titleCore
+                        : '$titleCore · $childLabel';
                     return GestureDetector(
                       onDoubleTap: onEventDoubleTap == null
                           ? null
@@ -179,9 +196,7 @@ class SelectedDayCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                timeLabel == null
-                                    ? e.title
-                                    : '$timeLabel  ${e.title}',
+                                titleText,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,

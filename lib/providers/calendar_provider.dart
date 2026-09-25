@@ -676,9 +676,9 @@ class CalendarProvider extends ChangeNotifier {
     required String title,
     required DateTime startDate,
     required EventType type,
+    required String? childId,
     String? description,
     DateTime? endDate,
-    String? childId,
     String? location,
   }) {
     final index = _events.indexWhere((item) => item.id == id);
@@ -697,7 +697,7 @@ class CalendarProvider extends ChangeNotifier {
             ? existing.endDate
             : _normalizeEventStart(endDate),
         type: type,
-        childId: childId ?? existing.childId,
+        childId: childId,
         createdBy: existing.createdBy,
         location: location ?? existing.location,
       ),
@@ -709,9 +709,9 @@ class CalendarProvider extends ChangeNotifier {
     required String title,
     required DateTime startDate,
     required EventType type,
+    required String? childId,
     String? description,
     DateTime? endDate,
-    String? childId,
     String? location,
   }) async {
     try {

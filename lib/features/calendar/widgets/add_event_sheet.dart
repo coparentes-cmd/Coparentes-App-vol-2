@@ -29,6 +29,8 @@ class AddEventSheetState extends State<AddEventSheet> {
   final _titleFocusNode = FocusNode();
   late EventType _selectedType;
   late TimeOfDay _selectedTime;
+  /// null = no specific child = "all children"
+  String? _selectedChildId;
   bool _isSubmitting = false;
   int _hintIndex = 0;
   Timer? _hintTimer;
@@ -44,6 +46,7 @@ class AddEventSheetState extends State<AddEventSheet> {
   void initState() {
     super.initState();
     final event = widget.event;
+    _selectedChildId = event?.childId;
     if (event != null) {
       _titleController.text = event.title;
       _selectedType = event.type;
@@ -157,7 +160,7 @@ class AddEventSheetState extends State<AddEventSheet> {
             type: _selectedType,
             description: existing.description,
             endDate: existing.endDate,
-            childId: existing.childId,
+            childId: _selectedChildId,
             location: existing.location,
           );
         } else {
@@ -168,7 +171,7 @@ class AddEventSheetState extends State<AddEventSheet> {
             type: _selectedType,
             description: existing.description,
             endDate: existing.endDate,
-            childId: existing.childId,
+            childId: _selectedChildId,
             location: existing.location,
           );
         }
@@ -178,12 +181,14 @@ class AddEventSheetState extends State<AddEventSheet> {
           startDate: startDate,
           type: _selectedType,
           createdBy: app.currentUser?.id ?? 'demo',
+          childId: _selectedChildId,
         );
       } else {
         await calendar.addEvent(
           title: title,
           startDate: startDate,
           type: _selectedType,
+          childId: _selectedChildId,
         );
       }
       if (!mounted) return;
@@ -218,6 +223,8 @@ class AddEventSheetState extends State<AddEventSheet> {
         ? AiTips.calendarPlaceholders[
             _hintIndex % AiTips.calendarPlaceholders.length]
         : null;
+    final children =
+        context.watch<AppProvider>().currentWorkspace?.children ?? const [];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -253,10 +260,24 @@ class AddEventSheetState extends State<AddEventSheet> {
             trailing: const Icon(Icons.chevron_right),
             onTap: _pickTime,
           ),
+          if (_selectedTime.hour == 0 && _selectedTime.minute == 0)
+            Padding(
+              padding: const EdgeInsets.only(left: 40, bottom: 4),
+              child: Text(
+                context.tr(
+                  'Północ (00:00) będzie wyświetlana jako wydarzenie całodniowe',
+                ),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ),
           SizedBox(height: 8),
           TextField(
             controller: _titleController,
             focusNode: _titleFocusNode,
+            maxLength: 200,
             textAlignVertical: TextAlignVertical.center,
             decoration: InputDecoration(
               labelText: context.tr('Tytuł zdarzenia'),
@@ -266,6 +287,37 @@ class AddEventSheetState extends State<AddEventSheet> {
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
           ),
+          if (children.isNotEmpty) ...[
+            SizedBox(height: 12),
+            Text(
+              context.tr('Dziecko (opcjonalnie)'),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: children
+                  .map(
+                    (child) => ChoiceChip(
+                      label: Text(
+                        child.name.split(' ').first,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      selected: _selectedChildId == child.id,
+                      onSelected: (selected) => setState(() {
+                        _selectedChildId = selected ? child.id : null;
+                      }),
+                      selectedColor:
+                          AppTheme.primaryTeal.withValues(alpha: 0.15),
+                      checkmarkColor: AppTheme.primaryTeal,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
           SizedBox(height: 20),
           SizedBox(
             width: double.infinity,

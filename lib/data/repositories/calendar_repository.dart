@@ -112,7 +112,8 @@ class CalendarRepository {
         'type': eventTypeToApi(type),
         if (description != null) 'description': description,
         if (endDate != null) 'endDate': calendarStartDateToApiIso(endDate),
-        if (childId != null) 'childId': childId,
+        // Always send (including null) so clearing child = "all children" persists.
+        'childId': childId,
         if (location != null) 'location': location,
       });
       final event = calendarEventFromJson(payload);
@@ -137,7 +138,7 @@ class CalendarRepository {
         startDate: startDate,
         endDate: endDate ?? existing.endDate,
         type: type,
-        childId: childId ?? existing.childId,
+        childId: childId,
         createdBy: existing.createdBy,
         location: location ?? existing.location,
       );
