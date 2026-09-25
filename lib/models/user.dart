@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_color_scheme.dart';
 import 'enums.dart';
 
 class AppUser {
@@ -10,6 +11,8 @@ class AppUser {
   final String? avatarUrl;
   final bool twoFactorEnabled;
   final bool highConflictMode;
+  final ThemeMode themeMode;
+  final AppColorScheme colorScheme;
   final DateTime createdAt;
 
   AppUser({
@@ -20,6 +23,8 @@ class AppUser {
     this.avatarUrl,
     this.twoFactorEnabled = false,
     this.highConflictMode = false,
+    this.themeMode = ThemeMode.light,
+    this.colorScheme = AppColorScheme.teal,
     required this.createdAt,
   });
 

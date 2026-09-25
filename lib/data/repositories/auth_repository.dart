@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -314,11 +315,15 @@ class AuthRepository {
     String? name,
     bool? highConflictMode,
     bool? twoFactorEnabled,
+    ThemeMode? themeMode,
+    AppColorScheme? colorScheme,
   }) async {
     final payload = await _apiClient.patchJson('/auth/profile', {
       if (name != null) 'name': name,
       if (highConflictMode != null) 'highConflictMode': highConflictMode,
       if (twoFactorEnabled != null) 'twoFactorEnabled': twoFactorEnabled,
+      if (themeMode != null) 'themeMode': themeModeToApi(themeMode),
+      if (colorScheme != null) 'colorScheme': colorSchemeToApi(colorScheme),
     });
     return _saveSession(payload);
   }

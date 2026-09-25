@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../models/models.dart';
 import '../../utils/calendar_date_utils.dart';
 import '../models/auth_session.dart';
@@ -29,6 +31,24 @@ String userRoleToApi(UserRole role) {
       return 'observer';
   }
 }
+
+ThemeMode themeModeFromApi(String? value) =>
+    value == 'dark' ? ThemeMode.dark : ThemeMode.light;
+
+String themeModeToApi(ThemeMode mode) =>
+    mode == ThemeMode.dark ? 'dark' : 'light';
+
+AppColorScheme colorSchemeFromApi(String? value) {
+  if (value == null || value.isEmpty) {
+    return AppColorScheme.teal;
+  }
+  return AppColorScheme.values.firstWhere(
+    (s) => s.name == value,
+    orElse: () => AppColorScheme.teal,
+  );
+}
+
+String colorSchemeToApi(AppColorScheme scheme) => scheme.name;
 
 bool _jsonBool(Object? value, {required bool fallback}) {
   if (value is bool) {
@@ -113,6 +133,8 @@ AppUser appUserFromJson(Map<String, dynamic> json) {
     role: userRoleFromApi(json['role'] as String),
     twoFactorEnabled: json['twoFactorEnabled'] as bool? ?? false,
     highConflictMode: json['highConflictMode'] as bool? ?? false,
+    themeMode: themeModeFromApi(json['themeMode'] as String?),
+    colorScheme: colorSchemeFromApi(json['colorScheme'] as String?),
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 }
@@ -125,6 +147,8 @@ Map<String, dynamic> appUserToJson(AppUser user) {
     'role': userRoleToApi(user.role),
     'twoFactorEnabled': user.twoFactorEnabled,
     'highConflictMode': user.highConflictMode,
+    'themeMode': themeModeToApi(user.themeMode),
+    'colorScheme': colorSchemeToApi(user.colorScheme),
     'createdAt': user.createdAt.toIso8601String(),
   };
 }

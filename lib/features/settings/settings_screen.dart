@@ -336,7 +336,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: isDark,
                       activeColor: roleColor,
                       isDark: isDark,
-                      onChanged: (v) => ap.toggleDarkMode(),
+                      onChanged: (v) => ap.setThemeMode(
+                        v ? ThemeMode.dark : ThemeMode.light,
+                      ),
                     ),
                     SettingsDivider(),
 
