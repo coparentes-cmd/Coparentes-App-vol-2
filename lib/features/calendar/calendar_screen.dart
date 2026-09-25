@@ -587,10 +587,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return;
     }
 
-    final viewerUserId = context.read<AppProvider>().currentUser?.id;
+    final appProvider = context.read<AppProvider>();
+    final viewerUserId = appProvider.currentUser?.id;
     await context.read<MessagingProvider>().loadThreads(
           viewerUserId: viewerUserId,
-          notifyEnabled: context.read<AppProvider>().notifyMessages,
+          notifyEnabled:
+              appProvider.notifyMessages && !appProvider.highConflictMode,
           silent: true,
         );
   }

@@ -32,6 +32,8 @@ const enOverlay = <String, String>{
   'jutro': 'tomorrow',
   'Środa': 'Wednesday',
   'Anuluj': 'Cancel',
+  'Anuluj wysyłanie': 'Cancel send',
+  'Wysyłanie za {sekundy}s...': 'Sending in {sekundy}s...',
   'Dołącz': 'Join',
   'Gotowy': 'Ready',
   'Koniec': 'End',

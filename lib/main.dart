@@ -171,7 +171,8 @@ class CoparentesApp extends StatelessWidget {
               }
               await context.read<MessagingProvider>().loadThreads(
                     viewerUserId: appProvider.currentUser?.id,
-                    notifyEnabled: appProvider.notifyMessages,
+                    notifyEnabled: appProvider.notifyMessages &&
+                        !appProvider.highConflictMode,
                     silent: true,
                   );
             },

@@ -419,7 +419,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         );
         await messaging.loadThreads(
           viewerUserId: app.currentUser?.id,
-          notifyEnabled: app.notifyMessages,
+          notifyEnabled: app.notifyMessages && !app.highConflictMode,
           silent: true,
         );
       }

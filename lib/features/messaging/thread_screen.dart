@@ -17,6 +17,7 @@ import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
+import '../../../widgets/message_send_countdown_bar.dart';
 import 'widgets/e2e_chat_gate.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/thread_messages_list.dart';
@@ -45,9 +46,13 @@ class ThreadScreenState extends State<ThreadScreen> {
   bool _showAiSuggestion = false;
   String _aiSuggestion = '';
   Timer? _livePollTimer;
+  Timer? _hcCountdownTimer;
+  int _hcSecondsRemaining = 0;
   bool _sending = false;
   bool _initialScrollDone = false;
   final List<PendingMessageAttachment> _pendingAttachments = [];
+
+  bool get _hcCountdownActive => _hcCountdownTimer != null;
 
   /// null = still gating E2E; true = ready; false = cancelled (navigating away).
   bool? _e2eReady;
@@ -168,6 +173,7 @@ class ThreadScreenState extends State<ThreadScreen> {
   @override
   void dispose() {
     _livePollTimer?.cancel();
+    _hcCountdownTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -369,23 +375,28 @@ class ThreadScreenState extends State<ThreadScreen> {
 
           // Input area
           if (!isReadOnly)
-            MessageComposeBar(
-              controller: _controller,
-              pendingAttachments: _pendingAttachments,
-              onPickAttachment: _pickAttachment,
-              onRemoveAttachment: _removeAttachment,
-              onSend: _sendMessage,
-              sending: _sending,
-              cyclingPlaceholderHints:
-                  aiCoach ? AiTips.messagingPlaceholders : null,
-              cyclingIntervalSeconds: 8,
-              onChanged: (value) {
-                setState(() {});
-                if (aiCoach && value.length > 10) {
-                  _analyzeTone(value);
-                }
-              },
-            ),
+            _hcCountdownActive
+                ? MessageSendCountdownBar(
+                    secondsRemaining: _hcSecondsRemaining,
+                    onCancel: _cancelHcCountdown,
+                  )
+                : MessageComposeBar(
+                    controller: _controller,
+                    pendingAttachments: _pendingAttachments,
+                    onPickAttachment: _pickAttachment,
+                    onRemoveAttachment: _removeAttachment,
+                    onSend: _handleSendTap,
+                    sending: _sending,
+                    cyclingPlaceholderHints:
+                        aiCoach ? AiTips.messagingPlaceholders : null,
+                    cyclingIntervalSeconds: 8,
+                    onChanged: (value) {
+                      setState(() {});
+                      if (aiCoach && value.length > 10) {
+                        _analyzeTone(value);
+                      }
+                    },
+                  ),
         ],
       ),
       ),
@@ -405,7 +416,50 @@ class ThreadScreenState extends State<ThreadScreen> {
     });
   }
 
-  Future<void> _sendMessage() async {
+  Future<void> _handleSendTap() async {
+    final content = _controller.text.trim();
+    if (content.isEmpty && _pendingAttachments.isEmpty) {
+      return;
+    }
+    if (_sending || _hcCountdownActive) {
+      return;
+    }
+
+    final app = context.read<AppProvider>();
+    if (!(app.highConflictMode && !app.isDemoMode)) {
+      await _performSend();
+      return;
+    }
+
+    setState(() => _hcSecondsRemaining = 5);
+    _hcCountdownTimer?.cancel();
+    _hcCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_hcSecondsRemaining <= 1) {
+        timer.cancel();
+        _hcCountdownTimer = null;
+        setState(() => _hcSecondsRemaining = 0);
+        unawaited(_performSend());
+        return;
+      }
+      setState(() => _hcSecondsRemaining -= 1);
+    });
+    setState(() {});
+  }
+
+  void _cancelHcCountdown() {
+    _hcCountdownTimer?.cancel();
+    _hcCountdownTimer = null;
+    if (!mounted) {
+      return;
+    }
+    setState(() => _hcSecondsRemaining = 0);
+  }
+
+  Future<void> _performSend() async {
     final content = _controller.text.trim();
     if (content.isEmpty && _pendingAttachments.isEmpty) {
       return;

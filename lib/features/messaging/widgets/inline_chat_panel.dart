@@ -17,6 +17,7 @@ import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
+import '../../../widgets/message_send_countdown_bar.dart';
 import 'e2e_chat_gate.dart';
 import 'thread_messages_list.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -50,11 +51,15 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   final ScrollController _scrollController = ScrollController();
   MessageTone _analyzedTone = MessageTone.neutral;
   Timer? _livePollTimer;
+  Timer? _hcCountdownTimer;
+  int _hcSecondsRemaining = 0;
   String? _threadId;
   bool _initializing = true;
   bool _e2eBlocked = false;
   bool _sending = false;
   final List<PendingMessageAttachment> _pendingAttachments = [];
+
+  bool get _hcCountdownActive => _hcCountdownTimer != null;
 
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
@@ -112,6 +117,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   @override
   void dispose() {
     _livePollTimer?.cancel();
+    _hcCountdownTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -282,7 +288,50 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
     });
   }
 
-  Future<void> _sendMessage() async {
+  Future<void> _handleSendTap() async {
+    final content = _controller.text.trim();
+    if ((content.isEmpty && _pendingAttachments.isEmpty) || _sending) {
+      return;
+    }
+    if (_hcCountdownActive) {
+      return;
+    }
+
+    final app = context.read<AppProvider>();
+    if (!(app.highConflictMode && !app.isDemoMode)) {
+      await _performSend();
+      return;
+    }
+
+    setState(() => _hcSecondsRemaining = 5);
+    _hcCountdownTimer?.cancel();
+    _hcCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_hcSecondsRemaining <= 1) {
+        timer.cancel();
+        _hcCountdownTimer = null;
+        setState(() => _hcSecondsRemaining = 0);
+        unawaited(_performSend());
+        return;
+      }
+      setState(() => _hcSecondsRemaining -= 1);
+    });
+    setState(() {});
+  }
+
+  void _cancelHcCountdown() {
+    _hcCountdownTimer?.cancel();
+    _hcCountdownTimer = null;
+    if (!mounted) {
+      return;
+    }
+    setState(() => _hcSecondsRemaining = 0);
+  }
+
+  Future<void> _performSend() async {
     final content = _controller.text.trim();
     if ((content.isEmpty && _pendingAttachments.isEmpty) || _sending) {
       return;
@@ -339,35 +388,14 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   }
 
   Future<void> _sendQuickReply(String content) async {
-    if (_sending) {
+    if (_sending || _hcCountdownActive) {
       return;
     }
-
-    final messaging = context.read<MessagingProvider>();
-    final appProvider = context.read<AppProvider>();
-    final threadId = await _resolveActiveThreadId(messaging);
-    if (threadId == null) {
-      return;
-    }
-
-    setState(() => _sending = true);
-    final sent = await messaging.sendMessage(
-          threadId: threadId,
-          channelCategory: widget.category,
-          content: content,
-          tone: MessageTone.neutral,
-          localOnly: appProvider.isDemoMode,
-          demoSender: appProvider.currentUser,
-          parentUserIds: appProvider.parentMemberIds,
-        );
-    if (!mounted) {
-      return;
-    }
-
-    setState(() => _sending = false);
-    if (sent != null) {
-      _scrollToBottom();
-    }
+    setState(() {
+      _controller.text = content;
+      _analyzedTone = MessageTone.neutral;
+    });
+    await _handleSendTap();
   }
 
   @override
@@ -578,7 +606,9 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                   .map(
                     (label) => ActionChip(
                       label: Text(label, style: const TextStyle(fontSize: 12)),
-                      onPressed: _sending ? null : () => _sendQuickReply(label),
+                      onPressed: (_sending || _hcCountdownActive)
+                          ? null
+                          : () => _sendQuickReply(label),
                     ),
                   )
                   .toList(),
@@ -586,22 +616,27 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
           ),
         ],
         if (!isReadOnly)
-          MessageComposeBar(
-            controller: _controller,
-            pendingAttachments: _pendingAttachments,
-            onPickAttachment: _pickAttachment,
-            onRemoveAttachment: _removeAttachment,
-            onSend: _sendMessage,
-            sending: _sending,
-            cyclingPlaceholderHints:
-                aiCoach ? AiTips.messagingPlaceholders : null,
-            onChanged: (value) {
-              setState(() {});
-              if (aiCoach && value.length > 10) {
-                _analyzedTone = AiGuidanceService.analyze(value).tone;
-              }
-            },
-          ),
+          _hcCountdownActive
+              ? MessageSendCountdownBar(
+                  secondsRemaining: _hcSecondsRemaining,
+                  onCancel: _cancelHcCountdown,
+                )
+              : MessageComposeBar(
+                  controller: _controller,
+                  pendingAttachments: _pendingAttachments,
+                  onPickAttachment: _pickAttachment,
+                  onRemoveAttachment: _removeAttachment,
+                  onSend: _handleSendTap,
+                  sending: _sending,
+                  cyclingPlaceholderHints:
+                      aiCoach ? AiTips.messagingPlaceholders : null,
+                  onChanged: (value) {
+                    setState(() {});
+                    if (aiCoach && value.length > 10) {
+                      _analyzedTone = AiGuidanceService.analyze(value).tone;
+                    }
+                  },
+                ),
       ],
     );
   }

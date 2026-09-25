@@ -210,7 +210,8 @@ class MessagingScreenState extends State<MessagingScreen> {
     }
     context.read<MessagingProvider>().loadThreads(
           viewerUserId: appProvider.currentUser?.id,
-          notifyEnabled: appProvider.notifyMessages,
+          notifyEnabled:
+              appProvider.notifyMessages && !appProvider.highConflictMode,
         );
   }
 
