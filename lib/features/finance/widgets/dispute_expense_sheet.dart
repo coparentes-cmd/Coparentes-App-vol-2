@@ -69,11 +69,17 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.tr('Nie udało się zgłosić sporu.')),
+            content: Text(context.tr(
+              error is ApiException &&
+                      error.statusCode == 403 &&
+                      error.message == 'forbidden_status_transition'
+                  ? 'Ta zmiana statusu wydatku nie jest dozwolona.'
+                  : 'Nie udało się zgłosić sporu.',
+            )),
             backgroundColor: AppTheme.errorColor,
           ),
         );

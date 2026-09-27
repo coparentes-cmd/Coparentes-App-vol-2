@@ -714,11 +714,17 @@ class FinanceScreenState extends State<FinanceScreen>
                               ),
                             );
                           }
-                        } catch (_) {
+                        } catch (error) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(context.tr('Nie udało się zaakceptować wydatku.')),
+                                content: Text(context.tr(
+                                  _financeStatusErrorMessage(
+                                    error,
+                                    fallback:
+                                        'Nie udało się zaakceptować wydatku.',
+                                  ),
+                                )),
                                 backgroundColor: AppTheme.errorColor,
                               ),
                             );
@@ -740,7 +746,22 @@ class FinanceScreenState extends State<FinanceScreen>
                               ),
                             );
                           }
-                        } catch (_) {}
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(context.tr(
+                                  _financeStatusErrorMessage(
+                                    error,
+                                    fallback:
+                                        'Nie udało się oznaczyć wydatku jako rozliczonego.',
+                                  ),
+                                )),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        }
                       },
                     ),
                     );
@@ -1149,4 +1170,16 @@ class FinanceScreenState extends State<FinanceScreen>
       );
     }
   }
+}
+
+String _financeStatusErrorMessage(
+  Object error, {
+  required String fallback,
+}) {
+  if (error is ApiException &&
+      error.statusCode == 403 &&
+      error.message == 'forbidden_status_transition') {
+    return 'Ta zmiana statusu wydatku nie jest dozwolona.';
+  }
+  return fallback;
 }

@@ -386,7 +386,10 @@ class ExpenseCardState extends State<ExpenseCard> {
                 ],
               ),
             ],
+            // Backend FSM: only the payer may mark accepted → settled.
             if (!widget.isReadOnly &&
+                userId != null &&
+                expense.paidBy == userId &&
                 expense.status == ExpenseStatus.accepted) ...[
               const SizedBox(height: 10),
               SizedBox(

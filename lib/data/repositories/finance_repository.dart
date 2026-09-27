@@ -63,17 +63,16 @@ class FinanceRepository {
     String? receiptMimeType,
   }) async {
     try {
+      // paidBy / status are server-enforced (requester + pending); do not send.
       final body = <String, dynamic>{
         'title': expense.title,
         'amount': expense.amount,
         'currency': expense.currency,
         'category': expense.category,
         'childIds': expense.childIds,
-        'paidBy': expense.paidBy,
         'splitRatio': expense.splitRatio,
         'date': expenseDateToApi(expense.date),
         'receiptUrl': expense.receiptUrl,
-        'status': expenseStatusToApi(expense.status),
         'note': expense.note,
       };
       if (receiptContentBase64 != null) {
@@ -117,14 +116,12 @@ class FinanceRepository {
           'currency': local.currency,
           'category': local.category,
           'childIds': local.childIds,
-          'paidBy': local.paidBy,
           'splitRatio': local.splitRatio,
           'date': expenseDateToApi(local.date),
           'receiptUrl': local.receiptUrl,
           if (receiptContentBase64 != null)
             'receiptContentBase64': receiptContentBase64,
           if (receiptMimeType != null) 'receiptMimeType': receiptMimeType,
-          'status': expenseStatusToApi(local.status),
           'note': local.note,
         },
       });
@@ -230,13 +227,11 @@ class FinanceRepository {
               'currency': payload['currency'],
               'category': payload['category'],
               'childIds': payload['childIds'],
-              'paidBy': payload['paidBy'],
               'splitRatio': payload['splitRatio'],
               'date': payload['date'],
               'receiptUrl': payload['receiptUrl'],
               'receiptContentBase64': payload['receiptContentBase64'],
               'receiptMimeType': payload['receiptMimeType'],
-              'status': payload['status'],
               'note': payload['note'],
             });
             final created = expenseFromJson(response);

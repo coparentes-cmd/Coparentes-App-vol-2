@@ -467,6 +467,18 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
       return;
     }
 
+    if (amount > 1000000) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr('Kwota nie może przekroczyć 1 000 000.'),
+          ),
+          backgroundColor: AppTheme.warningColor,
+        ),
+      );
+      return;
+    }
+
     final app = context.read<AppProvider>();
     final user = app.currentUser;
     final note = _noteController.text.trim();
