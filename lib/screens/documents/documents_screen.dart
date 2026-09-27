@@ -188,25 +188,40 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               )
             else
               ...documents.map(
-                (document) => Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    leading: Icon(
-                      document.isPrivate
-                          ? Icons.lock_outline
-                          : Icons.description_outlined,
-                      color: document.isPrivate
-                          ? AppTheme.purpleColor
-                          : AppTheme.textSecondary,
+                (document) {
+                  final canDelete = document.isPrivate &&
+                      viewerUserId != null &&
+                      document.uploadedById == viewerUserId;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: ListTile(
+                      leading: Icon(
+                        document.isPrivate
+                            ? Icons.lock_outline
+                            : Icons.description_outlined,
+                        color: document.isPrivate
+                            ? AppTheme.purpleColor
+                            : AppTheme.textSecondary,
+                      ),
+                      title: Text(document.title),
+                      subtitle: Text(
+                        '${context.tr(_documentCategoryLabel(document.category))} · ${document.childName ?? 'Rodzina'} · ${context.tr(_formatRelative(document.updatedAt))}',
+                      ),
+                      trailing: canDelete
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: AppTheme.errorColor,
+                              ),
+                              tooltip: context.tr('Usuń'),
+                              onPressed: () =>
+                                  _confirmDeleteDocument(context, document),
+                            )
+                          : const Icon(Icons.chevron_right),
+                      onTap: () => _openDocument(context, document),
                     ),
-                    title: Text(document.title),
-                    subtitle: Text(
-                      '${context.tr(_documentCategoryLabel(document.category))} · ${document.childName ?? 'Rodzina'} · ${context.tr(_formatRelative(document.updatedAt))}',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _openDocument(context, document),
-                  ),
-                ),
+                  );
+                },
               ),
           ],
         ),
@@ -228,6 +243,52 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       builder: (_) => _AddDocumentSheet(
         workspace: workspace,
         viewerUserId: viewerUserId,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteDocument(
+    BuildContext context,
+    FamilyDocument document,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Usunąć dokument?')),
+        content: Text(
+          '${document.title}. ${context.tr('Ta operacja jest nieodwracalna.')}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.tr('Anuluj')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: Text(context.tr('Usuń')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final ok =
+        await context.read<DocumentsProvider>().deleteDocument(document.id);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.tr(
+            ok ? 'Dokument usunięty.' : 'Nie udało się usunąć dokumentu.',
+          ),
+        ),
+        backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
       ),
     );
   }
@@ -387,7 +448,8 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     }
 
     setState(() => _isSaving = true);
-    final created = await context.read<DocumentsProvider>().uploadDocument(
+    final provider = context.read<DocumentsProvider>();
+    final created = await provider.uploadDocument(
           title: title,
           category: _category,
           childId: _childId,
@@ -406,7 +468,10 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       SnackBar(
         content: Text(
           created == null
-              ? context.tr('Nie udało się dodać dokumentu.') : 'Dokument zapisany ✓',
+              ? context.tr(
+                  provider.error ?? 'Nie udało się dodać dokumentu.',
+                )
+              : 'Dokument zapisany ✓',
         ),
         backgroundColor:
             created == null ? AppTheme.errorColor : AppTheme.successColor,

@@ -46,18 +46,17 @@ class DocumentsRepository {
     String? childId,
     String? fileName,
     String? mimeType,
-    String? fileUrl,
     String? contentBase64,
     String? uploadedById,
   }) async {
     try {
+      // fileUrl is not sent — server rejects create-by-URL; contentBase64 only.
       final payload = await _apiClient.postJson('/documents', {
         'title': title,
         'category': category,
         'childId': childId,
         'fileName': fileName,
         'mimeType': mimeType,
-        'fileUrl': fileUrl,
         'contentBase64': contentBase64,
       });
       final created = familyDocumentFromJson(payload);
@@ -79,10 +78,9 @@ class DocumentsRepository {
         childId: childId,
         fileName: fileName,
         mimeType: mimeType,
-        fileUrl: fileUrl,
         uploadedById: uploadedById,
         sizeBytes: fileBytesLength,
-        hasFile: fileUrl != null || contentBase64 != null,
+        hasFile: contentBase64 != null,
         createdAt: now,
         updatedAt: now,
       );
@@ -97,7 +95,6 @@ class DocumentsRepository {
           'childId': childId,
           'fileName': fileName,
           'mimeType': mimeType,
-          'fileUrl': fileUrl,
           'contentBase64': contentBase64,
         },
       });
@@ -107,6 +104,13 @@ class DocumentsRepository {
 
   Future<Map<String, dynamic>> downloadDocument(String documentId) async {
     return _apiClient.getJson('/documents/$documentId/download');
+  }
+
+  Future<void> deleteDocument(String documentId) async {
+    await _apiClient.deleteJson('/documents/$documentId');
+    final cached = _offlineStore.getDocuments().map(familyDocumentFromJson).toList();
+    cached.removeWhere((document) => document.id == documentId);
+    await _saveDocuments(cached);
   }
 
   Future<void> syncPendingActions() async {
@@ -144,7 +148,6 @@ class DocumentsRepository {
               'childId': payload['childId'],
               'fileName': payload['fileName'],
               'mimeType': payload['mimeType'],
-              'fileUrl': payload['fileUrl'],
               'contentBase64': payload['contentBase64'],
             });
             final created = familyDocumentFromJson(response);
