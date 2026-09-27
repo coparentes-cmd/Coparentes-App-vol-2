@@ -150,6 +150,7 @@ class CalendarEvent {
   final String? childId;
   final String createdBy;
   final String? location;
+  final DateTime? deletedAt;
 
   CalendarEvent({
     required this.id,
@@ -161,6 +162,7 @@ class CalendarEvent {
     this.childId,
     required this.createdBy,
     this.location,
+    this.deletedAt,
   });
 
   Color get typeColor {

@@ -34,6 +34,7 @@ class SelectedDayCard extends StatelessWidget {
   final List<CalendarEvent> events;
   final bool isException;
   final bool isPending;
+  final bool isReadOnly;
   final ValueChanged<CalendarEvent>? onEventDoubleTap;
 
   const SelectedDayCard({
@@ -42,6 +43,7 @@ class SelectedDayCard extends StatelessWidget {
     required this.events,
     this.isException = false,
     this.isPending = false,
+    this.isReadOnly = false,
     this.onEventDoubleTap,
   });
 
@@ -51,6 +53,7 @@ class SelectedDayCard extends StatelessWidget {
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     final children =
         context.watch<AppProvider>().currentWorkspace?.children ?? const [];
+    final userId = context.watch<AppProvider>().currentUser?.id;
     final isParentA = slot?.custodian == UserRole.parentA;
     final color = slot == null
         ? AppTheme.textSecondary
@@ -168,6 +171,10 @@ class SelectedDayCard extends StatelessWidget {
                     final titleText = childLabel == null
                         ? titleCore
                         : '$titleCore · $childLabel';
+                    final canDelete = !isReadOnly &&
+                        userId != null &&
+                        e.createdBy == userId &&
+                        e.deletedAt == null;
                     return GestureDetector(
                       onDoubleTap: onEventDoubleTap == null
                           ? null
@@ -214,6 +221,17 @@ class SelectedDayCard extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (canDelete)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: AppTheme.errorColor,
+                            ),
+                            onPressed: () => _confirmDelete(context, e),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
                       ],
                     ),
                   ),
@@ -235,6 +253,41 @@ class SelectedDayCard extends StatelessWidget {
           ),
         ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, CalendarEvent event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('Usunąć zdarzenie?')),
+        content: Text(event.title),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('Anuluj')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: Text(context.tr('Usuń')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+    final ok = await context.read<CalendarProvider>().deleteEvent(event.id);
+    if (!context.mounted) {
+      return;
+    }
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('Nie udało się usunąć zdarzenia.')),
+        ),
+      );
+    }
   }
 
   String _formatDayHeader(BuildContext context, DateTime date) {

@@ -95,6 +95,17 @@ class CalendarRepository {
     }
   }
 
+  Future<CalendarEvent> deleteEvent(String eventId) async {
+    final payload = await _apiClient.deleteJson('/calendar/events/$eventId');
+    final event = calendarEventFromJson(payload);
+    try {
+      await _upsertEventInCache(event);
+    } catch (_) {
+      // Soft-deleted on the server — keep the success path.
+    }
+    return event;
+  }
+
   Future<CalendarEvent> updateEvent({
     required String id,
     required String title,
@@ -141,6 +152,7 @@ class CalendarRepository {
         childId: childId,
         createdBy: existing.createdBy,
         location: location ?? existing.location,
+        deletedAt: existing.deletedAt,
       );
       await _upsertEventInCache(local);
       return local;

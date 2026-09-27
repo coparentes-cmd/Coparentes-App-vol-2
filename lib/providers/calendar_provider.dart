@@ -294,6 +294,7 @@ class CalendarProvider extends ChangeNotifier {
         childId: event.childId,
         createdBy: event.createdBy,
         location: location,
+        deletedAt: event.deletedAt,
       );
       changed = true;
     }
@@ -503,6 +504,9 @@ class CalendarProvider extends ChangeNotifier {
 
   List<CalendarEvent> getEventsForDay(DateTime date) {
     final events = _events.where((event) {
+      if (event.deletedAt != null) {
+        return false;
+      }
       if (isSameCalendarDay(event.startDate, date)) {
         return true;
       }
@@ -519,6 +523,19 @@ class CalendarProvider extends ChangeNotifier {
     }).toList();
     events.sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     return events;
+  }
+
+  Future<bool> deleteEvent(String id) async {
+    try {
+      final updated = await _repository.deleteEvent(id);
+      _upsertEvent(updated);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _error = 'Nie udało się usunąć zdarzenia.';
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> _reloadBestEffort() async {
@@ -700,6 +717,7 @@ class CalendarProvider extends ChangeNotifier {
         childId: childId,
         createdBy: existing.createdBy,
         location: location ?? existing.location,
+        deletedAt: existing.deletedAt,
       ),
     );
   }

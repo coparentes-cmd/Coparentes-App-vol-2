@@ -348,6 +348,9 @@ CalendarEvent calendarEventFromJson(Map<String, dynamic> json) {
     childId: json['childId'] as String?,
     createdBy: json['createdBy'] as String? ?? '',
     location: json['location'] as String?,
+    deletedAt: json['deletedAt'] == null
+        ? null
+        : parseApiDateTime(json['deletedAt'] as String),
   );
 }
 
@@ -363,6 +366,7 @@ Map<String, dynamic> calendarEventToJson(CalendarEvent event) {
     'childId': event.childId,
     'createdBy': event.createdBy,
     'location': event.location,
+    'deletedAt': event.deletedAt?.toUtc().toIso8601String(),
   };
 }
 

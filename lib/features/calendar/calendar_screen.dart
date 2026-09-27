@@ -352,6 +352,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           events: events,
           isException: isException,
           isPending: isPending,
+          isReadOnly: isReadOnly,
           onEventDoubleTap: isReadOnly
               ? null
               : (event) {

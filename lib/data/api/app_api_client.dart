@@ -96,6 +96,16 @@ class AppApiClient {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> deleteJson(String path) async {
+    final response = await _httpClient
+        .delete(
+          Uri.parse('$baseUrl$path'),
+          headers: _headers(),
+        )
+        .timeout(_requestTimeout);
+    return _decode(response);
+  }
+
   Future<void> postEmpty(String path) async {
     final response = await _httpClient
         .post(

@@ -622,18 +622,30 @@ class _CalendarFeed extends StatelessWidget {
           ),
         ),
         ...events.map(
-          (event) => _SimpleFeedTile(
-            icon: event.typeIcon,
-            color: event.typeColor,
-            title: event.title,
-            subtitle: formatAgendaTimeColumn(
+          (event) {
+            final isDeleted = event.deletedAt != null;
+            final timeLabel = formatAgendaTimeColumn(
               start: event.startDate,
               end: event.endDate,
-            ),
-            trailing:
-                '${event.startDate.day}.${event.startDate.month}',
-            onTap: () => onOpenDay(event.startDate),
-          ),
+            );
+            return _SimpleFeedTile(
+              icon: event.typeIcon,
+              color: event.typeColor,
+              title: event.title,
+              titleDecoration:
+                  isDeleted ? TextDecoration.lineThrough : null,
+              subtitle: isDeleted
+                  ? context.tr('Usunięte')
+                  : timeLabel,
+              subtitleColor: isDeleted
+                  ? AppTheme.errorColor
+                  : AppTheme.textSecondary,
+              trailing: isDeleted
+                  ? timeLabel
+                  : '${event.startDate.day}.${event.startDate.month}',
+              onTap: () => onOpenDay(event.startDate),
+            );
+          },
         ),
       ],
     );
@@ -644,7 +656,9 @@ class _SimpleFeedTile extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String title;
+  final TextDecoration? titleDecoration;
   final String? subtitle;
+  final Color subtitleColor;
   final String? trailing;
   final VoidCallback onTap;
 
@@ -652,7 +666,9 @@ class _SimpleFeedTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.title,
+    this.titleDecoration,
     this.subtitle,
+    this.subtitleColor = AppTheme.textSecondary,
     this.trailing,
     required this.onTap,
   });
@@ -689,10 +705,11 @@ class _SimpleFeedTile extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.textPrimary,
+                          decoration: titleDecoration,
                         ),
                       ),
                       if (subtitle != null) ...[
@@ -701,9 +718,9 @@ class _SimpleFeedTile extends StatelessWidget {
                           subtitle!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.textSecondary,
+                            color: subtitleColor,
                           ),
                         ),
                       ],
