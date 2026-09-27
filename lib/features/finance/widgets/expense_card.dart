@@ -74,12 +74,16 @@ class ExpenseCardState extends State<ExpenseCard> {
     return 'Rodzic';
   }
 
-  String? _childName(String? childId) {
-    if (childId == null) return null;
-    for (final c in widget.children) {
-      if (c.id == childId) return c.name.split(' ').first;
-    }
-    return null;
+  List<String> _childNames(List<String> childIds) {
+    return childIds
+        .map((id) {
+          for (final c in widget.children) {
+            if (c.id == id) return c.name.split(' ').first;
+          }
+          return null;
+        })
+        .whereType<String>()
+        .toList();
   }
 
   String _splitLabel(double ratio) {
@@ -156,7 +160,9 @@ class ExpenseCardState extends State<ExpenseCard> {
     final expense = widget.expense;
     final currencyCode = context.watch<AppProvider>().currencyCode;
     final payerName = context.tr(_memberName(expense.paidBy));
-    final childName = _childName(expense.childId);
+    final childNames = _childNames(expense.childIds);
+    final childLabel =
+        childNames.isEmpty ? '' : ' · ${childNames.join(', ')}';
     final otherShare = expense.amountDue;
     final userId = widget.currentUserId;
     final canRespond = !widget.isReadOnly &&
@@ -205,7 +211,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                       Text(
                         '${expense.date.day}.${expense.date.month}.${expense.date.year}'
                         ' · ${context.tr(expense.category)}'
-                        '${childName != null ? ' · $childName' : ''}',
+                        '$childLabel',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,

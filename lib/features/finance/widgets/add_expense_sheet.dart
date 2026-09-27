@@ -39,7 +39,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
   String _selectedCategory = 'Szkoła';
-  String? _selectedChildId;
+  final List<String> _selectedChildIds = [];
   DateTime _selectedDate = DateTime.now();
   double _splitRatio = 0.5;
   late bool _ocrMode;
@@ -202,10 +202,6 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
     final workspace = context.watch<AppProvider>().currentWorkspace;
     final children = workspace?.children ?? [];
 
-    if (_selectedChildId == null && children.isNotEmpty) {
-      _selectedChildId = children.first.id;
-    }
-
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -359,9 +355,14 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                             child.name.split(' ').first,
                             style: const TextStyle(fontSize: 12),
                           ),
-                          selected: _selectedChildId == child.id,
-                          onSelected: (_) =>
-                              setState(() => _selectedChildId = child.id),
+                          selected: _selectedChildIds.contains(child.id),
+                          onSelected: (selected) => setState(() {
+                            if (selected) {
+                              _selectedChildIds.add(child.id);
+                            } else {
+                              _selectedChildIds.remove(child.id);
+                            }
+                          }),
                           selectedColor:
                               AppTheme.primaryTeal.withValues(alpha: 0.15),
                           checkmarkColor: AppTheme.primaryTeal,
@@ -478,7 +479,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
           amount: amount,
           currency: app.currencyCode,
           category: _selectedCategory,
-          childId: _selectedChildId,
+          childIds: List<String>.from(_selectedChildIds),
           paidBy: user?.id ?? 'unknown',
           splitRatio: _splitRatio,
           date: _selectedDate,

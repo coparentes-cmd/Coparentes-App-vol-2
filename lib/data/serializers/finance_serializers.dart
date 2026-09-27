@@ -40,7 +40,8 @@ Expense expenseFromJson(Map<String, dynamic> json) {
     amount: (json['amount'] as num).toDouble(),
     currency: json['currency'] as String? ?? 'PLN',
     category: json['category'] as String,
-    childId: json['childId'] as String?,
+    childIds: (json['childIds'] as List?)?.map((e) => e as String).toList() ??
+        const [],
     paidBy: json['paidBy'] as String,
     splitRatio: (json['splitRatio'] as num).toDouble(),
     date: DateTime.parse(json['date'] as String),
@@ -59,7 +60,7 @@ Map<String, dynamic> expenseToJson(Expense expense) {
     'amount': expense.amount,
     'currency': expense.currency,
     'category': expense.category,
-    'childId': expense.childId,
+    'childIds': expense.childIds,
     'paidBy': expense.paidBy,
     'splitRatio': expense.splitRatio,
     'date': expenseDateToApi(expense.date),

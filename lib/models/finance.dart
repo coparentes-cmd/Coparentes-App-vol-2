@@ -8,7 +8,7 @@ class Expense {
   final double amount;
   final String currency;
   final String category;
-  final String? childId;
+  final List<String> childIds;
   final String paidBy;
   final double splitRatio;
   final DateTime date;
@@ -24,7 +24,7 @@ class Expense {
     required this.amount,
     this.currency = 'PLN',
     required this.category,
-    this.childId,
+    this.childIds = const [],
     required this.paidBy,
     required this.splitRatio,
     required this.date,
