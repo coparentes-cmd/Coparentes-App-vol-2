@@ -1,25 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/country_profiles.dart';
-import '../../../../config/legal_config.dart';
-import '../../../../models/models.dart';
+
+import '../../../../l10n/app_strings.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
-import '../../../screens/auth/child_onboarding_sheet.dart';
-import '../../../screens/settings/privacy_consents_section.dart';
-
-import 'edit_profile_sheet.dart';
-import 'email_invite_sheet.dart';
-import 'section_header.dart';
-import 'settings_card.dart';
-import 'settings_divider.dart';
-import 'info_tile.dart';
-import 'action_tile.dart';
-import 'switch_tile.dart';
-import 'setup_pin_sheet.dart';
-import 'change_pin_sheet.dart';
-import 'package:coparentes/l10n/app_strings.dart';
 import '../../../../utils/password_normalization.dart';
 
 class ChangePasswordSheet extends StatefulWidget {
@@ -45,6 +29,40 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
     super.dispose();
   }
 
+  Future<void> _submit() async {
+    final currentPassword = normalizePassword(_currentController.text);
+    final validated = validateAndNormalizeNewPassword(
+      rawNew: _newController.text,
+      rawConfirm: _confirmController.text,
+    );
+    if (validated.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr(validated.errorMessage!))),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final ap = context.read<AppProvider>();
+    final ok = await ap.changePassword(
+      currentPassword: currentPassword,
+      newPassword: validated.normalizedNew!,
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? context.tr('Hasło zostało zmienione ✓')
+              : (ap.authError ?? context.tr('Nie udało się zmienić hasła.')),
+        ),
+        backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -58,90 +76,45 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(context.tr('Zmień hasło'),
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          Text(
+            context.tr('Zmień hasło'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           TextField(
             controller: _currentController,
             obscureText: true,
             decoration: InputDecoration(
               labelText: context.tr('Aktualne hasło'),
-              prefixIcon: Icon(Icons.lock_outline),
+              prefixIcon: const Icon(Icons.lock_outline),
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           TextField(
             controller: _newController,
             obscureText: true,
             decoration: InputDecoration(
               labelText: context.tr('Nowe hasło'),
-              prefixIcon: Icon(Icons.lock_reset_outlined),
+              prefixIcon: const Icon(Icons.lock_reset_outlined),
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           TextField(
             controller: _confirmController,
             obscureText: true,
             decoration: InputDecoration(
               labelText: context.tr('Powtórz nowe hasło'),
-              prefixIcon: Icon(Icons.lock_reset_outlined),
+              prefixIcon: const Icon(Icons.lock_reset_outlined),
             ),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _submitting
-                  ? null
-                  : () async {
-                      final currentPassword =
-                          normalizePassword(_currentController.text);
-                      final newPassword = normalizePassword(_newController.text);
-                      final confirmPassword =
-                          normalizePassword(_confirmController.text);
-
-                      final lengthError =
-                          validateNormalizedPasswordLength(newPassword);
-                      if (lengthError != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(context.tr(lengthError)),
-                          ),
-                        );
-                        return;
-                      }
-                      if (newPassword != confirmPassword) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(context.tr('Hasła nie są identyczne.'))),
-                        );
-                        return;
-                      }
-
-                      setState(() => _submitting = true);
-                      final ap = context.read<AppProvider>();
-                      final ok = await ap.changePassword(
-                        currentPassword: currentPassword,
-                        newPassword: newPassword,
-                      );
-                      if (!context.mounted) return;
-                      setState(() => _submitting = false);
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            ok
-                                ? context.tr('Hasło zostało zmienione ✓')
-                                : (ap.authError ?? context.tr('Nie udało się zmienić hasła.')),
-                          ),
-                          backgroundColor:
-                              ok ? AppTheme.successColor : AppTheme.errorColor,
-                        ),
-                      );
-                    },
+              onPressed: _submitting ? null : _submit,
               style: ElevatedButton.styleFrom(backgroundColor: widget.color),
               child: _submitting
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
@@ -149,7 +122,10 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : Text(context.tr('Zapisz hasło'), style: TextStyle(color: Colors.white)),
+                  : Text(
+                      context.tr('Zapisz hasło'),
+                      style: const TextStyle(color: Colors.white),
+                    ),
             ),
           ),
         ],

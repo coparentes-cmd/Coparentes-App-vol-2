@@ -11,6 +11,7 @@ class AppUser {
   final String? avatarUrl;
   final bool twoFactorEnabled;
   final bool highConflictMode;
+  final bool mustChangePassword;
   final ThemeMode themeMode;
   final AppColorScheme colorScheme;
   final DateTime createdAt;
@@ -23,10 +24,39 @@ class AppUser {
     this.avatarUrl,
     this.twoFactorEnabled = false,
     this.highConflictMode = false,
+    this.mustChangePassword = false,
     this.themeMode = ThemeMode.light,
     this.colorScheme = AppColorScheme.teal,
     required this.createdAt,
   });
+
+  AppUser copyWith({
+    String? id,
+    String? name,
+    String? email,
+    UserRole? role,
+    String? avatarUrl,
+    bool? twoFactorEnabled,
+    bool? highConflictMode,
+    bool? mustChangePassword,
+    ThemeMode? themeMode,
+    AppColorScheme? colorScheme,
+    DateTime? createdAt,
+  }) {
+    return AppUser(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
+      highConflictMode: highConflictMode ?? this.highConflictMode,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
+      themeMode: themeMode ?? this.themeMode,
+      colorScheme: colorScheme ?? this.colorScheme,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 
   Color get roleColor {
     switch (role) {

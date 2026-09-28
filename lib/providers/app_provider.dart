@@ -40,6 +40,10 @@ class AppProvider extends ChangeNotifier {
   /// Held only while an OTP challenge is pending — cleared after unlock / cancel.
   String? _pendingE2ePassword;
 
+  /// Login password kept in memory only while [AppUser.mustChangePassword] is true
+  /// so the forced-change screen can pass it as currentPassword without re-prompting.
+  String? _pendingLoginPassword;
+
   AppProvider({
     required AuthRepository authRepository,
     required ConsentRepository consentRepository,
@@ -225,7 +229,13 @@ class AppProvider extends ChangeNotifier {
     try {
       final session = await _authRepository.restoreSession();
       if (session != null) {
-        _applySession(session);
+        // Forced change needs the temp password in memory — cold restore cannot
+        // supply it, so clear the dead session and require a fresh login.
+        if (session.user.mustChangePassword) {
+          await _authRepository.logout();
+        } else {
+          _applySession(session);
+        }
       }
     } finally {
       _isInitializing = false;
@@ -255,11 +265,13 @@ class AppProvider extends ChangeNotifier {
       _pendingE2ePassword = null;
       _setDemoMode(false);
       _applySession(response.session!);
+      _retainLoginPasswordIfMustChange(password);
       await _e2eUnlockAfterAuth(password);
       notifyListeners();
       return true;
     } catch (error) {
       _pendingE2ePassword = null;
+      _pendingLoginPassword = null;
       _authError = _mapAuthError(
         error,
         fallback: 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.',
@@ -293,7 +305,10 @@ class AppProvider extends ChangeNotifier {
       _setDemoMode(false);
       _applySession(session);
       if (e2ePassword != null && e2ePassword.isNotEmpty) {
+        _retainLoginPasswordIfMustChange(e2ePassword);
         await _e2eUnlockAfterAuth(e2ePassword);
+      } else {
+        _pendingLoginPassword = null;
       }
       notifyListeners();
       return true;
@@ -539,6 +554,41 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Completes the post-forgot-password forced change using the in-memory
+  /// login password as [currentPassword], then re-authenticates (backend
+  /// invalidates sessions on password change).
+  Future<bool> completeForcedPasswordChange({
+    required String newPassword,
+  }) async {
+    final current = _pendingLoginPassword;
+    final email = _currentUser?.email;
+    if (current == null ||
+        current.isEmpty ||
+        email == null ||
+        email.isEmpty) {
+      _authError = 'Sesja wygasła. Zaloguj się ponownie.';
+      notifyListeners();
+      return false;
+    }
+
+    final changed = await changePassword(
+      currentPassword: current,
+      newPassword: newPassword,
+    );
+    if (!changed) {
+      return false;
+    }
+
+    _pendingLoginPassword = null;
+
+    final loggedIn = await login(email: email, password: newPassword);
+    if (!loggedIn) {
+      logout();
+      return false;
+    }
+    return true;
   }
 
   /// Soft-deletes the account on the server. Does **not** clear local session —
@@ -1013,6 +1063,7 @@ class AppProvider extends ChangeNotifier {
     _currentWorkspace = null;
     _authError = null;
     _pendingE2ePassword = null;
+    _pendingLoginPassword = null;
     _setDemoMode(false);
     _needsChildOnboarding = false;
     _requirePinOnResume = false;
@@ -1032,6 +1083,14 @@ class AppProvider extends ChangeNotifier {
     _colorScheme = session.user.colorScheme;
     _isPinLocked = false;
     unawaited(_loadPinSettings());
+  }
+
+  void _retainLoginPasswordIfMustChange(String password) {
+    if (_currentUser?.mustChangePassword == true && password.isNotEmpty) {
+      _pendingLoginPassword = password;
+    } else {
+      _pendingLoginPassword = null;
+    }
   }
 
   Future<void> _e2eSetupNewKeys(String password) async {

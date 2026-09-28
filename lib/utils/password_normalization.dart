@@ -22,3 +22,23 @@ String? validateNormalizedPasswordLength(
   }
   return null;
 }
+
+/// Shared by [ChangePasswordSheet] and forced-change screen.
+///
+/// Normalizes both fields, checks min length and equality.
+/// On success [normalizedNew] is set; on failure [errorMessage] is a Polish UI key.
+({String? normalizedNew, String? errorMessage}) validateAndNormalizeNewPassword({
+  required String rawNew,
+  required String rawConfirm,
+}) {
+  final newPassword = normalizePassword(rawNew);
+  final confirmPassword = normalizePassword(rawConfirm);
+  final lengthError = validateNormalizedPasswordLength(newPassword);
+  if (lengthError != null) {
+    return (normalizedNew: null, errorMessage: lengthError);
+  }
+  if (newPassword != confirmPassword) {
+    return (normalizedNew: null, errorMessage: 'Hasła nie są identyczne.');
+  }
+  return (normalizedNew: newPassword, errorMessage: null);
+}

@@ -63,4 +63,33 @@ void main() {
       );
     });
   });
+
+  group('validateAndNormalizeNewPassword', () {
+    test('accepts matching normalized pair', () {
+      final result = validateAndNormalizeNewPassword(
+        rawNew: 'abc-1234xx',
+        rawConfirm: 'abc1234xx',
+      );
+      expect(result.errorMessage, isNull);
+      expect(result.normalizedNew, 'abc1234xx');
+    });
+
+    test('rejects mismatched pair', () {
+      final result = validateAndNormalizeNewPassword(
+        rawNew: 'Password1',
+        rawConfirm: 'Password2',
+      );
+      expect(result.normalizedNew, isNull);
+      expect(result.errorMessage, 'Hasła nie są identyczne.');
+    });
+
+    test('rejects too short', () {
+      final result = validateAndNormalizeNewPassword(
+        rawNew: 'abc',
+        rawConfirm: 'abc',
+      );
+      expect(result.normalizedNew, isNull);
+      expect(result.errorMessage, isNotNull);
+    });
+  });
 }

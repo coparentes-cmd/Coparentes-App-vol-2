@@ -24,9 +24,7 @@ import 'providers/finance_provider.dart';
 import 'providers/offline_sync_provider.dart';
 import 'screens/auth/child_onboarding_sheet.dart';
 import 'screens/auth/role_selection_screen.dart';
-import 'screens/child/child_dashboard.dart';
-import 'screens/dashboard/parent_dashboard.dart';
-import 'screens/observer/observer_dashboard.dart';
+import 'screens/auth/auth_home_resolver.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
@@ -307,18 +305,12 @@ class _AppGateState extends State<_AppGate> {
       return const RoleSelectionScreen();
     }
 
-    _hydrateSession(user.id);
-    _maybeShowChildOnboarding(user.id, appProvider);
-
-    switch (user.role) {
-      case UserRole.child:
-        return const ChildDashboard();
-      case UserRole.observer:
-        return const ObserverDashboard();
-      case UserRole.parentA:
-      case UserRole.parentB:
-        return const ParentDashboard();
+    if (!user.mustChangePassword) {
+      _hydrateSession(user.id);
+      _maybeShowChildOnboarding(user.id, appProvider);
     }
+
+    return resolveAuthenticatedHome(user);
   }
 
   void _hydrateSession(String userId) {

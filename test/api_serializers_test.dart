@@ -54,4 +54,30 @@ void main() {
       expect(map['msg_1'], {'paragon', 'pilne'});
     });
   });
+
+  group('appUserFromJson mustChangePassword', () {
+    test('defaults to false when missing', () {
+      final user = appUserFromJson({
+        'id': 'u1',
+        'name': 'Ada',
+        'email': 'ada@test.app',
+        'role': 'parentA',
+        'createdAt': '2026-01-01T00:00:00.000Z',
+      });
+      expect(user.mustChangePassword, isFalse);
+    });
+
+    test('parses true', () {
+      final user = appUserFromJson({
+        'id': 'u1',
+        'name': 'Ada',
+        'email': 'ada@test.app',
+        'role': 'parentA',
+        'mustChangePassword': true,
+        'createdAt': '2026-01-01T00:00:00.000Z',
+      });
+      expect(user.mustChangePassword, isTrue);
+      expect(appUserToJson(user)['mustChangePassword'], isTrue);
+    });
+  });
 }
