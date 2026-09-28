@@ -7,6 +7,7 @@ import '../../../l10n/app_strings.dart';
 import '../../../providers/app_provider.dart';
 import '../../../services/e2e_crypto_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/password_normalization.dart';
 
 /// Bottom sheet: ask for login password to unlock messages after process restart.
 ///
@@ -86,8 +87,9 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
       return;
     }
 
-    final password = _passwordController.text;
-    if (password.isEmpty) {
+    final rawPassword = _passwordController.text;
+    final normalizedPassword = normalizePassword(rawPassword);
+    if (normalizedPassword.isEmpty && rawPassword.isEmpty) {
       setState(() => _error = 'Podaj hasło');
       return;
     }
@@ -98,7 +100,20 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
     });
 
     try {
-      await context.read<AppProvider>().unlockE2eWithPassword(password);
+      final app = context.read<AppProvider>();
+      // Prefer normalized (matches login/register hashes + new envelopes).
+      try {
+        await app.unlockE2eWithPassword(
+          normalizedPassword.isEmpty ? rawPassword : normalizedPassword,
+        );
+      } on InvalidPasswordException {
+        // Legacy envelopes created from raw text after an unnormalized change-password.
+        if (rawPassword != normalizedPassword && rawPassword.isNotEmpty) {
+          await app.unlockE2eWithPassword(rawPassword);
+        } else {
+          rethrow;
+        }
+      }
       if (!mounted) {
         return;
       }

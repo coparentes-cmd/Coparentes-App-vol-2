@@ -150,7 +150,7 @@ class AppProvider extends ChangeNotifier {
         case 'email_in_use':
           return 'Ten e-mail jest już zarejestrowany. Spróbuj się zalogować.';
         case 'invalid_request':
-          return 'Sprawdź dane: hasło min. 10 znaków, imię i nazwa przestrzeni min. 2 znaki.';
+          return 'Sprawdź dane: hasło min. 8 znaków, imię i nazwa przestrzeni min. 2 znaki.';
         case 'required_consents_missing':
           return 'Zaakceptuj wszystkie wymagane zgody, aby dokończyć rejestrację.';
         case 'required_consent_locked':

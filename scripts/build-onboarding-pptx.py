@@ -111,7 +111,7 @@ def main() -> None:
         [
             "Instrukcja dla pierwszego rodzica (Rodzic A).",
             "Konto produkcyjne — nie tryb demo.",
-            "Hasło: minimum 10 znaków.",
+            "Hasło: minimum 8 znaków.",
             "Aplikacja: getcoparentes.app",
         ],
     )
@@ -201,7 +201,7 @@ def main() -> None:
         "Krok 7 — Logowanie dziecka",
         [
             "Zakładka „Dziecko” → kod → „Sprawdź kod”.",
-            "Data urodzenia (jak w profilu) + hasło (min. 10 znaków).",
+            "Data urodzenia (jak w profilu) + hasło (min. 8 znaków).",
             "Pierwsze logowanie: imię. Kolejne: kod + data + hasło.",
             "„Wejdź” → panel: Dzisiaj, Kalendarz, Rodzina, Lista.",
         ],
@@ -215,7 +215,7 @@ def main() -> None:
             "Brak profilu dziecka → sprawdź datę urodzenia u Rodzica A.",
             "„Sprawdź kod” → kliknij przed „Wejdź”.",
             "Zły kod → kod dziecka ≠ kod drugiego rodzica.",
-            "Hasło za krótkie → min. 10 znaków.",
+            "Hasło za krótkie → min. 8 znaków.",
             "Profil zajęty → dziecko loguje się ponownie tym samym hasłem.",
         ],
     )

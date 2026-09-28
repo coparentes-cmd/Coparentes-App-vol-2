@@ -6,7 +6,7 @@ Aplikacja: [getcoparentes.app](https://getcoparentes.app)
 
 **Pobierz:** [PowerPoint (.pptx)](https://getcoparentes.app/downloads/instrukcja-nowa-rodzina.pptx) · [strona pobierania](https://getcoparentes.app/downloads/)
 
-> Instrukcja dotyczy konta produkcyjnego (nie trybu demo). Hasło musi mieć **co najmniej 10 znaków**.
+> Instrukcja dotyczy konta produkcyjnego (nie trybu demo). Hasło musi mieć **co najmniej 8 znaków**.
 
 ---
 
@@ -102,7 +102,7 @@ Na telefonie lub tablecie dziecka:
 2. Wybierz zakładkę **Dziecko**.
 3. Wpisz **kod zaproszenia dziecka** i kliknij **Sprawdź kod** — powinna pojawić się nazwa rodziny.
 4. Ustaw **datę urodzenia** (tę samą, co w profilu u rodzica).
-5. Ustaw **hasło** (min. 10 znaków).
+5. Ustaw **hasło** (min. 8 znaków).
 6. Przy **pierwszym** logowaniu podaj **imię** — przy kolejnych logowaniach wystarczy kod, data urodzenia i hasło.
 7. Kliknij **Wejdź**.
 
@@ -119,7 +119,7 @@ Po zalogowaniu dziecko widzi **panel dziecka** z zakładkami: **Dzisiaj**, **Kal
 | *Nie znaleziono profilu dziecka dla tej daty urodzenia* | Sprawdź datę urodzenia w profilu u Rodzica A albo poproś rodzica o dodanie profilu. |
 | *Najpierw sprawdź kod zaproszenia dziecka* | Kliknij **Sprawdź kod** przed **Wejdź**. |
 | *Nieprawidłowy kod zaproszenia* | Upewnij się, że używasz **kodu dziecka**, nie kodu dla drugiego rodzica. |
-| Hasło za krótkie | Hasło musi mieć co najmniej **10 znaków**. |
+| Hasło za krótkie | Hasło musi mieć co najmniej **8 znaków**. |
 | *Ten profil ma już konto* | Dziecko loguje się ponownie tym samym hasłem — imię nie jest już wymagane. |
 
 ---

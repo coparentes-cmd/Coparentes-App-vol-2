@@ -11,6 +11,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/layout_utils.dart';
+import '../../utils/password_normalization.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/language_flag.dart';
 import 'consent_registration_screen.dart';
@@ -468,7 +469,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: context.tr('Minimum 10 znaków'),
+            hint: context.tr('Minimum 8 znaków'),
             obscureText: true,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
@@ -501,7 +502,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: context.tr('Minimum 10 znaków'),
+            hint: context.tr('Minimum 8 znaków'),
             obscureText: true,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
@@ -578,7 +579,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           _Field(
             controller: _passwordController,
             label: context.tr('Hasło'),
-            hint: context.tr('Minimum 10 znaków'),
+            hint: context.tr('Minimum 8 znaków'),
             obscureText: true,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
@@ -764,8 +765,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Future<void> _submit() async {
     final appProvider = context.read<AppProvider>();
     final email = _emailController.text.trim();
-    // Strip whitespace/separators from paste (mail clients often insert them).
-    final password = _passwordController.text.replaceAll(RegExp(r'[\s\-_.]+'), '');
+    final password = normalizePassword(_passwordController.text);
 
     if (_mode != _AuthMode.joinChild) {
       if (email.isEmpty || password.isEmpty) {
@@ -777,8 +777,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
-    if (password.length < 10) {
-      _showMessage('Hasło musi mieć co najmniej 10 znaków.');
+    final lengthError = validateNormalizedPasswordLength(password);
+    if (lengthError != null) {
+      _showMessage(lengthError);
       return;
     }
 

@@ -20,6 +20,7 @@ import 'switch_tile.dart';
 import 'setup_pin_sheet.dart';
 import 'change_pin_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import '../../../../utils/password_normalization.dart';
 
 class ChangePasswordSheet extends StatefulWidget {
   final Color color;
@@ -94,15 +95,23 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
               onPressed: _submitting
                   ? null
                   : () async {
-                      if (_newController.text.length < 10) {
+                      final currentPassword =
+                          normalizePassword(_currentController.text);
+                      final newPassword = normalizePassword(_newController.text);
+                      final confirmPassword =
+                          normalizePassword(_confirmController.text);
+
+                      final lengthError =
+                          validateNormalizedPasswordLength(newPassword);
+                      if (lengthError != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(context.tr('Nowe hasło musi mieć co najmniej 10 znaków.')),
+                            content: Text(context.tr(lengthError)),
                           ),
                         );
                         return;
                       }
-                      if (_newController.text != _confirmController.text) {
+                      if (newPassword != confirmPassword) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(context.tr('Hasła nie są identyczne.'))),
                         );
@@ -112,8 +121,8 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
                       setState(() => _submitting = true);
                       final ap = context.read<AppProvider>();
                       final ok = await ap.changePassword(
-                        currentPassword: _currentController.text,
-                        newPassword: _newController.text,
+                        currentPassword: currentPassword,
+                        newPassword: newPassword,
                       );
                       if (!context.mounted) return;
                       setState(() => _submitting = false);

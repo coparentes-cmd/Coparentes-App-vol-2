@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import '../../../../utils/password_normalization.dart';
 
 /// Password confirmation step for account soft-delete.
 class DeleteAccountSheet extends StatefulWidget {
@@ -27,7 +28,7 @@ class DeleteAccountSheetState extends State<DeleteAccountSheet> {
   }
 
   Future<void> _submit() async {
-    final password = _passwordController.text;
+    final password = normalizePassword(_passwordController.text);
     if (password.isEmpty || _submitting) {
       return;
     }
