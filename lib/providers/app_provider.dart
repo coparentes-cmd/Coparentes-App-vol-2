@@ -264,9 +264,14 @@ class AppProvider extends ChangeNotifier {
       _pendingLoginChallenge = null;
       _pendingE2ePassword = null;
       _setDemoMode(false);
-      _applySession(response.session!);
+      final session = response.session!;
+      _applySession(session);
       _retainLoginPasswordIfMustChange(password);
-      await _e2eUnlockAfterAuth(password);
+      // Temp password cannot open an existing E2E envelope — skip unlock and
+      // surface MustChangePasswordScreen immediately (no Argon2 delay).
+      if (!session.user.mustChangePassword) {
+        await _e2eUnlockAfterAuth(password);
+      }
       notifyListeners();
       return true;
     } catch (error) {
@@ -306,7 +311,10 @@ class AppProvider extends ChangeNotifier {
       _applySession(session);
       if (e2ePassword != null && e2ePassword.isNotEmpty) {
         _retainLoginPasswordIfMustChange(e2ePassword);
-        await _e2eUnlockAfterAuth(e2ePassword);
+        // Same as login(): do not try E2E unlock with a temporary password.
+        if (!session.user.mustChangePassword) {
+          await _e2eUnlockAfterAuth(e2ePassword);
+        }
       } else {
         _pendingLoginPassword = null;
       }

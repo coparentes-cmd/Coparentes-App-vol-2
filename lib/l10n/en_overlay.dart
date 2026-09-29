@@ -175,6 +175,7 @@ const enOverlay = <String, String>{
   'Zalogowano tymczasowym hasłem. Ustaw nowe hasło, aby kontynuować.':
       'You signed in with a temporary password. Set a new password to continue.',
   'Sesja wygasła. Zaloguj się ponownie.': 'Session expired. Please sign in again.',
+  'To może potrwać chwilę...': 'This may take a moment...',
   '1 dzień temu': '1 day ago',
   'Adres e-mail': 'Email address',
   'Analizuję...': 'Analysing...',

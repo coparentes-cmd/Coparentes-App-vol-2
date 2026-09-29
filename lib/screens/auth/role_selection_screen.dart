@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -38,6 +40,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
+  bool _showSubmittingHint = false;
+  Timer? _submittingHintTimer;
   bool _registerIsMama = true;
   bool _demoPickerOpen = false;
   bool? _backendReachable;
@@ -75,6 +79,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   @override
   void dispose() {
+    _submittingHintTimer?.cancel();
     _nameController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
@@ -84,6 +89,28 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _setSubmitting(bool value) {
+    _submittingHintTimer?.cancel();
+    _submittingHintTimer = null;
+    if (!value) {
+      setState(() {
+        _submitting = false;
+        _showSubmittingHint = false;
+      });
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _showSubmittingHint = false;
+    });
+    _submittingHintTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted || !_submitting) {
+        return;
+      }
+      setState(() => _showSubmittingHint = true);
+    });
   }
 
   String get _composedRegisterName {
@@ -238,14 +265,33 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                           ),
                                         ),
                                         child: _submitting
-                                            ? const SizedBox(
-                                                width: 18,
-                                                height: 18,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Colors.white,
-                                                ),
+                                            ? Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                  if (_showSubmittingHint) ...[
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      context.tr(
+                                                        'To może potrwać chwilę...',
+                                                      ),
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               )
                                             : Text(
                                                 _buttonLabel(_mode),
@@ -844,7 +890,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       }
     }
 
-    setState(() => _submitting = true);
+    _setSubmitting(true);
 
     bool success;
     switch (_mode) {
@@ -878,7 +924,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       return;
     }
 
-    setState(() => _submitting = false);
+    _setSubmitting(false);
 
     if (!success) {
       _showMessage(appProvider.authError ?? 'Operacja nie powiodła się.');
@@ -886,12 +932,12 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   Future<void> _enterDemoRole(UserRole role) async {
-    setState(() => _submitting = true);
+    _setSubmitting(true);
     await context.read<AppProvider>().enterDemoRole(role);
     if (!mounted) {
       return;
     }
-    setState(() => _submitting = false);
+    _setSubmitting(false);
   }
 
   void _showMessage(String message) {
