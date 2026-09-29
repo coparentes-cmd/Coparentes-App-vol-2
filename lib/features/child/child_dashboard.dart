@@ -209,17 +209,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF57C00), Color(0xFFFF9800)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+              // Header — animated teal/blue/green gradient (CSS-parity)
+              _AnimatedGradientHeader(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -259,8 +250,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
                     const SizedBox(width: 4),
                     Lottie.asset(
                       'assets/lottie/running_fox.lottie',
-                      width: 48,
-                      height: 48,
+                      width: 88,
+                      height: 88,
                       repeat: true,
                       fit: BoxFit.contain,
                     ),
@@ -1046,5 +1037,73 @@ class _ChildDashboardState extends State<ChildDashboard> {
 
     final nextParent = _custodianLabel(tomorrowSlot.custodian);
     return 'Jutro: $nextParent';
+  }
+}
+
+/// Child greeting card: CSS-like animated gradient
+/// (`linear-gradient(45deg, #22c995, #1672d9, #4f9535)`, 8s ease infinite).
+class _AnimatedGradientHeader extends StatefulWidget {
+  const _AnimatedGradientHeader({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AnimatedGradientHeader> createState() =>
+      _AnimatedGradientHeaderState();
+}
+
+class _AnimatedGradientHeaderState extends State<_AnimatedGradientHeader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  static const _colors = [
+    Color(0xFF22C995),
+    Color(0xFF1672D9),
+    Color(0xFF4F9535),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Mimic background-position: 0% 50% → 100% 50% → 0% 50% with ease.
+        final t = _controller.value;
+        final progress = t <= 0.5
+            ? Curves.easeInOut.transform(t * 2)
+            : Curves.easeInOut.transform(2 - t * 2);
+        final shift = progress * 2 - 1; // -1 … 1
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              // ~45deg, oversized travel like background-size: 200% 200%
+              begin: Alignment(-1.5 + shift, -1.0),
+              end: Alignment(1.5 + shift, 1.0),
+              colors: _colors,
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
   }
 }
