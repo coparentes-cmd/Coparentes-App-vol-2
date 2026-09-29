@@ -512,6 +512,9 @@ class AppProvider extends ChangeNotifier {
   Future<bool> changePassword({
     required String currentPassword,
     required String newPassword,
+    /// When true, do not attempt Argon2 unlock of an existing envelope (temp /
+    /// admin-reset password cannot open it — that path freezes web for a long time).
+    bool replaceOrphanedE2eKeys = false,
   }) async {
     try {
       _authError = null;
@@ -523,9 +526,10 @@ class AppProvider extends ChangeNotifier {
       if (e2e != null) {
         try {
           final unlocked = await e2e.hasUnlockedKey();
-          if (!unlocked) {
-            // Best-effort: unlock with current password (normal change).
-            // Orphaned envelopes (temp/admin reset) throw InvalidPasswordException.
+          final skipUnlockAttempt = replaceOrphanedE2eKeys ||
+              (_currentUser?.mustChangePassword == true);
+          if (!unlocked && !skipUnlockAttempt) {
+            // Normal Settings → change password: unlock with current password.
             try {
               await e2e.unlockWithPassword(currentPassword);
             } on InvalidPasswordException {
@@ -604,6 +608,7 @@ class AppProvider extends ChangeNotifier {
     final changed = await changePassword(
       currentPassword: current,
       newPassword: newPassword,
+      replaceOrphanedE2eKeys: true,
     );
     if (!changed) {
       return false;
