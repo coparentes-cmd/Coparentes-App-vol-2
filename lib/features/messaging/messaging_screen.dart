@@ -266,7 +266,6 @@ class MessagingScreenState extends State<MessagingScreen> {
         body: InlineCategoryChatPanel(
           key: const ValueKey(familyCategoryChannel),
           category: familyCategoryChannel,
-          showChildQuickReplies: user?.role == UserRole.child,
           allowPrivateTags: false,
         ),
       );

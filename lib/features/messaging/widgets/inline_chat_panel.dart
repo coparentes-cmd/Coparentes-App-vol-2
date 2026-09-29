@@ -25,7 +25,6 @@ import 'package:coparentes/l10n/app_strings.dart';
 class InlineCategoryChatPanel extends StatefulWidget {
   final String? category;
   final String? threadId;
-  final bool showChildQuickReplies;
   final bool allowPrivateTags;
   final MessageSearchQuery? messageSearchQuery;
 
@@ -33,7 +32,6 @@ class InlineCategoryChatPanel extends StatefulWidget {
     super.key,
     this.category,
     this.threadId,
-    this.showChildQuickReplies = false,
     this.allowPrivateTags = false,
     this.messageSearchQuery,
   }) : assert(
@@ -387,17 +385,6 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
     _scrollToBottom();
   }
 
-  Future<void> _sendQuickReply(String content) async {
-    if (_sending || _hcCountdownActive) {
-      return;
-    }
-    setState(() {
-      _controller.text = content;
-      _analyzedTone = MessageTone.neutral;
-    });
-    await _handleSendTap();
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
@@ -591,30 +578,6 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                   ),
           ),
         ),
-        if (widget.showChildQuickReplies && !isReadOnly) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                '🤝 Chcę zostać dłużej',
-                '📞 Zadzwoń do mnie',
-                '🏠 Zostań na noc',
-                '🎮 Chcę zabrać konsolę',
-              ]
-                  .map(
-                    (label) => ActionChip(
-                      label: Text(label, style: const TextStyle(fontSize: 12)),
-                      onPressed: (_sending || _hcCountdownActive)
-                          ? null
-                          : () => _sendQuickReply(label),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
         if (!isReadOnly)
           _hcCountdownActive
               ? MessageSendCountdownBar(

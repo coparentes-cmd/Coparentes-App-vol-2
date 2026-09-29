@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/models.dart';
@@ -10,6 +11,7 @@ import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/demo_time.dart';
 import '../../../utils/app_browser_back.dart';
 import '../../../config/messaging_categories.dart';
+import '../../../l10n/locale_policy.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import 'widgets/child_todo_models.dart';
@@ -187,159 +189,149 @@ class _ChildDashboardState extends State<ChildDashboard> {
 
   Widget _buildTodayTab(BuildContext context, String firstName) {
     final now = DemoTime.now();
-    final weekdays = [
-      'Poniedziałek',
-      'Wtorek',
-      'Środa',
-      'Czwartek',
-      'Piątek',
-      'Sobota',
-      'Niedziela',
-    ];
-    final dayName = weekdays[now.weekday - 1];
+    final locale = dateFormattingLocale(Localizations.localeOf(context));
+    final dayLabel =
+        '${DateFormat('EEEE', locale).format(now)} · ${DateFormat('d MMMM y', locale).format(now)}';
     final calendar = context.watch<CalendarProvider>();
     final workspace = context.watch<AppProvider>().currentWorkspace;
     final slots = calendar.getSlotsForDay(now);
     final events = calendar.getEventsForDay(now);
     final slot = slots.isNotEmpty ? slots.first : null;
-    final custodianLabel = _custodianLabel(slot?.custodian, workspace);
+    final custodianLabel = _custodianLabel(slot?.custodian);
     final handoverHint = _handoverHint(slots, now, workspace);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
-      appBar: AppBar(
-        backgroundColor: AppTheme.childColor,
-        title: Row(
-          children: [
-            Text('👧', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text(context.tr('Mój dzień'), style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.switch_account, color: Colors.white),
-            tooltip: context.tr('Zmień profil'),
-            onPressed: () => _showExitDialog(context),
-          ),
-        ],
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF57C00), Color(0xFFFF9800)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF57C00), Color(0xFFFF9800)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                borderRadius: BorderRadius.circular(20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${context.tr('Cześć')}, $firstName! 👋',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dayLabel,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.switch_account, color: Colors.white),
+                      tooltip: context.tr('Zmień profil'),
+                      onPressed: () => _showExitDialog(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text('🌟', style: TextStyle(fontSize: 40)),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+
+              const SizedBox(height: 16),
+
+              _buildTodayPlanSection(
+                slot: slot,
+                events: events,
+                custodianLabel: custodianLabel,
+                handoverHint: handoverHint,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Mood
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.tr('Jak się dzisiaj czujesz?'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(context.tr('To tylko dla Ciebie – rodzice tego nie widzą 🔒'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        Text(
-                          '${context.tr('Cześć')}, $firstName! 👋',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(context.tr(dayName),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
-                          ),
-                        ),
+                        MoodButton(
+                            emoji: '😢',
+                            value: 1,
+                            selected: _mood == 1,
+                            onTap: () => setState(() => _mood = 1)),
+                        MoodButton(
+                            emoji: '😕',
+                            value: 2,
+                            selected: _mood == 2,
+                            onTap: () => setState(() => _mood = 2)),
+                        MoodButton(
+                            emoji: '😊',
+                            value: 3,
+                            selected: _mood == 3,
+                            onTap: () => setState(() => _mood = 3)),
+                        MoodButton(
+                            emoji: '😄',
+                            value: 4,
+                            selected: _mood == 4,
+                            onTap: () => setState(() => _mood = 4)),
+                        MoodButton(
+                            emoji: '🤩',
+                            value: 5,
+                            selected: _mood == 5,
+                            onTap: () => setState(() => _mood = 5)),
                       ],
                     ),
-                  ),
-                  const Text('🌟', style: TextStyle(fontSize: 40)),
-                ],
+                  ],
+                ),
               ),
-            ),
-
-            SizedBox(height: 16),
-
-            _buildTodayPlanSection(
-              slot: slot,
-              events: events,
-              custodianLabel: custodianLabel,
-              handoverHint: handoverHint,
-            ),
-
-            SizedBox(height: 16),
-
-            // Mood
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.tr('Jak się dzisiaj czujesz? 💭'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(context.tr('To tylko dla Ciebie – rodzice tego nie widzą 🔒'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      MoodButton(
-                          emoji: '😢',
-                          value: 1,
-                          selected: _mood == 1,
-                          onTap: () => setState(() => _mood = 1)),
-                      MoodButton(
-                          emoji: '😕',
-                          value: 2,
-                          selected: _mood == 2,
-                          onTap: () => setState(() => _mood = 2)),
-                      MoodButton(
-                          emoji: '😊',
-                          value: 3,
-                          selected: _mood == 3,
-                          onTap: () => setState(() => _mood = 3)),
-                      MoodButton(
-                          emoji: '😄',
-                          value: 4,
-                          selected: _mood == 4,
-                          onTap: () => setState(() => _mood = 4)),
-                      MoodButton(
-                          emoji: '🤩',
-                          value: 5,
-                          selected: _mood == 5,
-                          onTap: () => setState(() => _mood = 5)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -352,9 +344,13 @@ class _ChildDashboardState extends State<ChildDashboard> {
     required String? handoverHint,
   }) {
     final isParentA = slot?.custodian == UserRole.parentA;
-    final planColor = slot == null
+    final baseColor = slot == null
         ? AppTheme.textSecondary
         : (isParentA ? AppTheme.parentAColor : AppTheme.parentBColor);
+    // Soften fill for kids; keep accents readable. Does not change AppTheme globals.
+    final planColor = Color.lerp(baseColor, Colors.white, 0.18)!;
+    final planFill = Color.lerp(baseColor, Colors.white, 0.82)!;
+    final planBorder = Color.lerp(baseColor, Colors.white, 0.55)!;
     final sortedEvents = List<CalendarEvent>.from(events)
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     final hasPlan = slot != null || sortedEvents.isNotEmpty;
@@ -362,17 +358,13 @@ class _ChildDashboardState extends State<ChildDashboard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: slot != null
-            ? planColor.withValues(alpha: 0.16)
-            : Colors.white,
+        color: slot != null ? planFill : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: slot != null
-            ? Border.all(color: planColor.withValues(alpha: 0.35))
-            : null,
+        border: slot != null ? Border.all(color: planBorder) : null,
         boxShadow: [
           BoxShadow(
-            color: (slot != null ? planColor : AppTheme.childColor)
-                .withValues(alpha: 0.12),
+            color: (slot != null ? baseColor : AppTheme.childColor)
+                .withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -756,7 +748,16 @@ class _ChildDashboardState extends State<ChildDashboard> {
                                     : null,
                               ),
                             ),
-                            onChanged: (value) => _toggleListItem(index, value ?? false),
+                            secondary: IconButton(
+                              tooltip: context.tr('Edytuj'),
+                              icon: Icon(
+                                Icons.edit_outlined,
+                                color: AppTheme.childColor.withValues(alpha: 0.9),
+                              ),
+                              onPressed: () => _editListItem(index),
+                            ),
+                            onChanged: (value) =>
+                                _toggleListItem(index, value ?? false),
                           ),
                         ),
                       );
@@ -934,6 +935,58 @@ class _ChildDashboardState extends State<ChildDashboard> {
     _persistLists();
   }
 
+  Future<void> _editListItem(int index) async {
+    if (index < 0 || index >= _listItems.length) {
+      return;
+    }
+
+    final item = _listItems[index];
+    final controller = TextEditingController(text: item.text);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Edytuj element')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            hintText: context.tr('Treść elementu'),
+          ),
+          onSubmitted: (_) => Navigator.pop(dialogContext, true),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.tr('Anuluj')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.childColor,
+            ),
+            child: Text(context.tr('Zapisz')),
+          ),
+        ],
+      ),
+    );
+
+    final text = controller.text.trim();
+    controller.dispose();
+    if (saved != true || !mounted) {
+      return;
+    }
+    if (text.isEmpty || text == item.text) {
+      return;
+    }
+    if (index >= _listItems.length || _listItems[index].id != item.id) {
+      return;
+    }
+
+    setState(() => _listItems[index].text = text);
+    await _persistLists();
+  }
+
   void _removeListItem(int index) {
     final activeList = _activeList;
     if (activeList == null) {
@@ -944,25 +997,18 @@ class _ChildDashboardState extends State<ChildDashboard> {
     _persistLists();
   }
 
-  String _custodianLabel(UserRole? role, Workspace? workspace) {
+  /// Same wording as calendar [SelectedDayCard]: Mama = parentA, Tata = parentB.
+  String _custodianLabel(UserRole? role) {
     if (role == null) {
-      return 'Brak informacji';
+      return context.tr('Brak informacji');
     }
-
-    AppUser? member;
-    for (final user in workspace?.members ?? const <AppUser>[]) {
-      if (user.role == role) {
-        member = user;
-        break;
-      }
+    if (role == UserRole.parentA) {
+      return context.tr('U Mamy');
     }
-
-    if (member != null) {
-      final firstName = member.name.split(' ').first;
-      return 'U $firstName';
+    if (role == UserRole.parentB) {
+      return context.tr('U Taty');
     }
-
-    return role == UserRole.parentA ? 'U rodzica A' : 'U rodzica B';
+    return context.tr('Brak informacji');
   }
 
   String? _handoverHint(
@@ -980,7 +1026,8 @@ class _ChildDashboardState extends State<ChildDashboard> {
     }
 
     final tomorrow = day.add(const Duration(days: 1));
-    final tomorrowSlots = context.read<CalendarProvider>().getSlotsForDay(tomorrow);
+    final tomorrowSlots =
+        context.read<CalendarProvider>().getSlotsForDay(tomorrow);
     if (tomorrowSlots.isEmpty || slot == null) {
       return null;
     }
@@ -990,7 +1037,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
       return null;
     }
 
-    final nextParent = _custodianLabel(tomorrowSlot.custodian, workspace);
+    final nextParent = _custodianLabel(tomorrowSlot.custodian);
     return 'Jutro: $nextParent';
   }
 }

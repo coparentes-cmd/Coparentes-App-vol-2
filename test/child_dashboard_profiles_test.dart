@@ -157,7 +157,7 @@ Future<_CapturedChildUi> _captureChildDashboard(
   }
 
   expect(find.text('Plan na dziś'), findsOneWidget);
-  expect(find.text('Jak się dzisiaj czujesz? 💭'), findsOneWidget);
+  expect(find.text('Jak się dzisiaj czujesz?'), findsOneWidget);
 
   String? custodianLabel;
   final custodianFinder = find.textContaining('U ');
