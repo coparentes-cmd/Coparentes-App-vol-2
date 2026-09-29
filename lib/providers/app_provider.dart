@@ -17,7 +17,7 @@ import '../data/repositories/auth_repository.dart';
 import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../models/models.dart';
-import '../services/e2e_key_storage_service.dart';
+import '../services/e2e_crypto_service.dart';
 import '../services/e2e_session_service.dart';
 import '../utils/demo_time.dart';
 
@@ -517,20 +517,35 @@ class AppProvider extends ChangeNotifier {
       _authError = null;
 
       String? newPrivateKeyEnvelope;
+      String? newPublicKey;
+      E2eReplacementKeyMaterial? replacementMaterial;
       final e2e = _e2eSession;
       if (e2e != null) {
         try {
-          newPrivateKeyEnvelope =
-              await e2e.rewrapEnvelopeForNewPassword(newPassword);
-        } on NoUnlockedKeyException {
-          _authError =
-              'Zaloguj się ponownie przed zmianą hasła (wymagane odblokowanie kluczy E2E).';
-          notifyListeners();
-          return false;
+          final unlocked = await e2e.hasUnlockedKey();
+          if (!unlocked) {
+            // Best-effort: unlock with current password (normal change).
+            // Orphaned envelopes (temp/admin reset) throw InvalidPasswordException.
+            try {
+              await e2e.unlockWithPassword(currentPassword);
+            } on InvalidPasswordException {
+              // Fall through to replacement keys below.
+            }
+          }
+          if (await e2e.hasUnlockedKey()) {
+            newPrivateKeyEnvelope =
+                await e2e.rewrapEnvelopeForNewPassword(newPassword);
+          } else {
+            // Cannot open existing envelope — rotate to a fresh identity pair.
+            replacementMaterial =
+                await e2e.createReplacementKeyMaterial(newPassword);
+            newPrivateKeyEnvelope = replacementMaterial.privateKeyEnvelope;
+            newPublicKey = replacementMaterial.publicKey;
+          }
         } catch (error) {
-          debugPrint('[e2e] rewrap before password change failed: $error');
+          debugPrint('[e2e] prepare keys before password change failed: $error');
           _authError =
-              'Zaloguj się ponownie przed zmianą hasła (wymagane odblokowanie kluczy E2E).';
+              'Nie udało się przygotować kluczy E2E do zmiany hasła. Spróbuj ponownie.';
           notifyListeners();
           return false;
         }
@@ -540,16 +555,21 @@ class AppProvider extends ChangeNotifier {
         currentPassword: currentPassword,
         newPassword: newPassword,
         newPrivateKeyEnvelope: newPrivateKeyEnvelope,
+        newPublicKey: newPublicKey,
       );
 
-      if (newPrivateKeyEnvelope != null) {
+      if (replacementMaterial != null) {
+        await e2e?.applyReplacementKeyMaterial(replacementMaterial);
+        onE2eSessionChanged?.call();
+      } else if (newPrivateKeyEnvelope != null) {
         await e2e?.cacheEnvelope(newPrivateKeyEnvelope);
       }
       return true;
     } on ApiException catch (error) {
-      if (error.message == 'private_key_envelope_required') {
+      if (error.message == 'private_key_envelope_required' ||
+          error.message == 'invalid_public_key') {
         _authError =
-            'Zaloguj się ponownie przed zmianą hasła (wymagane odblokowanie kluczy E2E).';
+            'Nie udało się zmienić hasła (klucze E2E). Spróbuj ponownie.';
       } else {
         _authError = error.statusCode == 401
             ? 'Aktualne hasło jest nieprawidłowe.'

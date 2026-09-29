@@ -332,12 +332,14 @@ class AuthRepository {
     required String currentPassword,
     required String newPassword,
     String? newPrivateKeyEnvelope,
+    String? newPublicKey,
   }) async {
     await _apiClient.postJson('/auth/password', {
       'currentPassword': currentPassword,
       'newPassword': newPassword,
       if (newPrivateKeyEnvelope != null)
         'newPrivateKeyEnvelope': newPrivateKeyEnvelope,
+      if (newPublicKey != null) 'newPublicKey': newPublicKey,
     });
   }
 

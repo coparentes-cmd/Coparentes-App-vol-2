@@ -438,6 +438,10 @@ const enOverlay = <String, String>{
   'Nie udało się dodać dziecka.': 'Failed to add child.',
   'Nie udało się zgłosić sporu.': 'Could not raise the dispute.',
   'Nie udało się zmienić hasła.': 'Password change failed.',
+  'Nie udało się przygotować kluczy E2E do zmiany hasła. Spróbuj ponownie.':
+      'Could not prepare E2E keys for password change. Please try again.',
+  'Nie udało się zmienić hasła (klucze E2E). Spróbuj ponownie.':
+      'Password change failed (E2E keys). Please try again.',
   'Proponowany dzień we wniosku': 'Proposed day in the request',
   'Wniosek o wyjątek odrzucony.': 'Exception request denied.',
   'Wniosek o zamianę odrzucony.': 'Replacement request rejected.',

@@ -9,6 +9,19 @@ import '../data/repositories/user_keys_remote.dart';
 import 'e2e_crypto_service.dart';
 import 'e2e_key_storage_service.dart';
 
+/// Fresh identity material for atomic password + key replacement.
+class E2eReplacementKeyMaterial {
+  const E2eReplacementKeyMaterial({
+    required this.publicKey,
+    required this.privateKeyEnvelope,
+    required this.keyPairData,
+  });
+
+  final String publicKey;
+  final String privateKeyEnvelope;
+  final SimpleKeyPairData keyPairData;
+}
+
 /// Outcome of [E2eSessionService.fetchPublicKeysForUsers].
 ///
 /// Callers (e.g. thread creation in F4.3) decide whether [missingKey] / [failed]
@@ -96,6 +109,24 @@ class E2eSessionService {
 
   /// Generate + upload + unlock + cache (registration / first-time bootstrap).
   Future<void> setupNewKeys(String password) async {
+    final material = await createReplacementKeyMaterial(password);
+
+    await _apiClient.postJson('/user/keys', {
+      'publicKey': material.publicKey,
+      'privateKeyEnvelope': material.privateKeyEnvelope,
+    });
+
+    await applyReplacementKeyMaterial(material);
+  }
+
+  /// Fresh X25519 pair + envelope under [password] (no network).
+  ///
+  /// Used when the existing envelope cannot be unlocked (orphaned after
+  /// forgot-password / admin hash reset) and password change must rotate
+  /// identity keys atomically via `POST /auth/password`.
+  Future<E2eReplacementKeyMaterial> createReplacementKeyMaterial(
+    String password,
+  ) async {
     final keyPair = await _crypto.generateKeyPair();
     final keyPairData = await keyPair.extract();
     final publicKey = await keyPair.extractPublicKey();
@@ -103,14 +134,18 @@ class E2eSessionService {
       keyPair: keyPair,
       password: password,
     );
+    return E2eReplacementKeyMaterial(
+      publicKey: _crypto.encodePublicKey(publicKey),
+      privateKeyEnvelope: envelope,
+      keyPairData: keyPairData,
+    );
+  }
 
-    await _apiClient.postJson('/user/keys', {
-      'publicKey': _crypto.encodePublicKey(publicKey),
-      'privateKeyEnvelope': envelope,
-    });
-
-    await _keyStorage.storeUnlockedKeyPair(keyPairData);
-    await _keyStorage.cacheEncryptedEnvelope(envelope);
+  Future<void> applyReplacementKeyMaterial(
+    E2eReplacementKeyMaterial material,
+  ) async {
+    await _keyStorage.storeUnlockedKeyPair(material.keyPairData);
+    await _keyStorage.cacheEncryptedEnvelope(material.privateKeyEnvelope);
   }
 
   /// Unlock after login (swallows [InvalidPasswordException] — auth already succeeded).
