@@ -211,49 +211,65 @@ class _ChildDashboardState extends State<ChildDashboard> {
             children: [
               // Header — animated teal/blue/green gradient (CSS-parity)
               _AnimatedGradientHeader(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${context.tr('Cześć')}, $firstName! 👋',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${context.tr('Cześć')}, $firstName! 👋',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                dayLabel,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            dayLabel,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 15,
-                            ),
+                        ),
+                        // Fox sits left of the top-right profile control.
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 36),
+                          child: Lottie.asset(
+                            'assets/lottie/avocado_workout.lottie',
+                            width: 112,
+                            height: 112,
+                            repeat: true,
+                            fit: BoxFit.contain,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.switch_account, color: Colors.white),
-                      tooltip: context.tr('Zmień profil'),
-                      onPressed: () => _showExitDialog(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
+                    Positioned(
+                      top: -8,
+                      right: -8,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.switch_account,
+                          color: Colors.white,
+                        ),
+                        tooltip: context.tr('Zmień profil'),
+                        onPressed: () => _showExitDialog(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Lottie.asset(
-                      'assets/lottie/running_fox.lottie',
-                      width: 88,
-                      height: 88,
-                      repeat: true,
-                      fit: BoxFit.contain,
                     ),
                   ],
                 ),
