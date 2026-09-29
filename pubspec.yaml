@@ -30,6 +30,7 @@ dependencies:
   pdf: ^3.11.3
   url_launcher: ^6.3.2
   cryptography: ^2.9.0
+  lottie: ^3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -41,5 +42,6 @@ flutter:
   assets:
     - assets/icon/
     - assets/branding/
+    - assets/lottie/
     - assets/fonts/NotoSans-Regular.ttf
     - assets/fonts/NotoSans-Bold.ttf

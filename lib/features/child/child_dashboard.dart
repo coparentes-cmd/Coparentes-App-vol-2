@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../models/models.dart';
@@ -256,7 +257,13 @@ class _ChildDashboardState extends State<ChildDashboard> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Text('🌟', style: TextStyle(fontSize: 40)),
+                    Lottie.asset(
+                      'assets/lottie/running_fox.lottie',
+                      width: 48,
+                      height: 48,
+                      repeat: true,
+                      fit: BoxFit.contain,
+                    ),
                   ],
                 ),
               ),
@@ -348,9 +355,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
         ? AppTheme.textSecondary
         : (isParentA ? AppTheme.parentAColor : AppTheme.parentBColor);
     // Soften fill for kids; keep accents readable. Does not change AppTheme globals.
-    final planColor = Color.lerp(baseColor, Colors.white, 0.18)!;
-    final planFill = Color.lerp(baseColor, Colors.white, 0.82)!;
-    final planBorder = Color.lerp(baseColor, Colors.white, 0.55)!;
+    final planFill = Color.lerp(baseColor, Colors.white, 0.92)!;
+    final planBorder = Color.lerp(baseColor, Colors.white, 0.72)!;
+    const planTextColor = AppTheme.textPrimary;
     final sortedEvents = List<CalendarEvent>.from(events)
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
     final hasPlan = slot != null || sortedEvents.isNotEmpty;
@@ -375,13 +382,13 @@ class _ChildDashboardState extends State<ChildDashboard> {
         children: [
           Row(
             children: [
-              Icon(Icons.today, color: planColor, size: 22),
+              Icon(Icons.today, color: planTextColor, size: 22),
               SizedBox(width: 8),
               Text(context.tr('Plan na dziś'),
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: slot != null ? planColor : AppTheme.textPrimary,
+                  color: planTextColor,
                 ),
               ),
             ],
@@ -389,9 +396,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
           if (!hasPlan) ...[
             SizedBox(height: 12),
             Text(context.tr('Brak planu na dziś — rodzice mogą dodać coś w kalendarzu.'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
-                color: AppTheme.textSecondary,
+                color: planTextColor,
               ),
             ),
           ] else ...[
@@ -399,24 +406,24 @@ class _ChildDashboardState extends State<ChildDashboard> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.home, color: planColor, size: 20),
+                  Icon(Icons.home, color: planTextColor, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       custodianLabel,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: planColor,
+                        color: planTextColor,
                       ),
                     ),
                   ),
                   if (slot.handoverTime != null)
                     Text(
                       'Przekazanie: ${slot.handoverTime}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
-                        color: planColor.withValues(alpha: 0.85),
+                        color: planTextColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -429,15 +436,15 @@ class _ChildDashboardState extends State<ChildDashboard> {
                     Icon(
                       Icons.location_on_outlined,
                       size: 14,
-                      color: planColor.withValues(alpha: 0.85),
+                      color: planTextColor,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         slot.handoverLocation!,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: planColor.withValues(alpha: 0.85),
+                          color: planTextColor,
                         ),
                       ),
                     ),
@@ -450,15 +457,15 @@ class _ChildDashboardState extends State<ChildDashboard> {
                     Icon(
                       Icons.schedule,
                       size: 14,
-                      color: planColor.withValues(alpha: 0.85),
+                      color: planTextColor,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         handoverHint,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
-                          color: planColor.withValues(alpha: 0.85),
+                          color: planTextColor,
                         ),
                       ),
                     ),
@@ -471,7 +478,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                 const SizedBox(height: 12),
                 Divider(
                   height: 1,
-                  color: planColor.withValues(alpha: 0.25),
+                  color: AppTheme.dividerColor.withValues(alpha: 0.6),
                 ),
               ],
               const SizedBox(height: 12),
@@ -508,7 +515,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
+                                  color: planTextColor,
                                 ),
                               ),
                               if (event.location != null &&
@@ -517,7 +524,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                                   event.location!,
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    color: AppTheme.textSecondary,
+                                    color: planTextColor,
                                   ),
                                 ),
                             ],
