@@ -25,6 +25,7 @@ import 'providers/offline_sync_provider.dart';
 import 'screens/auth/child_onboarding_sheet.dart';
 import 'screens/auth/role_selection_screen.dart';
 import 'screens/auth/auth_home_resolver.dart';
+import 'screens/auth/reset_password_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
@@ -33,6 +34,7 @@ import 'widgets/pin_lock_overlay.dart';
 import 'data/local/locale_store.dart';
 import 'services/e2e_session_service.dart';
 import 'utils/app_browser_back.dart';
+import 'utils/reset_password_url.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -236,11 +238,41 @@ class CoparentesApp extends StatelessWidget {
                 ),
               );
             },
-            home: const _AppGate(),
+            home: _ResetPasswordGate(child: const _AppGate()),
           );
         },
       ),
     );
+  }
+}
+
+class _ResetPasswordGate extends StatefulWidget {
+  final Widget child;
+
+  const _ResetPasswordGate({required this.child});
+
+  @override
+  State<_ResetPasswordGate> createState() => _ResetPasswordGateState();
+}
+
+class _ResetPasswordGateState extends State<_ResetPasswordGate> {
+  String? _token;
+
+  @override
+  void initState() {
+    super.initState();
+    _token = readResetPasswordTokenFromUrl();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_token != null) {
+      return ResetPasswordScreen(
+        token: _token!,
+        onDone: () => setState(() => _token = null),
+      );
+    }
+    return widget.child;
   }
 }
 

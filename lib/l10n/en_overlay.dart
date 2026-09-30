@@ -197,6 +197,7 @@ const enOverlay = <String, String>{
   'Utwórz wątek': 'Create thread',
   'Wprowadź PIN': 'Enter PIN',
   'Wybierz daty': 'Choose dates',
+  'Wyślij link': 'Send link',
   'Wyślij hasło': 'Send password',
   'Zapisz hasło': 'Save password',
   'Zatwierdzony': 'Approved',
@@ -603,6 +604,8 @@ const enOverlay = <String, String>{
   'Grafik zaakceptowany — kalendarz zaktualizowany.': 'Timesheet accepted — Calendar updated.',
   'Nazwa przestrzeni musi mieć co najmniej 2 znaki.': '\'The name must be at least 2 characters long.\'',
   'PIN ustawiony i blokada po wznowieniu włączona ✓': 'Pin set and lock on resume enabled ✓',
+  'Podaj e-mail konta. Wyślemy link do ustawienia nowego hasła. Sprawdź skrzynkę i kliknij w link.':
+      'Enter your account email. We will send a link to set a new password. Check your inbox and open the link.',
   'Podaj e-mail konta. Wyślemy jednorazowe hasło — ': 'Enter your account email. We will send a one-time password —',
   'Wpisz go poniżej. Kod jest ważny przez 10 minut.': 'Enter it below. The code is valid for 10 minutes.',
   'Wyślij kontrpropozycję zamiast samego odrzucenia': 'Send a counter-proposal instead of only declining',
@@ -649,7 +652,15 @@ const enOverlay = <String, String>{
   'Wydatek zapisany. Oczekuje na akceptację drugiego rodzica.': 'Expense saved. Pending approval of the other parent.',
   'AI może się mylić. Zawsze sprawdź sugestię przed wysłaniem.': 'AI can be wrong. Always check a suggestion before sending.',
   'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.': 'Custody calendar, events and schedule swaps without the chaos.',
+  'Sprawdź swoją skrzynkę e-mail i kliknij w link, aby ustawić nowe hasło.':
+      'Check your email inbox and open the link to set a new password.',
   'Wysłaliśmy 12-cyfrowe hasło. Użyj TYLKO najnowszego maila, ': 'We sent you a 12-digit password. Use ONLY the latest email,',
+  'Hasło zostało zmienione. Zaloguj się nowym hasłem.':
+      'Your password has been changed. Sign in with the new password.',
+  'Link wygasł lub został już użyty. Poproś o nowy w oknie logowania.':
+      'This link expired or was already used. Request a new one from the sign-in screen.',
+  'Wybierz nowe hasło do konta Coparentes. Po zapisaniu zalogujesz się nim na ekranie logowania.':
+      'Choose a new password for your Coparentes account. After saving, sign in with it on the login screen.',
   'Proszę o trwałe usunięcie mojego konta Coparentes.\\\\\\\\n\\\\\\\\n': 'Please permanently delete my Coparentes account.\\\\\\\\n\\\\\\\\n',
   'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.': 'Messages, AI Coach and archived conversations in one place.',
   'Data końca musi być taka sama lub późniejsza niż data startu.': 'The end date must be the same as or later than the start date.',

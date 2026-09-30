@@ -361,6 +361,17 @@ class AuthRepository {
     );
   }
 
+  /// Consumes a password-reset link token and sets [newPassword].
+  Future<void> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _apiClient.postJson('/auth/reset-password/confirm', {
+      'token': token,
+      'newPassword': newPassword,
+    });
+  }
+
   Future<EmailInviteSendResult> sendEmailInvite({required String email}) async {
     final payload = await _apiClient.postJson('/invite/send', {
       'email': email.trim().toLowerCase(),

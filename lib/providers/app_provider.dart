@@ -681,6 +681,37 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Sets a new password from a one-time reset link. Does not log the user in.
+  Future<bool> confirmPasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      _authError = null;
+      await _authRepository.confirmPasswordReset(
+        token: token,
+        newPassword: newPassword,
+      );
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _authError = switch (error.message) {
+        'invalid_or_expired_token' =>
+          'Link wygasł lub został już użyty. Poproś o nowy w oknie logowania.',
+        'Too many requests, try again later' =>
+          'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
+        'invalid_request' => 'Podaj prawidłowe nowe hasło.',
+        _ => 'Nie udało się zmienić hasła.',
+      };
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _authError = 'Nie udało się zmienić hasła.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   static String? _passwordResetMailHint(Map<String, dynamic>? data) {
     final reason = data?['reason'] as String?;
     if (reason == null || reason.isEmpty) {

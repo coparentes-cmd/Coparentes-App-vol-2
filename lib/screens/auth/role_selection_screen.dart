@@ -704,7 +704,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(context.tr('Podaj e-mail konta. Wyślemy jednorazowe hasło — zaloguj się nim, a potem zmień hasło w Ustawieniach.'),
+                  Text(context.tr('Podaj e-mail konta. Wyślemy link do ustawienia nowego hasła. Sprawdź skrzynkę i kliknij w link.'),
                     style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
@@ -765,8 +765,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             setState(() => _obscureLoginPassword = false);
                             messenger.showSnackBar(
                               SnackBar(
-                                content: Text(context.tr('Wysłaliśmy 12-cyfrowe hasło. Użyj TYLKO najnowszego maila, wklej same cyfry (oko przy haśle pokazuje je jawnie), potem zmień hasło w Ustawieniach.'),
-                                ),
+                                content: Text(context.tr('Sprawdź swoją skrzynkę e-mail i kliknij w link, aby ustawić nowe hasło.')),
                                 backgroundColor: AppTheme.successColor,
                                 duration: Duration(seconds: 8),
                               ),
@@ -796,7 +795,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : Text(context.tr('Wyślij hasło')),
+                      : Text(context.tr('Wyślij link')),
                 ),
               ],
             );
