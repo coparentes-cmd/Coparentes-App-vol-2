@@ -5,6 +5,8 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../utils/secure_storage_options.dart';
+
 class SecureOfflineCodec {
   static const _keyStorageKey = 'coparentes_offline_aes_key_v1';
   static const _encryptedPrefix = 'enc:';
@@ -15,7 +17,7 @@ class SecureOfflineCodec {
   SecureOfflineCodec({FlutterSecureStorage? secureStorage})
       : _secureStorage = kIsWeb
             ? null
-            : (secureStorage ?? const FlutterSecureStorage());
+            : (secureStorage ?? buildSecureStorage());
 
   bool get isEnabled => _secureStorage != null;
 

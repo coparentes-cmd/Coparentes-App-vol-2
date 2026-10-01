@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:coparentes/services/e2e_crypto_service.dart';
 import 'package:coparentes/services/e2e_key_storage_service.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:coparentes/utils/secure_storage_options.dart';
+import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/test/test_flutter_secure_storage_platform.dart';
 import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +17,7 @@ void main() {
     backingStore = <String, String>{};
     FlutterSecureStoragePlatform.instance =
         TestFlutterSecureStoragePlatform(backingStore);
-    storage = E2eKeyStorageService(secureStorage: const FlutterSecureStorage());
+    storage = E2eKeyStorageService(secureStorage: buildSecureStorage());
   });
 
   test('cacheEncryptedEnvelope + getCachedEncryptedEnvelope round-trip',
@@ -53,7 +57,7 @@ void main() {
     expect(backingStore, isEmpty);
   });
 
-  test('unlocked key is not written to FlutterSecureStorage', () async {
+  test('storeUnlockedKeyPair does not write to FlutterSecureStorage', () async {
     final crypto = E2eCryptoService();
     final unlocked = await (await crypto.generateKeyPair()).extract();
 
@@ -70,5 +74,86 @@ void main() {
       () => storage.useUnlockedKeyPair((_) async => 'x'),
       throwsA(isA<NoUnlockedKeyException>()),
     );
+  });
+
+  // VM / widget tests: kIsWeb is false — persist/restore exercise the mobile path.
+  test('persist + restore round-trip restores usable unlocked key', () async {
+    expect(kIsWeb, isFalse,
+        reason: 'These unit tests run on the VM (mobile path).');
+
+    final crypto = E2eCryptoService();
+    final original = await (await crypto.generateKeyPair()).extract();
+    final originalSeed = await original.extractPrivateKeyBytes();
+    final originalPublic = (await original.extractPublicKey()).bytes;
+
+    await storage.persistUnlockedKeyToDevice(original);
+
+    expect(
+      backingStore.containsKey(E2eKeyStorageService.unlockedKeySeedStorageKey),
+      isTrue,
+    );
+    expect(
+      backingStore.containsKey(E2eKeyStorageService.unlockedKeyPublicStorageKey),
+      isTrue,
+    );
+
+    // Fresh service instance (empty RAM) reading the same durable store.
+    final restoredStorage =
+        E2eKeyStorageService(secureStorage: buildSecureStorage());
+    final ok = await restoredStorage.restoreUnlockedKeyFromDevice();
+    expect(ok, isTrue);
+
+    await restoredStorage.useUnlockedKeyPair((key) async {
+      expect(await key.extractPrivateKeyBytes(), originalSeed);
+      expect((await key.extractPublicKey()).bytes, originalPublic);
+      expect(key.type, KeyPairType.x25519);
+    });
+  });
+
+  test('restoreUnlockedKeyFromDevice returns false when nothing persisted',
+      () async {
+    final ok = await storage.restoreUnlockedKeyFromDevice();
+    expect(ok, isFalse);
+    await expectLater(
+      () => storage.useUnlockedKeyPair((_) async => null),
+      throwsA(isA<NoUnlockedKeyException>()),
+    );
+  });
+
+  test('restoreUnlockedKeyFromDevice clears corrupted data and returns false',
+      () async {
+    backingStore[E2eKeyStorageService.unlockedKeySeedStorageKey] =
+        '!!!not-valid-base64!!!';
+    backingStore[E2eKeyStorageService.unlockedKeyPublicStorageKey] =
+        base64Encode(List<int>.filled(32, 1));
+
+    final ok = await storage.restoreUnlockedKeyFromDevice();
+    expect(ok, isFalse);
+    expect(
+      backingStore.containsKey(E2eKeyStorageService.unlockedKeySeedStorageKey),
+      isFalse,
+    );
+    expect(
+      backingStore.containsKey(E2eKeyStorageService.unlockedKeyPublicStorageKey),
+      isFalse,
+    );
+    await expectLater(
+      () => storage.useUnlockedKeyPair((_) async => null),
+      throwsA(isA<NoUnlockedKeyException>()),
+    );
+  });
+
+  test('clearAll also clears persisted device key', () async {
+    final crypto = E2eCryptoService();
+    final unlocked = await (await crypto.generateKeyPair()).extract();
+
+    await storage.persistUnlockedKeyToDevice(unlocked);
+    await storage.storeUnlockedKeyPair(unlocked);
+    await storage.cacheEncryptedEnvelope('envelope');
+
+    await storage.clearAll();
+
+    expect(backingStore, isEmpty);
+    expect(await storage.restoreUnlockedKeyFromDevice(), isFalse);
   });
 }

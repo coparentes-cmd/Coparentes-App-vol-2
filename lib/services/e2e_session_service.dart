@@ -145,6 +145,7 @@ class E2eSessionService {
     E2eReplacementKeyMaterial material,
   ) async {
     await _keyStorage.storeUnlockedKeyPair(material.keyPairData);
+    await _keyStorage.persistUnlockedKeyToDevice(material.keyPairData);
     await _keyStorage.cacheEncryptedEnvelope(material.privateKeyEnvelope);
   }
 
@@ -161,8 +162,16 @@ class E2eSessionService {
 
   /// Unlock for messaging / password-change UI.
   ///
-  /// Throws [InvalidPasswordException] when the password does not open the envelope.
+  /// On mobile, restores a previously persisted device key when present and
+  /// skips envelope fetch + Argon2. Throws [InvalidPasswordException] when the
+  /// password does not open the envelope (slow path only).
   Future<void> unlockWithPassword(String password) async {
+    // Fast path: key already persisted on this device from a previous unlock.
+    final restoredFromDevice = await _keyStorage.restoreUnlockedKeyFromDevice();
+    if (restoredFromDevice) {
+      return; // Skip envelope fetch + Argon2 entirely.
+    }
+
     var envelope = await _keyStorage.getCachedEncryptedEnvelope();
     var fromServer = false;
 
@@ -183,6 +192,7 @@ class E2eSessionService {
       password: password,
     );
     await _keyStorage.storeUnlockedKeyPair(keyPair);
+    await _keyStorage.persistUnlockedKeyToDevice(keyPair);
     if (fromServer) {
       await _keyStorage.cacheEncryptedEnvelope(envelope);
     }

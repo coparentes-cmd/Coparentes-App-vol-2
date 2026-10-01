@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../utils/secure_storage_options.dart';
+
 class PinLockStore {
   static String _requireKey(String userId) => 'pin_require_resume_$userId';
   static String _hashKey(String userId) => 'pin_hash_$userId';
@@ -20,7 +22,7 @@ class PinLockStore {
   })  : _preferences = preferences,
         _secureStorage = kIsWeb
             ? null
-            : (secureStorage ?? const FlutterSecureStorage());
+            : (secureStorage ?? buildSecureStorage());
 
   Future<bool> isRequirePinOnResume(String userId) async {
     return _preferences.getBool(_requireKey(userId)) ?? false;

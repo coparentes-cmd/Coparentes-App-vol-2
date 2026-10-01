@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../utils/secure_storage_options.dart';
 
 /// Thrown by [E2eKeyStorageService.useUnlockedKeyPair] when no key is unlocked
 /// in process memory for this session.
@@ -11,7 +16,10 @@ class NoUnlockedKeyException implements Exception {
 
 /// Session + durable storage for E2E key material.
 ///
-/// - Unlocked (plaintext) private key: **process memory only** — gone on app kill.
+/// - Unlocked (plaintext) private key: process memory for the current session;
+///   on mobile also optionally persisted to [FlutterSecureStorage] (Keychain /
+///   Keystore) via [persistUnlockedKeyToDevice]. On web, plaintext is **never**
+///   written (SecureStorage maps to localStorage — not hardware-backed).
 /// - Password-wrapped envelope: [FlutterSecureStorage] (durable across launches).
 ///
 /// Note on [SimpleKeyPairData.destroy]: package `cryptography` 2.9.0 does **not**
@@ -23,14 +31,20 @@ class NoUnlockedKeyException implements Exception {
 class E2eKeyStorageService {
   E2eKeyStorageService({
     FlutterSecureStorage? secureStorage,
-  }) : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+  }) : _secureStorage = secureStorage ?? buildSecureStorage();
 
   static const String encryptedEnvelopeStorageKey =
       'coparentes_e2e_private_key_envelope_v1';
 
+  static const String unlockedKeySeedStorageKey =
+      'coparentes_e2e_unlocked_key_seed_v1';
+  static const String unlockedKeyPublicStorageKey =
+      'coparentes_e2e_unlocked_key_public_v1';
+
   final FlutterSecureStorage _secureStorage;
 
-  /// In-memory only — never written to disk / Keychain / Keystore.
+  /// In-memory only — never written to disk / Keychain / Keystore by
+  /// [storeUnlockedKeyPair] alone (see [persistUnlockedKeyToDevice] for mobile).
   SimpleKeyPairData? _unlockedKeyPair;
 
   /// Holds the decrypted key pair for the current app process lifetime.
@@ -54,6 +68,57 @@ class E2eKeyStorageService {
     return action(keyPair);
   }
 
+  /// Persists the UNLOCKED (plaintext) key to durable device storage.
+  ///
+  /// Mobile only — on web this is a no-op (would otherwise land in localStorage,
+  /// which has no hardware-backed protection, defeating the point of this cache).
+  Future<void> persistUnlockedKeyToDevice(SimpleKeyPairData keyPair) async {
+    if (kIsWeb) return;
+    final privateBytes = await keyPair.extractPrivateKeyBytes();
+    final publicKey = await keyPair.extractPublicKey();
+    await _secureStorage.write(
+      key: unlockedKeySeedStorageKey,
+      value: base64Encode(privateBytes),
+    );
+    await _secureStorage.write(
+      key: unlockedKeyPublicStorageKey,
+      value: base64Encode(publicKey.bytes),
+    );
+  }
+
+  /// Restores a previously persisted key from device storage into session memory.
+  ///
+  /// Returns true if a key was found and restored, false otherwise (mobile only;
+  /// always false on web).
+  Future<bool> restoreUnlockedKeyFromDevice() async {
+    if (kIsWeb) return false;
+    final seedB64 = await _secureStorage.read(key: unlockedKeySeedStorageKey);
+    final publicB64 =
+        await _secureStorage.read(key: unlockedKeyPublicStorageKey);
+    if (seedB64 == null || publicB64 == null) return false;
+    try {
+      final keyPair = SimpleKeyPairData(
+        base64Decode(seedB64),
+        publicKey: SimplePublicKey(
+          base64Decode(publicB64),
+          type: KeyPairType.x25519,
+        ),
+        type: KeyPairType.x25519,
+      );
+      await storeUnlockedKeyPair(keyPair);
+      return true;
+    } catch (_) {
+      // Corrupted/incompatible stored data — do not crash, just report "not found".
+      await clearPersistedDeviceKey();
+      return false;
+    }
+  }
+
+  Future<void> clearPersistedDeviceKey() async {
+    await _secureStorage.delete(key: unlockedKeySeedStorageKey);
+    await _secureStorage.delete(key: unlockedKeyPublicStorageKey);
+  }
+
   /// Persists the password-wrapped envelope (opaque to this layer).
   Future<void> cacheEncryptedEnvelope(String envelope) {
     return _secureStorage.write(
@@ -67,10 +132,11 @@ class E2eKeyStorageService {
     return _secureStorage.read(key: encryptedEnvelopeStorageKey);
   }
 
-  /// Clears in-memory unlocked key and durable envelope cache (logout).
+  /// Clears in-memory unlocked key, durable envelope, and device key (logout).
   Future<void> clearAll() async {
     _unlockedKeyPair?.destroy();
     _unlockedKeyPair = null;
     await _secureStorage.delete(key: encryptedEnvelopeStorageKey);
+    await clearPersistedDeviceKey();
   }
 }

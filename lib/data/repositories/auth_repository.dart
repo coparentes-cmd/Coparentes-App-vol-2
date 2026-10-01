@@ -12,6 +12,7 @@ import '../models/user_consent.dart';
 import '../serializers/api_serializers.dart';
 import '../serializers/document_serializers.dart';
 import '../local/secure_offline_codec.dart';
+import '../../utils/secure_storage_options.dart';
 
 class ChildJoinProfileOption {
   final String id;
@@ -54,7 +55,7 @@ class AuthRepository {
         _offlineStore = offlineStore,
         _secureStorage = kIsWeb
             ? null
-            : (secureStorage ?? const FlutterSecureStorage());
+            : (secureStorage ?? buildSecureStorage());
 
   bool get _usesCookieAuth => kIsWeb;
 
