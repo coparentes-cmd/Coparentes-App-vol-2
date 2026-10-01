@@ -35,6 +35,7 @@ class _E2eUnlockSheet extends StatefulWidget {
 
 class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
   static const _maxFailedAttempts = 5;
+  static const _showAbandonOptionAfterFailures = 2;
   static const _lockoutDuration = Duration(seconds: 30);
 
   final _passwordController = TextEditingController();
@@ -45,6 +46,9 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
   Timer? _lockoutTimer;
 
   bool get _isLockedOut => _lockoutSecondsRemaining > 0;
+
+  bool get _showAbandonHistoryOption =>
+      _failedAttempts >= _showAbandonOptionAfterFailures;
 
   @override
   void dispose() {
@@ -143,6 +147,153 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
     }
   }
 
+  Future<void> _onAbandonHistoryTapped() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.tr('Załóż nowe klucze czatu')),
+        content: Text(
+          dialogContext.tr(
+            'Jeśli kontynuujesz, stracisz dostęp do historii tej rozmowy na tym urządzeniu. Druga strona rozmowy zachowa swoją kopię. Tej operacji nie można cofnąć.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(dialogContext.tr('Anuluj')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: Text(dialogContext.tr('Załóż nowe klucze')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    await _promptCurrentPasswordAndReplaceKeys();
+  }
+
+  Future<void> _promptCurrentPasswordAndReplaceKeys() async {
+    final passwordController = TextEditingController();
+    String? dialogError;
+    var submitting = false;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(context.tr('Potwierdź aktualne hasło')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr(
+                      'Podaj hasło, którym logujesz się do aplikacji (nie stare hasło sprzed resetu).',
+                    ),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    enabled: !submitting,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Aktualne hasło'),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      errorText: dialogError,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      submitting ? null : () => Navigator.pop(dialogContext, false),
+                  child: Text(context.tr('Anuluj')),
+                ),
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final normalized =
+                              normalizePassword(passwordController.text);
+                          if (normalized.isEmpty) {
+                            setDialogState(() {
+                              dialogError = 'Podaj aktualne hasło.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            submitting = true;
+                            dialogError = null;
+                          });
+                          final app = context.read<AppProvider>();
+                          final success =
+                              await app.setupFreshE2eKeysAbandoningHistory(
+                            normalized,
+                          );
+                          if (!dialogContext.mounted) {
+                            return;
+                          }
+                          if (success) {
+                            Navigator.pop(dialogContext, true);
+                            return;
+                          }
+                          setDialogState(() {
+                            submitting = false;
+                            dialogError = app.authError ??
+                                'Nie udało się założyć nowych kluczy czatu.';
+                          });
+                        },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.errorColor,
+                  ),
+                  child: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(context.tr('Załóż nowe klucze')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    passwordController.dispose();
+
+    if (ok != true || !mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(
+          context.tr(
+            'Nowe klucze czatu założone. Możesz teraz korzystać z czatu.',
+          ),
+        ),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+    Navigator.pop(context, true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = context.watch<AppProvider>().primaryColor;
@@ -183,6 +334,22 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
               errorText: _error,
             ),
           ),
+          if (_showAbandonHistoryOption) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _submitting ? null : _onAbandonHistoryTapped,
+                child: Text(
+                  context.tr(
+                    'Nie pamiętasz starego hasła? Załóż nowe klucze czatu',
+                  ),
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,

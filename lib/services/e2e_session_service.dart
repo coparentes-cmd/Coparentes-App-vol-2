@@ -119,6 +119,23 @@ class E2eSessionService {
     await applyReplacementKeyMaterial(material);
   }
 
+  /// Rotate to a fresh identity pair under [currentPassword], abandoning history
+  /// sealed to the previous private key (post password-reset orphan recovery).
+  ///
+  /// Sends [currentPassword] so the backend can bcrypt-verify before overwrite.
+  Future<E2eReplacementKeyMaterial> replaceKeysAbandoningHistory(
+    String currentPassword,
+  ) async {
+    final material = await createReplacementKeyMaterial(currentPassword);
+    await _apiClient.postJson('/user/keys', {
+      'publicKey': material.publicKey,
+      'privateKeyEnvelope': material.privateKeyEnvelope,
+      'currentPassword': currentPassword,
+    });
+    await applyReplacementKeyMaterial(material);
+    return material;
+  }
+
   /// Fresh X25519 pair + envelope under [password] (no network).
   ///
   /// Used when the existing envelope cannot be unlocked (orphaned after

@@ -588,6 +588,48 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Orphaned E2E recovery: new X25519 pair under [currentPassword], uploaded
+  /// via `POST /user/keys` (with bcrypt verify). Abandons history sealed to the
+  /// previous private key. Does not change the account password.
+  Future<bool> setupFreshE2eKeysAbandoningHistory(
+    String currentPassword,
+  ) async {
+    final e2e = _e2eSession;
+    if (e2e == null) {
+      _authError = 'Sesja E2E niedostępna. Zaloguj się ponownie.';
+      notifyListeners();
+      return false;
+    }
+    if (currentPassword.isEmpty) {
+      _authError = 'Podaj aktualne hasło.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      _authError = null;
+      await e2e.replaceKeysAbandoningHistory(currentPassword);
+      onE2eSessionChanged?.call();
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 ||
+          error.message == 'invalid_credentials') {
+        _authError = 'Nieprawidłowe aktualne hasło.';
+      } else {
+        _authError =
+            'Nie udało się założyć nowych kluczy czatu. Spróbuj ponownie.';
+      }
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _authError =
+          'Nie udało się założyć nowych kluczy czatu. Spróbuj ponownie.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Completes the post-forgot-password forced change using the in-memory
   /// login password as [currentPassword], then re-authenticates (backend
   /// invalidates sessions on password change).
