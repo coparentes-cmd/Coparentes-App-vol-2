@@ -48,6 +48,14 @@ class FetchPublicKeysResult {
   bool get isComplete => failed.isEmpty && missingKey.isEmpty;
 }
 
+/// Thrown when recovery-code unlock is attempted but the account has no
+/// `recoveryKeyEnvelope` (pre-R2 account, or user never generated a code).
+class RecoveryCodeNotSetUpException implements Exception {
+  @override
+  String toString() =>
+      'RecoveryCodeNotSetUpException: no recoveryKeyEnvelope on this account';
+}
+
 /// Thrown when [E2eSessionService.buildThreadKeysPayload] cannot seal for every
 /// participant (missing public keys and/or fetch/decode failures).
 class IncompleteParticipantKeysException implements Exception {
@@ -286,6 +294,69 @@ class E2eSessionService {
     });
   }
 
+  /// Settings / R3: wrap the already-unlocked identity key under a new recovery
+  /// code and upload it. Returns the plaintext code for one-shot UI display.
+  ///
+  /// Throws [NoUnlockedKeyException] if the private key is not in RAM.
+  Future<String> generateRecoveryCodeForExistingKey() async {
+    final recoveryCode = _crypto.createRecoveryCode();
+    final envelope = await _keyStorage.useUnlockedKeyPair((keyPair) {
+      return _crypto.createPrivateKeyEnvelope(
+        keyPair: keyPair,
+        password: recoveryCode,
+      );
+    });
+    await _apiClient.postJson('/user/recovery-key', {
+      'recoveryKeyEnvelope': envelope,
+      'recoveryCode': recoveryCode,
+    });
+    return recoveryCode;
+  }
+
+  /// R4: decrypt the original identity key with a mailed recovery code, then
+  /// rewrap it under [currentPassword] (fixes an orphaned password envelope
+  /// without rotating the X25519 public key / abandoning history).
+  ///
+  /// Throws [RecoveryCodeNotSetUpException] when the account has no recovery
+  /// envelope. Throws [InvalidPasswordException] when the code is wrong.
+  /// Backend may throw [ApiException] 401 when [currentPassword] is wrong.
+  Future<void> recoverWithCode(String rawCode, String currentPassword) async {
+    final normalizedCode = E2eCryptoService.normalizeRecoveryCodeInput(rawCode);
+
+    final mine = await _fetchKeysMine();
+    final recoveryEnvelope = mine.recoveryKeyEnvelope;
+    if (recoveryEnvelope == null || recoveryEnvelope.isEmpty) {
+      throw RecoveryCodeNotSetUpException();
+    }
+
+    final keyPair = await _crypto.decryptPrivateKeyEnvelope(
+      envelope: recoveryEnvelope,
+      password: normalizedCode,
+    );
+
+    final newPasswordEnvelope = await _crypto.createPrivateKeyEnvelope(
+      keyPair: keyPair,
+      password: currentPassword,
+    );
+
+    final publicKey = await keyPair.extractPublicKey();
+    final encodedPublicKey = _crypto.encodePublicKey(publicKey);
+
+    await _apiClient.postJson('/user/keys', {
+      'publicKey': encodedPublicKey,
+      'privateKeyEnvelope': newPasswordEnvelope,
+      'currentPassword': currentPassword,
+    });
+
+    await applyReplacementKeyMaterial(
+      E2eReplacementKeyMaterial(
+        publicKey: encodedPublicKey,
+        privateKeyEnvelope: newPasswordEnvelope,
+        keyPairData: keyPair,
+      ),
+    );
+  }
+
   Future<void> cacheEnvelope(String envelope) {
     return _keyStorage.cacheEncryptedEnvelope(envelope);
   }
@@ -512,11 +583,17 @@ class E2eSessionService {
     }
   }
 
-  Future<({String? publicKey, String? privateKeyEnvelope})> _fetchKeysMine() async {
+  Future<
+      ({
+        String? publicKey,
+        String? privateKeyEnvelope,
+        String? recoveryKeyEnvelope,
+      })> _fetchKeysMine() async {
     final payload = await _apiClient.getJson('/user/keys/mine');
     return (
       publicKey: payload['publicKey'] as String?,
       privateKeyEnvelope: payload['privateKeyEnvelope'] as String?,
+      recoveryKeyEnvelope: payload['recoveryKeyEnvelope'] as String?,
     );
   }
 }

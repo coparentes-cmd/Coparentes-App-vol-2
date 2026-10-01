@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../data/api/app_api_client.dart';
 import '../../../l10n/app_strings.dart';
 import '../../../providers/app_provider.dart';
 import '../../../services/e2e_crypto_service.dart';
+import '../../../services/e2e_session_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/password_normalization.dart';
 
@@ -176,6 +178,174 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
     await _promptCurrentPasswordAndReplaceKeys();
   }
 
+  Future<void> _onRecoverWithCodeTapped() async {
+    final codeController = TextEditingController();
+    final passwordController = TextEditingController();
+    String? dialogError;
+    var submitting = false;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(context.tr('Odzyskaj dostęp kodem')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr(
+                        'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.',
+                      ),
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: codeController,
+                      obscureText: false,
+                      enabled: !submitting,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: context.tr('Kod odzyskiwania'),
+                        prefixIcon: const Icon(Icons.vpn_key_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      enabled: !submitting,
+                      decoration: InputDecoration(
+                        labelText: context.tr('Aktualne hasło'),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        errorText: dialogError,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.pop(dialogContext, false),
+                  child: Text(context.tr('Anuluj')),
+                ),
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final code = codeController.text.trim();
+                          final normalizedPassword =
+                              normalizePassword(passwordController.text);
+                          if (code.isEmpty) {
+                            setDialogState(() {
+                              dialogError = 'Podaj kod odzyskiwania.';
+                            });
+                            return;
+                          }
+                          if (normalizedPassword.isEmpty) {
+                            setDialogState(() {
+                              dialogError = 'Podaj aktualne hasło.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            submitting = true;
+                            dialogError = null;
+                          });
+                          final app = context.read<AppProvider>();
+                          try {
+                            await app.recoverE2eWithRecoveryCode(
+                              recoveryCode: code,
+                              currentPassword: normalizedPassword,
+                            );
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+                            Navigator.pop(dialogContext, true);
+                          } on RecoveryCodeNotSetUpException {
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+                            setDialogState(() {
+                              submitting = false;
+                              dialogError =
+                                  'To konto nie ma jeszcze skonfigurowanego kodu odzyskiwania.';
+                            });
+                          } on InvalidPasswordException {
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+                            setDialogState(() {
+                              submitting = false;
+                              dialogError = 'Nieprawidłowy kod odzyskiwania.';
+                            });
+                          } on ApiException catch (error) {
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+                            setDialogState(() {
+                              submitting = false;
+                              if (error.statusCode == 401 ||
+                                  error.message == 'invalid_credentials') {
+                                dialogError = 'Nieprawidłowe aktualne hasło.';
+                              } else {
+                                dialogError =
+                                    'Nie udało się odzyskać dostępu. Spróbuj ponownie.';
+                              }
+                            });
+                          } catch (_) {
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+                            setDialogState(() {
+                              submitting = false;
+                              dialogError =
+                                  'Nie udało się odzyskać dostępu. Spróbuj ponownie.';
+                            });
+                          }
+                        },
+                  child: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(context.tr('Odzyskaj')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    codeController.dispose();
+    passwordController.dispose();
+
+    if (ok != true || !mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(context.tr('Historia czatu odzyskana!')),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+    Navigator.pop(context, true);
+  }
+
   Future<void> _promptCurrentPasswordAndReplaceKeys() async {
     final passwordController = TextEditingController();
     String? dialogError;
@@ -336,6 +506,17 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
           ),
           if (_showAbandonHistoryOption) ...[
             const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _submitting ? null : _onRecoverWithCodeTapped,
+                child: Text(
+                  context.tr('Masz kod odzyskiwania z maila?'),
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(

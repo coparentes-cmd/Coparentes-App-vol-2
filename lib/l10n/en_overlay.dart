@@ -844,4 +844,29 @@ const enOverlay = <String, String>{
   'Kopiuj': 'Copy',
   'Zapisałem kod w bezpiecznym miejscu': 'I have saved the code somewhere safe',
   'Dalej': 'Continue',
+  // R3 — Settings: generate recovery code for existing key
+  'Wygeneruj kod odzyskiwania czatu': 'Generate chat recovery code',
+  'Zapasowy kod do odzyskania historii czatu':
+      'Backup code to recover chat history',
+  'Odblokuj szyfrowanie czatu': 'Unlock chat encryption',
+  'Podaj aktualne hasło, żeby wygenerować kod odzyskiwania.':
+      'Enter your current password to generate a recovery code.',
+  'Odblokuj szyfrowanie czatu, żeby wygenerować kod.':
+      'Unlock chat encryption to generate a code.',
+  'Nie udało się wygenerować kodu odzyskiwania.':
+      'Could not generate a recovery code.',
+  // R4 — unlock sheet: recover original key with mailed code
+  'Masz kod odzyskiwania z maila?': 'Have a recovery code from email?',
+  'Odzyskaj dostęp kodem': 'Recover access with a code',
+  'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.':
+      'Enter the recovery code you received by email when you created your account.',
+  'Kod odzyskiwania': 'Recovery code',
+  'Odzyskaj': 'Recover',
+  'Historia czatu odzyskana!': 'Chat history recovered!',
+  'To konto nie ma jeszcze skonfigurowanego kodu odzyskiwania.':
+      'This account does not have a recovery code set up yet.',
+  'Nieprawidłowy kod odzyskiwania.': 'Invalid recovery code.',
+  'Podaj kod odzyskiwania.': 'Enter the recovery code.',
+  'Nie udało się odzyskać dostępu. Spróbuj ponownie.':
+      'Could not recover access. Try again.',
 };

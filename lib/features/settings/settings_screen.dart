@@ -14,7 +14,10 @@ import 'widgets/edit_profile_sheet.dart';
 import 'widgets/change_password_sheet.dart';
 import 'widgets/delete_account_sheet.dart';
 import 'widgets/email_invite_sheet.dart';
+import 'widgets/recovery_code_sheet.dart';
 import 'widgets/settings_divider.dart';
+import '../../../utils/password_normalization.dart';
+import '../../../services/e2e_crypto_service.dart';
 import 'widgets/info_tile.dart';
 import 'widgets/action_tile.dart';
 import 'widgets/switch_tile.dart';
@@ -292,6 +295,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isDark: isDark,
                       onTap: () => _showChangePasswordSheet(context, roleColor),
                     ),
+                    if (!ap.isDemoMode &&
+                        (user?.role == UserRole.parentA ||
+                            user?.role == UserRole.parentB)) ...[
+                      SettingsDivider(),
+                      ActionTile(
+                        icon: Icons.vpn_key_outlined,
+                        label: context.tr('Wygeneruj kod odzyskiwania czatu'),
+                        subtitle: context.tr(
+                          'Zapasowy kod do odzyskania historii czatu',
+                        ),
+                        color: roleColor,
+                        isDark: isDark,
+                        onTap: () => _generateRecoveryCode(context, roleColor),
+                      ),
+                    ],
                   ]),
 
                   if (user?.role == UserRole.parentA) ...[
@@ -1082,6 +1100,167 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       builder: (_) => ChangePasswordSheet(color: color),
     );
+  }
+
+  Future<void> _generateRecoveryCode(BuildContext context, Color color) async {
+    final ap = context.read<AppProvider>();
+
+    var outcome = await ap.generateE2eRecoveryCode();
+
+    if (!context.mounted) return;
+
+    if (outcome.result == GenerateRecoveryCodeResult.needsUnlock) {
+      final unlocked = await _promptPasswordAndUnlockE2e(context);
+      if (!context.mounted) return;
+      if (!unlocked) return;
+      outcome = await ap.generateE2eRecoveryCode();
+      if (!context.mounted) return;
+    }
+
+    switch (outcome.result) {
+      case GenerateRecoveryCodeResult.needsUnlock:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.tr('Odblokuj szyfrowanie czatu, żeby wygenerować kod.'),
+            ),
+          ),
+        );
+      case GenerateRecoveryCodeResult.error:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ap.authError ??
+                  context.tr('Nie udało się wygenerować kodu odzyskiwania.'),
+            ),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      case GenerateRecoveryCodeResult.success:
+        final code = outcome.code;
+        if (code == null || code.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                context.tr('Nie udało się wygenerować kodu odzyskiwania.'),
+              ),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+          return;
+        }
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (_) => RecoveryCodeSheet(code: code, color: color),
+        );
+    }
+  }
+
+  /// Returns true if E2E was unlocked successfully.
+  Future<bool> _promptPasswordAndUnlockE2e(BuildContext context) async {
+    final passwordController = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        var submitting = false;
+        String? dialogError;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text(context.tr('Odblokuj szyfrowanie czatu')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr(
+                      'Podaj aktualne hasło, żeby wygenerować kod odzyskiwania.',
+                    ),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    enabled: !submitting,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Aktualne hasło'),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      errorText: dialogError == null
+                          ? null
+                          : context.tr(dialogError!),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.pop(dialogContext, false),
+                  child: Text(context.tr('Anuluj')),
+                ),
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final normalized =
+                              normalizePassword(passwordController.text);
+                          if (normalized.isEmpty) {
+                            setDialogState(() {
+                              dialogError = 'Podaj aktualne hasło.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            submitting = true;
+                            dialogError = null;
+                          });
+                          final app = context.read<AppProvider>();
+                          try {
+                            await app.unlockE2eWithPassword(normalized);
+                            if (!dialogContext.mounted) return;
+                            Navigator.pop(dialogContext, true);
+                          } on InvalidPasswordException {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() {
+                              submitting = false;
+                              dialogError = 'Nieprawidłowe hasło';
+                              passwordController.clear();
+                            });
+                          } catch (_) {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() {
+                              submitting = false;
+                              dialogError =
+                                  'Nie udało się odblokować wiadomości. Spróbuj ponownie.';
+                            });
+                          }
+                        },
+                  child: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(context.tr('Odblokuj')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    passwordController.dispose();
+    return ok == true;
   }
 
   void _showEmailInviteSheet(BuildContext context, Color color) {

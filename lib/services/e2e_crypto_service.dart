@@ -119,6 +119,22 @@ class E2eCryptoService {
     return groups.join('-');
   }
 
+  /// Normalizes user-typed recovery code input to the EXACT canonical form used
+  /// when the code was generated (uppercase, grouped XXXX-XXXX-...x6, no stray
+  /// whitespace) — must match byte-for-byte what [createRecoveryCode] produced,
+  /// or Argon2 will derive a different key and decryption will fail.
+  static String normalizeRecoveryCodeInput(String raw) {
+    final stripped = raw.toUpperCase().replaceAll(RegExp(r'[^0-9A-Z]'), '');
+    if (stripped.length != 24) {
+      return stripped; // let decrypt fail naturally with a clear "invalid code" error
+    }
+    final groups = <String>[];
+    for (var i = 0; i < 24; i += 4) {
+      groups.add(stripped.substring(i, i + 4));
+    }
+    return groups.join('-');
+  }
+
   /// Random 32-byte symmetric key for a new E2E thread (AES-256).
   Uint8List generateThreadKey() {
     final bytes = Uint8List(threadKeyLength);

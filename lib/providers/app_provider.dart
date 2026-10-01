@@ -18,12 +18,51 @@ import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../models/models.dart';
 import '../services/e2e_crypto_service.dart';
+import '../services/e2e_key_storage_service.dart';
 import '../services/e2e_session_service.dart';
 import '../utils/demo_time.dart';
 
 export 'calendar_provider.dart';
 export 'finance_provider.dart';
 export 'messaging_provider.dart';
+
+/// Outcome of [AppProvider.generateE2eRecoveryCode] (Settings / R3).
+enum GenerateRecoveryCodeResult {
+  /// Private key not in RAM — UI must unlock with password, then retry.
+  needsUnlock,
+
+  /// Code generated + uploaded; see [GenerateRecoveryCodeOutcome.code].
+  success,
+
+  /// Network / API / unexpected failure (see [AppProvider.authError]).
+  error,
+}
+
+class GenerateRecoveryCodeOutcome {
+  const GenerateRecoveryCodeOutcome._({
+    required this.result,
+    this.code,
+  });
+
+  factory GenerateRecoveryCodeOutcome.needsUnlock() =>
+      const GenerateRecoveryCodeOutcome._(
+        result: GenerateRecoveryCodeResult.needsUnlock,
+      );
+
+  factory GenerateRecoveryCodeOutcome.success(String code) =>
+      GenerateRecoveryCodeOutcome._(
+        result: GenerateRecoveryCodeResult.success,
+        code: code,
+      );
+
+  factory GenerateRecoveryCodeOutcome.error() =>
+      const GenerateRecoveryCodeOutcome._(
+        result: GenerateRecoveryCodeResult.error,
+      );
+
+  final GenerateRecoveryCodeResult result;
+  final String? code;
+}
 
 // ─── AppProvider ──────────────────────────────────────────────────────────────
 
@@ -493,6 +532,36 @@ class AppProvider extends ChangeNotifier {
   void clearPendingRecoveryCode() {
     _pendingRecoveryCode = null;
     notifyListeners();
+  }
+
+  /// Settings / R3: seal the unlocked E2E key under a new recovery code.
+  ///
+  /// Does not prompt for password. If locked → [GenerateRecoveryCodeResult.needsUnlock];
+  /// caller unlocks via [unlockE2eWithPassword], then calls again.
+  Future<GenerateRecoveryCodeOutcome> generateE2eRecoveryCode() async {
+    final e2e = _e2eSession;
+    if (e2e == null) {
+      _authError = 'Szyfrowanie czatu jest niedostępne.';
+      notifyListeners();
+      return GenerateRecoveryCodeOutcome.error();
+    }
+    if (!await e2e.hasUnlockedKey()) {
+      return GenerateRecoveryCodeOutcome.needsUnlock();
+    }
+    try {
+      _authError = null;
+      final code = await e2e.generateRecoveryCodeForExistingKey();
+      return GenerateRecoveryCodeOutcome.success(code);
+    } on NoUnlockedKeyException {
+      return GenerateRecoveryCodeOutcome.needsUnlock();
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się wygenerować kodu odzyskiwania.',
+      );
+      notifyListeners();
+      return GenerateRecoveryCodeOutcome.error();
+    }
   }
 
   Future<bool> updateProfile({
@@ -1290,6 +1359,21 @@ class AppProvider extends ChangeNotifier {
       return;
     }
     await e2e.unlockWithPassword(password);
+    onE2eSessionChanged?.call();
+  }
+
+  /// R4: restore the original E2E identity with a mailed recovery code, then
+  /// rewrap under [currentPassword]. Propagates [RecoveryCodeNotSetUpException],
+  /// [InvalidPasswordException] (wrong code), and [ApiException] (e.g. 401).
+  Future<void> recoverE2eWithRecoveryCode({
+    required String recoveryCode,
+    required String currentPassword,
+  }) async {
+    final e2e = _e2eSession;
+    if (e2e == null) {
+      throw StateError('E2E session unavailable');
+    }
+    await e2e.recoverWithCode(recoveryCode, currentPassword);
     onE2eSessionChanged?.call();
   }
 
