@@ -179,8 +179,8 @@ class E2eSessionService {
 
   /// Unlock for messaging / password-change UI.
   ///
-  /// On mobile, restores a previously persisted device key when present and
-  /// skips envelope fetch + Argon2. Throws [InvalidPasswordException] when the
+  /// Restores a previously persisted device key when present and skips envelope
+  /// fetch + Argon2 (web and mobile). Throws [InvalidPasswordException] when the
   /// password does not open the envelope (slow path only).
   Future<void> unlockWithPassword(String password) async {
     // Fast path: key already persisted on this device from a previous unlock.

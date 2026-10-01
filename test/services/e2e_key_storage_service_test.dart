@@ -76,10 +76,11 @@ void main() {
     );
   });
 
-  // VM / widget tests: kIsWeb is false — persist/restore exercise the mobile path.
+  // Unit tests run on the VM (kIsWeb == false). Persist/restore are
+  // platform-agnostic — same SecureStorage path web and mobile use in production.
   test('persist + restore round-trip restores usable unlocked key', () async {
     expect(kIsWeb, isFalse,
-        reason: 'These unit tests run on the VM (mobile path).');
+        reason: 'VM unit tests; persist/restore must still succeed here.');
 
     final crypto = E2eCryptoService();
     final original = await (await crypto.generateKeyPair()).extract();

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../utils/secure_storage_options.dart';
@@ -16,10 +15,11 @@ class NoUnlockedKeyException implements Exception {
 
 /// Session + durable storage for E2E key material.
 ///
-/// - Unlocked (plaintext) private key: process memory for the current session;
-///   on mobile also optionally persisted to [FlutterSecureStorage] (Keychain /
-///   Keystore) via [persistUnlockedKeyToDevice]. On web, plaintext is **never**
-///   written (SecureStorage maps to localStorage — not hardware-backed).
+/// - Unlocked (plaintext) private key: held in process memory for the current
+///   session, and also persisted via [persistUnlockedKeyToDevice] so relaunch /
+///   page reload can skip Argon2. On mobile that is Keychain/Keystore; on web
+///   [FlutterSecureStorage] maps to localStorage (not hardware-backed) — lower
+///   local protection accepted for UX (no repeated password prompt).
 /// - Password-wrapped envelope: [FlutterSecureStorage] (durable across launches).
 ///
 /// Note on [SimpleKeyPairData.destroy]: package `cryptography` 2.9.0 does **not**
@@ -43,8 +43,8 @@ class E2eKeyStorageService {
 
   final FlutterSecureStorage _secureStorage;
 
-  /// In-memory only — never written to disk / Keychain / Keystore by
-  /// [storeUnlockedKeyPair] alone (see [persistUnlockedKeyToDevice] for mobile).
+  /// In-memory session holder — [storeUnlockedKeyPair] alone does not write to
+  /// SecureStorage (see [persistUnlockedKeyToDevice]).
   SimpleKeyPairData? _unlockedKeyPair;
 
   /// Holds the decrypted key pair for the current app process lifetime.
@@ -70,10 +70,10 @@ class E2eKeyStorageService {
 
   /// Persists the UNLOCKED (plaintext) key to durable device storage.
   ///
-  /// Mobile only — on web this is a no-op (would otherwise land in localStorage,
-  /// which has no hardware-backed protection, defeating the point of this cache).
+  /// Same path on mobile and web: [FlutterSecureStorage] (Keychain/Keystore on
+  /// native; localStorage-backed on web). Web lacks hardware-backed protection —
+  /// accepted trade-off so reloads do not re-prompt for the password.
   Future<void> persistUnlockedKeyToDevice(SimpleKeyPairData keyPair) async {
-    if (kIsWeb) return;
     final privateBytes = await keyPair.extractPrivateKeyBytes();
     final publicKey = await keyPair.extractPublicKey();
     await _secureStorage.write(
@@ -88,10 +88,9 @@ class E2eKeyStorageService {
 
   /// Restores a previously persisted key from device storage into session memory.
   ///
-  /// Returns true if a key was found and restored, false otherwise (mobile only;
-  /// always false on web).
+  /// Returns true if a key was found and restored, false otherwise.
+  /// Works on web and mobile (same SecureStorage keys).
   Future<bool> restoreUnlockedKeyFromDevice() async {
-    if (kIsWeb) return false;
     final seedB64 = await _secureStorage.read(key: unlockedKeySeedStorageKey);
     final publicB64 =
         await _secureStorage.read(key: unlockedKeyPublicStorageKey);
