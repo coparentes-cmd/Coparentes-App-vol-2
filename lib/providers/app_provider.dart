@@ -71,6 +71,8 @@ class AppProvider extends ChangeNotifier {
   bool _isInitializing = true;
   bool _isDemoMode = false;
   bool _needsChildOnboarding = false;
+  /// Plaintext recovery code shown once after registration (RAM only).
+  String? _pendingRecoveryCode;
   String? _authError;
   LoginChallenge? _pendingLoginChallenge;
   int? _otpAttemptsRemaining;
@@ -125,6 +127,10 @@ class AppProvider extends ChangeNotifier {
     }
   }
   bool get needsChildOnboarding => _needsChildOnboarding;
+  /// True while the mandatory post-registration recovery-code screen is up.
+  bool get showingRecoveryCodeScreen =>
+      _pendingRecoveryCode != null && _pendingRecoveryCode!.isNotEmpty;
+  String? get pendingRecoveryCode => _pendingRecoveryCode;
   String? get authError => _authError;
   LoginChallenge? get pendingLoginChallenge => _pendingLoginChallenge;
   bool get needsOtpVerification => _pendingLoginChallenge != null;
@@ -386,7 +392,7 @@ class AppProvider extends ChangeNotifier {
       _setDemoMode(false);
       _needsChildOnboarding = true;
       _applySession(session);
-      await _e2eSetupNewKeys(password);
+      await _e2eSetupNewKeysWithRecoveryCode(password);
       await loadUserConsents();
       notifyListeners();
       return true;
@@ -480,6 +486,12 @@ class AppProvider extends ChangeNotifier {
 
   void completeChildOnboarding() {
     _needsChildOnboarding = false;
+    notifyListeners();
+  }
+
+  /// Clears the one-shot recovery code after the user acknowledges it.
+  void clearPendingRecoveryCode() {
+    _pendingRecoveryCode = null;
     notifyListeners();
   }
 
@@ -811,7 +823,7 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      await _e2eSetupNewKeys(password);
+      await _e2eSetupNewKeysWithRecoveryCode(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -1172,6 +1184,7 @@ class AppProvider extends ChangeNotifier {
     _pendingLoginPassword = null;
     _setDemoMode(false);
     _needsChildOnboarding = false;
+    _pendingRecoveryCode = null;
     _requirePinOnResume = false;
     _hasPinSet = false;
     _isPinLocked = false;
@@ -1199,15 +1212,32 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _e2eSetupNewKeys(String password) async {
+  /// Registration / parentB-join path: keys + recovery envelope. On failure do
+  /// not block account creation; only show the recovery screen when a code was
+  /// returned.
+  Future<void> _e2eSetupNewKeysWithRecoveryCode(String password) async {
     final e2e = _e2eSession;
     if (e2e == null || password.isEmpty) {
       return;
     }
     try {
-      await e2e.setupNewKeys(password);
+      final code = await e2e.setupNewKeysWithRecoveryCode(password);
+      if (code.isNotEmpty) {
+        _pendingRecoveryCode = code;
+      }
     } catch (error) {
-      debugPrint('[e2e] setupNewKeys failed (best-effort): $error');
+      debugPrint(
+        '[e2e] setupNewKeysWithRecoveryCode failed (best-effort): $error',
+      );
+      // Keys may already be unlocked if only recovery upload failed — do not
+      // call setupNewKeys again (would rotate identity). Fallback only if empty.
+      try {
+        if (!await e2e.hasUnlockedKey()) {
+          await e2e.setupNewKeys(password);
+        }
+      } catch (fallbackError) {
+        debugPrint('[e2e] setupNewKeys fallback failed: $fallbackError');
+      }
     }
   }
 

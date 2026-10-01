@@ -145,4 +145,69 @@ void main() {
       );
     },
   );
+
+  test('Crockford alphabet excludes I, L, O, U', () {
+    expect(E2eCryptoService.crockfordAlphabet.length, 32);
+    expect(E2eCryptoService.crockfordAlphabet.contains('I'), isFalse);
+    expect(E2eCryptoService.crockfordAlphabet.contains('L'), isFalse);
+    expect(E2eCryptoService.crockfordAlphabet.contains('O'), isFalse);
+    expect(E2eCryptoService.crockfordAlphabet.contains('U'), isFalse);
+  });
+
+  test('encodeCrockfordBase32: 15 zero bytes → 24 zeros', () {
+    final encoded = E2eCryptoService.encodeCrockfordBase32(List.filled(15, 0));
+    expect(encoded.length, 24);
+    expect(encoded, '0' * 24);
+  });
+
+  test('createRecoveryCode format: 6 groups of 4 Crockford symbols', () {
+    final code = crypto.createRecoveryCode();
+    expect(
+      code,
+      matches(RegExp(r'^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){5}$')),
+    );
+    final compact = code.replaceAll('-', '');
+    expect(compact.length, 24);
+    for (final ch in compact.split('')) {
+      expect(E2eCryptoService.crockfordAlphabet.contains(ch), isTrue);
+    }
+  });
+
+  test('createRecoveryCode yields distinct codes', () {
+    expect(crypto.createRecoveryCode(), isNot(crypto.createRecoveryCode()));
+  });
+
+  test(
+    'same keyPair wrapped under password and recovery code decrypts to same private key',
+    () async {
+      final keyPair = await crypto.generateKeyPair();
+      final originalPrivate = await keyPair.extractPrivateKeyBytes();
+      const password = 'AccountPassword1!';
+      final recoveryCode = crypto.createRecoveryCode();
+
+      final passwordEnvelope = await crypto.createPrivateKeyEnvelope(
+        keyPair: keyPair,
+        password: password,
+      );
+      final recoveryEnvelope = await crypto.createPrivateKeyEnvelope(
+        keyPair: keyPair,
+        password: recoveryCode,
+      );
+
+      expect(passwordEnvelope, isNot(recoveryEnvelope));
+
+      final fromPassword = await crypto.decryptPrivateKeyEnvelope(
+        envelope: passwordEnvelope,
+        password: password,
+      );
+      final fromRecovery = await crypto.decryptPrivateKeyEnvelope(
+        envelope: recoveryEnvelope,
+        password: recoveryCode,
+      );
+
+      expect(await fromPassword.extractPrivateKeyBytes(), originalPrivate);
+      expect(await fromRecovery.extractPrivateKeyBytes(), originalPrivate);
+    },
+    timeout: argonTimeout,
+  );
 }

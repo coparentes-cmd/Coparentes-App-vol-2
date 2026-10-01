@@ -119,6 +119,50 @@ class E2eSessionService {
     await applyReplacementKeyMaterial(material);
   }
 
+  /// Like [setupNewKeys], plus a second envelope sealed with a Crockford recovery
+  /// code (same X25519 private key). Returns the plaintext code for one-shot UI.
+  ///
+  /// Order: upload password envelope → unlock locally → upload recovery envelope.
+  /// If recovery upload fails after keys are applied, the caller should not show
+  /// the recovery screen (keys still work; code can be created later in Settings).
+  Future<String> setupNewKeysWithRecoveryCode(String password) async {
+    final keyPair = await _crypto.generateKeyPair();
+    final keyPairData = await keyPair.extract();
+    final publicKey = await keyPair.extractPublicKey();
+    final privateKeyEnvelope = await _crypto.createPrivateKeyEnvelope(
+      keyPair: keyPair,
+      password: password,
+    );
+
+    final publicKeyEncoded = _crypto.encodePublicKey(publicKey);
+    await _apiClient.postJson('/user/keys', {
+      'publicKey': publicKeyEncoded,
+      'privateKeyEnvelope': privateKeyEnvelope,
+    });
+
+    await applyReplacementKeyMaterial(
+      E2eReplacementKeyMaterial(
+        publicKey: publicKeyEncoded,
+        privateKeyEnvelope: privateKeyEnvelope,
+        keyPairData: keyPairData,
+      ),
+    );
+
+    final recoveryCode = _crypto.createRecoveryCode();
+    // Same keyPair object → same private bytes as the password envelope.
+    final recoveryEnvelope = await _crypto.createPrivateKeyEnvelope(
+      keyPair: keyPair,
+      password: recoveryCode,
+    );
+
+    await _apiClient.postJson('/user/recovery-key', {
+      'recoveryKeyEnvelope': recoveryEnvelope,
+      'recoveryCode': recoveryCode,
+    });
+
+    return recoveryCode;
+  }
+
   /// Rotate to a fresh identity pair under [currentPassword], abandoning history
   /// sealed to the previous private key (post password-reset orphan recovery).
   ///

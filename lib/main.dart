@@ -25,6 +25,7 @@ import 'providers/offline_sync_provider.dart';
 import 'screens/auth/child_onboarding_sheet.dart';
 import 'screens/auth/role_selection_screen.dart';
 import 'screens/auth/auth_home_resolver.dart';
+import 'screens/auth/recovery_code_display_screen.dart';
 import 'screens/auth/reset_password_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_lifecycle_refresher.dart';
@@ -335,6 +336,15 @@ class _AppGateState extends State<_AppGate> {
       _hydratedUserId = null;
       _onboardingPromptUserId = null;
       return const RoleSelectionScreen();
+    }
+
+    // Mandatory one-shot gate after registration (before dashboard / mustChangePassword).
+    if (appProvider.showingRecoveryCodeScreen) {
+      final code = appProvider.pendingRecoveryCode!;
+      return RecoveryCodeDisplayScreen(
+        code: code,
+        onAcknowledged: appProvider.clearPendingRecoveryCode,
+      );
     }
 
     if (!user.mustChangePassword) {

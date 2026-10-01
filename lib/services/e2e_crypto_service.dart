@@ -77,6 +77,48 @@ class E2eCryptoService {
   /// Generates a fresh X25519 key pair.
   Future<SimpleKeyPair> generateKeyPair() => _x25519.newKeyPair();
 
+  /// Crockford Base32 alphabet — excludes I, L, O, U (avoids 0/O, 1/I/L confusion).
+  /// Must stay in lockstep with backend `CROCKFORD_ALPHABET` / `createRecoveryCode`.
+  static const String crockfordAlphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+  /// Encode raw bytes as Crockford Base32 (no padding).
+  static String encodeCrockfordBase32(List<int> bytes) {
+    var bits = 0;
+    var value = 0;
+    final output = StringBuffer();
+
+    for (final byte in bytes) {
+      value = (value << 8) | (byte & 0xff);
+      bits += 8;
+      while (bits >= 5) {
+        bits -= 5;
+        output.write(crockfordAlphabet[(value >> bits) & 31]);
+      }
+    }
+    if (bits > 0) {
+      output.write(crockfordAlphabet[(value << (5 - bits)) & 31]);
+    }
+    return output.toString();
+  }
+
+  /// Human-typed E2E recovery code: 120 bits → Crockford Base32,
+  /// grouped `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX` (24 symbols + hyphens).
+  String createRecoveryCode() {
+    final raw = Uint8List(15);
+    fillBytesWithSecureRandom(raw);
+    final encoded = encodeCrockfordBase32(raw);
+    if (encoded.length != 24) {
+      throw StateError(
+        'createRecoveryCode: expected 24 symbols, got ${encoded.length}',
+      );
+    }
+    final groups = <String>[];
+    for (var i = 0; i < 24; i += 4) {
+      groups.add(encoded.substring(i, i + 4));
+    }
+    return groups.join('-');
+  }
+
   /// Random 32-byte symmetric key for a new E2E thread (AES-256).
   Uint8List generateThreadKey() {
     final bytes = Uint8List(threadKeyLength);
