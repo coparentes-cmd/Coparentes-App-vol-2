@@ -526,6 +526,11 @@ class MessagingRepository {
       await _cache.upsertThread(thread);
       return thread;
     } catch (_) {
+      await _offlineStore.appendPendingAction({
+        'type': 'messaging.markThreadRead',
+        'createdAt': DateTime.now().toIso8601String(),
+        'payload': {'threadId': threadId},
+      });
       return null;
     }
   }
@@ -608,6 +613,18 @@ class MessagingRepository {
                   : const [],
             );
             _cache.replaceThreadId(cachedThreads, resolvedThreadId, updatedThread);
+            break;
+          case 'messaging.markThreadRead':
+            final payload = Map<String, dynamic>.from(action['payload'] as Map);
+            final requestedThreadId = payload['threadId'] as String;
+            final resolvedThreadId =
+                localThreadIdMap[requestedThreadId] ?? requestedThreadId;
+            final updatedThread = await _remote.markThreadRead(resolvedThreadId);
+            _cache.replaceThreadId(
+              cachedThreads,
+              resolvedThreadId,
+              updatedThread,
+            );
             break;
           default:
             rewrittenQueue.add(action);

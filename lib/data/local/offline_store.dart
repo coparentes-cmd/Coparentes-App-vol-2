@@ -161,7 +161,8 @@ class OfflineStore extends ChangeNotifier {
   }
 
   Future<void> appendPendingAction(Map<String, dynamic> action) async {
-    final actions = getPendingActions()..add(action);
+    final actions = List<Map<String, dynamic>>.from(getPendingActions())
+      ..add(action);
     await savePendingActions(actions);
   }
 
@@ -232,7 +233,7 @@ class OfflineStore extends ChangeNotifier {
 
   List<Map<String, dynamic>> _decodeList(String? raw) {
     if (raw == null || raw.isEmpty) {
-      return const [];
+      return <Map<String, dynamic>>[];
     }
 
     try {
@@ -241,7 +242,7 @@ class OfflineStore extends ChangeNotifier {
           .map((item) => Map<String, dynamic>.from(item as Map))
           .toList();
     } catch (_) {
-      return const [];
+      return <Map<String, dynamic>>[];
     }
   }
 
