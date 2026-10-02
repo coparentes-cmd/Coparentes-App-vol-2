@@ -348,27 +348,55 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  children: children
-                      .map(
-                        (child) => ChoiceChip(
+                  children: [
+                    ChoiceChip(
+                      label: Text(
+                        context.tr('Wszystkie dzieci'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      selected: _selectedChildIds.isEmpty,
+                      onSelected: (_) =>
+                          setState(() => _selectedChildIds.clear()),
+                      backgroundColor: Colors.white,
+                      selectedColor:
+                          AppTheme.primaryTeal.withValues(alpha: 0.15),
+                      checkmarkColor: AppTheme.primaryTeal,
+                      side: BorderSide(
+                        color: _selectedChildIds.isEmpty
+                            ? Colors.transparent
+                            : AppTheme.dividerColor,
+                      ),
+                    ),
+                    ...children.map(
+                      (child) {
+                        final selected =
+                            _selectedChildIds.contains(child.id);
+                        return ChoiceChip(
                           label: Text(
                             child.name.split(' ').first,
                             style: const TextStyle(fontSize: 12),
                           ),
-                          selected: _selectedChildIds.contains(child.id),
-                          onSelected: (selected) => setState(() {
-                            if (selected) {
+                          selected: selected,
+                          onSelected: (value) => setState(() {
+                            if (value) {
                               _selectedChildIds.add(child.id);
                             } else {
                               _selectedChildIds.remove(child.id);
                             }
                           }),
+                          backgroundColor: Colors.white,
                           selectedColor:
                               AppTheme.primaryTeal.withValues(alpha: 0.15),
                           checkmarkColor: AppTheme.primaryTeal,
-                        ),
-                      )
-                      .toList(),
+                          side: BorderSide(
+                            color: selected
+                                ? Colors.transparent
+                                : AppTheme.dividerColor,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
               SizedBox(height: 12),

@@ -51,8 +51,9 @@ class SelectedDayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final sortedEvents = List<CalendarEvent>.from(events)
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
-    final children =
-        context.watch<AppProvider>().currentWorkspace?.children ?? const [];
+    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final children = workspace?.children ?? const [];
+    final members = workspace?.members ?? const [];
     final userId = context.watch<AppProvider>().currentUser?.id;
     final isParentA = slot?.custodian == UserRole.parentA;
     final color = slot == null
@@ -171,10 +172,11 @@ class SelectedDayCard extends StatelessWidget {
                     final titleText = childLabel == null
                         ? titleCore
                         : '$titleCore · $childLabel';
-                    final canDelete = !isReadOnly &&
+                    final canModify = !isReadOnly &&
                         userId != null &&
                         e.createdBy == userId &&
                         e.deletedAt == null;
+                    final creatorColor = _creatorLegendColor(members, e.createdBy);
                     return GestureDetector(
                       onDoubleTap: onEventDoubleTap == null
                           ? null
@@ -185,16 +187,12 @@ class SelectedDayCard extends StatelessWidget {
                     child: Row(
                       children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: 16,
+                          height: 16,
                           decoration: BoxDecoration(
-                            color: e.typeColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            e.typeIcon,
-                            size: 16,
-                            color: e.typeColor,
+                            color: creatorColor.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: creatorColor, width: 2),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -221,7 +219,18 @@ class SelectedDayCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (canDelete)
+                        if (canModify && onEventDoubleTap != null)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: AppTheme.textSecondary,
+                            ),
+                            onPressed: () => onEventDoubleTap!(e),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        if (canModify)
                           IconButton(
                             icon: const Icon(
                               Icons.delete_outline,
@@ -253,6 +262,26 @@ class SelectedDayCard extends StatelessWidget {
           ),
         ),
     );
+  }
+
+  /// Legend-style color for the event creator: parentA teal / parentB blue,
+  /// gray for child, observer, or unknown user id.
+  Color _creatorLegendColor(List<AppUser> members, String createdBy) {
+    for (final member in members) {
+      if (member.id != createdBy) {
+        continue;
+      }
+      switch (member.role) {
+        case UserRole.parentA:
+          return AppTheme.parentAColor;
+        case UserRole.parentB:
+          return AppTheme.parentBColor;
+        case UserRole.child:
+        case UserRole.observer:
+          return AppTheme.textHint;
+      }
+    }
+    return AppTheme.textHint;
   }
 
   Future<void> _confirmDelete(BuildContext context, CalendarEvent event) async {

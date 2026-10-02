@@ -264,6 +264,8 @@ const enOverlay = <String, String>{
   'Prośba o zmianę': 'Change request',
   'Tryb HC aktywny': 'HC mode on',
   'Tytuł zdarzenia': 'Event title',
+  'Opis zdarzenia': 'Event description',
+  'Wszystkie dzieci': 'All children',
   'Wejście dziecka': 'Child sign-in',
   'Zanim zaczniesz': 'Before you start',
   'Zapisz dokument': 'Save document',

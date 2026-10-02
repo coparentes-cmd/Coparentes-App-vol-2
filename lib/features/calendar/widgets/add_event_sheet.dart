@@ -28,6 +28,7 @@ class AddEventSheetState extends State<AddEventSheet> {
   final _titleController = TextEditingController();
   final _titleFocusNode = FocusNode();
   late EventType _selectedType;
+  late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
   /// null = no specific child = "all children"
   String? _selectedChildId;
@@ -51,12 +52,14 @@ class AddEventSheetState extends State<AddEventSheet> {
       _titleController.text = event.title;
       _selectedType = event.type;
       final localStart = event.startDate.toLocal();
+      _selectedDate = calendarDayFrom(localStart);
       _selectedTime = TimeOfDay(
         hour: localStart.hour,
         minute: localStart.minute,
       );
     } else {
       _selectedType = EventType.other;
+      _selectedDate = calendarDayFrom(widget.selectedDay);
       _selectedTime = const TimeOfDay(hour: 9, minute: 0);
     }
     _titleController.addListener(_onTitleChanged);
@@ -98,6 +101,21 @@ class AddEventSheetState extends State<AddEventSheet> {
     _titleController.dispose();
     _titleFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    // Provisional range (no project-wide calendar-event standard):
+    // 1 year back / 2 years forward — confirm before treating as permanent.
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 730)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = calendarDayFrom(picked));
+    }
   }
 
   Future<void> _pickTime() async {
@@ -144,7 +162,7 @@ class AddEventSheetState extends State<AddEventSheet> {
 
     try {
       final startDate = calendarDateTimeFrom(
-        day: widget.selectedDay,
+        day: _selectedDate,
         hour: _selectedTime.hour,
         minute: _selectedTime.minute,
       );
@@ -237,20 +255,45 @@ class AddEventSheetState extends State<AddEventSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _isEditing ? context.tr('Edytuj zdarzenie') : context.tr('Nowe zdarzenie'),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
+          // Edit mode only: sheet title (mirrors add_expense_sheet title pattern).
+          // New-event mode: no separate header — description field is the top.
+          if (_isEditing) ...[
+            Text(
+              context.tr('Edytuj zdarzenie'),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          TextField(
+            controller: _titleController,
+            focusNode: _titleFocusNode,
+            maxLength: 200,
+            textAlignVertical: TextAlignVertical.center,
+            decoration: InputDecoration(
+              labelText: context.tr('Opis zdarzenia'),
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              hintText: hintText,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            '${context.tr('Data')}: ${widget.selectedDay.day}.${widget.selectedDay.month}.${widget.selectedDay.year}',
-            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: _pickDate,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: context.tr('Data'),
+              ),
+              child: Text(
+                '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year}',
+              ),
+            ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 4),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading:
@@ -273,22 +316,8 @@ class AddEventSheetState extends State<AddEventSheet> {
                 ),
               ),
             ),
-          SizedBox(height: 8),
-          TextField(
-            controller: _titleController,
-            focusNode: _titleFocusNode,
-            maxLength: 200,
-            textAlignVertical: TextAlignVertical.center,
-            decoration: InputDecoration(
-              labelText: context.tr('Tytuł zdarzenia'),
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-              hintText: hintText,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-            ),
-          ),
           if (children.isNotEmpty) ...[
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               context.tr('Dziecko (opcjonalnie)'),
               style: const TextStyle(
@@ -296,35 +325,61 @@ class AddEventSheetState extends State<AddEventSheet> {
                 color: AppTheme.textSecondary,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              children: children
-                  .map(
-                    (child) => ChoiceChip(
+              children: [
+                ChoiceChip(
+                  label: Text(
+                    context.tr('Wszystkie dzieci'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  selected: _selectedChildId == null,
+                  onSelected: (_) => setState(() => _selectedChildId = null),
+                  backgroundColor: Colors.white,
+                  selectedColor:
+                      AppTheme.primaryTeal.withValues(alpha: 0.15),
+                  checkmarkColor: AppTheme.primaryTeal,
+                  side: BorderSide(
+                    color: _selectedChildId == null
+                        ? Colors.transparent
+                        : AppTheme.dividerColor,
+                  ),
+                ),
+                ...children.map(
+                  (child) {
+                    final selected = _selectedChildId == child.id;
+                    return ChoiceChip(
                       label: Text(
                         child.name.split(' ').first,
                         style: const TextStyle(fontSize: 12),
                       ),
-                      selected: _selectedChildId == child.id,
-                      onSelected: (selected) => setState(() {
-                        _selectedChildId = selected ? child.id : null;
+                      selected: selected,
+                      onSelected: (value) => setState(() {
+                        _selectedChildId = value ? child.id : null;
                       }),
+                      backgroundColor: Colors.white,
                       selectedColor:
                           AppTheme.primaryTeal.withValues(alpha: 0.15),
                       checkmarkColor: AppTheme.primaryTeal,
-                    ),
-                  )
-                  .toList(),
+                      side: BorderSide(
+                        color: selected
+                            ? Colors.transparent
+                            : AppTheme.dividerColor,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
               child: _isSubmitting
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
