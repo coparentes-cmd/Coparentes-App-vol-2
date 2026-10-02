@@ -103,6 +103,9 @@ class E2eSessionService {
   /// In-flight ThreadKey fetches (single-flight / cache-miss dedupe).
   final Map<String, Future<Uint8List>> _threadKeyFetches = {};
 
+  /// threadId → child userIds already synced (or confirmed via 409) this process.
+  final Map<String, Set<String>> _familySyncedChildIdsByThread = {};
+
   E2eKeyStorageService get keyStorage => _keyStorage;
 
   /// Whether an unlocked private key is already in process memory.
@@ -363,7 +366,56 @@ class E2eSessionService {
 
   Future<void> clearAll() async {
     _clearThreadKeyCache();
+    _familySyncedChildIdsByThread.clear();
     await _keyStorage.clearAll();
+  }
+
+  /// Best-effort: seal this family's ThreadKey for [childUserId] and POST
+  /// `/threads/{threadId}/keys/family-sync`. No-ops when the child has no
+  /// publicKey yet, or when this session already synced that child for
+  /// [threadId]. Treats HTTP 409 `already_exists` as success.
+  Future<void> syncFamilyThreadKeyIfNeeded({
+    required String threadId,
+    required String childUserId,
+  }) async {
+    final already =
+        _familySyncedChildIdsByThread[threadId] ?? const <String>{};
+    if (already.contains(childUserId)) {
+      return;
+    }
+
+    final keys = await fetchPublicKeysForUsers([childUserId]);
+    final childPublicKey = keys.resolved[childUserId];
+    if (childPublicKey == null) {
+      // missingKey or failed — child has no usable E2E public key yet.
+      return;
+    }
+
+    // Same path as encrypt/decrypt: process cache or GET /threads/:id/keys/mine
+    // then openSealedBox with the unlocked identity key.
+    final threadKeyBytes = await _threadKeyBytesFor(threadId);
+
+    final encryptedKey = await _crypto.sealForRecipient(
+      plaintext: threadKeyBytes,
+      recipientPublicKey: childPublicKey,
+    );
+
+    try {
+      await _apiClient.postJson('/threads/$threadId/keys/family-sync', {
+        'userId': childUserId,
+        'encryptedKey': encryptedKey,
+      });
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 || error.message == 'already_exists') {
+        // Backend: key already present — success for our purposes.
+      } else {
+        rethrow;
+      }
+    }
+
+    _familySyncedChildIdsByThread
+        .putIfAbsent(threadId, () => <String>{})
+        .add(childUserId);
   }
 
   /// Encrypts [plaintext] for an existing thread (AES-GCM under the ThreadKey).

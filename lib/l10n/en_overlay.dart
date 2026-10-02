@@ -838,8 +838,8 @@ const enOverlay = <String, String>{
   'Brak wiadomości w „{category}”': 'No messages in “{category}”',
   // R2 — mandatory recovery code screen after register / parentB join
   'Kod odzyskiwania czatu': 'Chat recovery code',
-  'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. Wysłaliśmy go też na Twój e-mail. Zapisz go w bezpiecznym miejscu.':
-      'This code lets you recover chat history if you forget your password. We also emailed it to you. Save it somewhere safe.',
+  'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. Wysłaliśmy go też mailem. Zapisz go w bezpiecznym miejscu.':
+      'This code lets you recover chat history if you forget your password. We also emailed it. Save it somewhere safe.',
   'Kod skopiowany do schowka': 'Code copied to clipboard',
   'Kopiuj': 'Copy',
   'Zapisałem kod w bezpiecznym miejscu': 'I have saved the code somewhere safe',

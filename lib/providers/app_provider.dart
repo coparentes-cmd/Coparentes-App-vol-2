@@ -925,6 +925,7 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
+      await _e2eSetupNewKeysWithRecoveryCode(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -1340,6 +1341,18 @@ class AppProvider extends ChangeNotifier {
               member.role == UserRole.parentA ||
               member.role == UserRole.parentB,
         )
+        .map((member) => member.id)
+        .toList();
+  }
+
+  /// Child *user* ids (`AppUser` with [UserRole.child]) — not [ChildProfile] ids.
+  List<String> get childMemberIds {
+    final workspace = _currentWorkspace;
+    if (workspace == null) {
+      return const [];
+    }
+    return workspace.members
+        .where((member) => member.role == UserRole.child)
         .map((member) => member.id)
         .toList();
   }

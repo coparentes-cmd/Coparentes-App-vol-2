@@ -184,6 +184,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       thread = await messagingFresh.openCategoryChannel(
         widget.category!,
         parentUserIds: appFresh.parentMemberIds,
+        childUserIds: appFresh.childMemberIds,
       );
     }
 
@@ -265,6 +266,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
     final thread = await messaging.openCategoryChannel(
       widget.category!,
       parentUserIds: context.read<AppProvider>().parentMemberIds,
+      childUserIds: context.read<AppProvider>().childMemberIds,
     );
     if (thread != null) {
       _threadId = thread.id;

@@ -501,44 +501,64 @@ class MessagingProvider extends ChangeNotifier {
   Future<MessageThread?> openCategoryChannel(
     String category, {
     List<String> parentUserIds = const [],
+    List<String> childUserIds = const [],
   }) async {
-    final cached = getCategoryChannel(category);
-    if (cached != null) {
-      return cached;
+    MessageThread? thread = getCategoryChannel(category);
+
+    if (thread == null) {
+      try {
+        final threadKeys = await _threadKeysForCategory(
+          category,
+          parentUserIds: parentUserIds,
+        );
+        thread = await _repository.getOrCreateCategoryThread(
+          category,
+          threadKeys: threadKeys,
+        );
+        final index = _threads.indexWhere(
+          (item) => isSameManagedChannelThread(item, thread!),
+        );
+        if (index >= 0) {
+          _threads[index] = thread;
+        } else {
+          _threads.insert(0, thread);
+        }
+        notifyListeners();
+      } on IncompleteParticipantKeysException catch (error) {
+        debugPrint(
+          '[e2e] openCategoryChannel incomplete keys for $category: $error',
+        );
+        _error =
+            'Nie można teraz otworzyć rozmowy — brakuje kluczy szyfrowania u uczestników. Spróbuj ponownie później.';
+        notifyListeners();
+        return null;
+      } catch (error) {
+        _error = 'Nie udało się otworzyć rozmowy tematycznej.';
+        notifyListeners();
+        return null;
+      }
     }
 
-    try {
-      final threadKeys = await _threadKeysForCategory(
-        category,
-        parentUserIds: parentUserIds,
-      );
-      final thread = await _repository.getOrCreateCategoryThread(
-        category,
-        threadKeys: threadKeys,
-      );
-      final index = _threads.indexWhere(
-        (item) => isSameManagedChannelThread(item, thread),
-      );
-      if (index >= 0) {
-        _threads[index] = thread;
-      } else {
-        _threads.insert(0, thread);
+    // Intentional: run even on cache hit so a child who gained E2E keys after
+    // the first open still gets family-sync without restarting the app.
+    if (category == familyCategoryChannel &&
+        childUserIds.isNotEmpty &&
+        _e2eSession != null) {
+      for (final childUserId in childUserIds) {
+        try {
+          await _e2eSession!.syncFamilyThreadKeyIfNeeded(
+            threadId: thread.id,
+            childUserId: childUserId,
+          );
+        } catch (error) {
+          debugPrint(
+            '[e2e] family-sync failed for childUserId=$childUserId: $error',
+          );
+        }
       }
-      notifyListeners();
-      return thread;
-    } on IncompleteParticipantKeysException catch (error) {
-      debugPrint(
-        '[e2e] openCategoryChannel incomplete keys for $category: $error',
-      );
-      _error =
-          'Nie można teraz otworzyć rozmowy — brakuje kluczy szyfrowania u uczestników. Spróbuj ponownie później.';
-      notifyListeners();
-      return null;
-    } catch (error) {
-      _error = 'Nie udało się otworzyć rozmowy tematycznej.';
-      notifyListeners();
-      return null;
     }
+
+    return thread;
   }
 
   Future<MessageThread?> createThread({

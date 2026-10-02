@@ -60,7 +60,7 @@ class _RecoveryCodeDisplayScreenState extends State<RecoveryCodeDisplayScreen> {
                 Text(
                   context.tr(
                     'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. '
-                    'Wysłaliśmy go też na Twój e-mail. Zapisz go w bezpiecznym miejscu.',
+                    'Wysłaliśmy go też mailem. Zapisz go w bezpiecznym miejscu.',
                   ),
                   style: TextStyle(
                     fontSize: 15,
