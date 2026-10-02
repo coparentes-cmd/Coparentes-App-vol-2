@@ -343,6 +343,7 @@ class _AppGateState extends State<_AppGate> {
       final code = appProvider.pendingRecoveryCode!;
       return RecoveryCodeDisplayScreen(
         code: code,
+        isChildAccount: user.role == UserRole.child,
         onAcknowledged: appProvider.clearPendingRecoveryCode,
       );
     }

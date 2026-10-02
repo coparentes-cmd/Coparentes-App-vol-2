@@ -126,11 +126,15 @@ class ChildProfile {
   final DateTime dateOfBirth;
   final String? school;
 
+  /// Linked child [AppUser.id] after invite login; null if not joined yet.
+  final String? linkedAccountId;
+
   ChildProfile({
     required this.id,
     required this.name,
     required this.dateOfBirth,
     this.school,
+    this.linkedAccountId,
   });
 
   int get age {

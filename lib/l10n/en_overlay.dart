@@ -840,9 +840,12 @@ const enOverlay = <String, String>{
   'Kod odzyskiwania czatu': 'Chat recovery code',
   'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. Wysłaliśmy go też mailem. Zapisz go w bezpiecznym miejscu.':
       'This code lets you recover chat history if you forget your password. We also emailed it. Save it somewhere safe.',
+  'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. Wysłaliśmy go mailem Twoim rodzicom - oni go przechowają.':
+      'This code lets you recover chat history if you forget your password. We emailed it to your parents — they will keep it.',
   'Kod skopiowany do schowka': 'Code copied to clipboard',
   'Kopiuj': 'Copy',
   'Zapisałem kod w bezpiecznym miejscu': 'I have saved the code somewhere safe',
+  'Rozumiem': 'I understand',
   'Dalej': 'Continue',
   // R3 — Settings: generate recovery code for existing key
   'Wygeneruj kod odzyskiwania czatu': 'Generate chat recovery code',
@@ -855,11 +858,25 @@ const enOverlay = <String, String>{
       'Unlock chat encryption to generate a code.',
   'Nie udało się wygenerować kodu odzyskiwania.':
       'Could not generate a recovery code.',
+  // Parent-initiated child login password reset
+  'Zresetuj hasło logowania dziecka': "Reset child's login password",
+  'Link na e-mail obojga rodziców': 'Link emailed to both parents',
+  'Wyślemy link do ustawienia nowego hasła na e-mail obojga rodziców. Dziecko będzie musiało zalogować się nowym hasłem przy następnej okazji.':
+      "We'll email a link to set a new password to both parents. The child will need to log in with the new password next time.",
+  'Wyślij': 'Send',
+  'Link wysłany na e-mail obojga rodziców.':
+      'Link sent to both parents’ email.',
+  'Nie udało się zresetować hasła dziecka.':
+      "Could not reset the child's password.",
   // R4 — unlock sheet: recover original key with mailed code
   'Masz kod odzyskiwania z maila?': 'Have a recovery code from email?',
+  'Masz kod odzyskiwania? (mają go Twoi rodzice)':
+      'Have a recovery code? (your parents have it)',
   'Odzyskaj dostęp kodem': 'Recover access with a code',
   'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.':
       'Enter the recovery code you received by email when you created your account.',
+  'Wpisz kod odzyskiwania - dostali go Twoi rodzice mailem. Poproś ich o niego.':
+      'Enter the recovery code — your parents received it by email. Ask them for it.',
   'Kod odzyskiwania': 'Recovery code',
   'Odzyskaj': 'Recover',
   'Historia czatu odzyskana!': 'Chat history recovered!',

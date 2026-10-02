@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../data/api/app_api_client.dart';
 import '../../../l10n/app_strings.dart';
+import '../../../models/enums.dart';
 import '../../../providers/app_provider.dart';
 import '../../../services/e2e_crypto_service.dart';
 import '../../../services/e2e_session_service.dart';
@@ -183,6 +184,8 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
     final passwordController = TextEditingController();
     String? dialogError;
     var submitting = false;
+    final isChild =
+        context.read<AppProvider>().currentUser?.role == UserRole.child;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -199,7 +202,9 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
                   children: [
                     Text(
                       context.tr(
-                        'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.',
+                        isChild
+                            ? 'Wpisz kod odzyskiwania - dostali go Twoi rodzice mailem. Poproś ich o niego.'
+                            : 'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.',
                       ),
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
@@ -511,7 +516,12 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
               child: TextButton(
                 onPressed: _submitting ? null : _onRecoverWithCodeTapped,
                 child: Text(
-                  context.tr('Masz kod odzyskiwania z maila?'),
+                  context.tr(
+                    context.read<AppProvider>().currentUser?.role ==
+                            UserRole.child
+                        ? 'Masz kod odzyskiwania? (mają go Twoi rodzice)'
+                        : 'Masz kod odzyskiwania z maila?',
+                  ),
                   textAlign: TextAlign.left,
                   style: const TextStyle(fontSize: 13),
                 ),

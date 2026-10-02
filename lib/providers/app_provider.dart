@@ -804,6 +804,49 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  /// Parent-initiated login-password reset for a child [AppUser] in this workspace.
+  Future<bool> resetChildPassword(String childUserId) async {
+    try {
+      _authError = null;
+      await _authRepository.resetChildPassword(childUserId: childUserId);
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _authError = switch (error.message) {
+        'child_not_found' =>
+          'Nie znaleziono konta dziecka w tej przestrzeni.',
+        'forbidden' =>
+          'Tylko rodzice mogą resetować hasło logowania dziecka.',
+        'otp_email_failed' || 'email_send_failed' =>
+          _passwordResetMailHint(error.data) ??
+              'Nie udało się wysłać e-maila z linkiem. Sprawdź folder Spam i spróbuj ponownie.',
+        'email_not_configured' =>
+          'Wysyłka e-mail jest tymczasowo niedostępna. Spróbuj później lub skontaktuj się z supportem.',
+        'email_send_timeout' =>
+          'Serwer poczty nie odpowiedział na czas. Spróbuj ponownie za chwilę.',
+        'Too many requests, try again later' =>
+          'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
+        'no_recovery_contact' =>
+          'Brak adresu e-mail rodziców do wysyłki linku.',
+        _ => error.statusCode == 429
+            ? 'Zbyt wiele prób. Spróbuj ponownie za chwilę.'
+            : error.statusCode == 503
+                ? 'Nie udało się wysłać e-maila z linkiem. Spróbuj ponownie za chwilę.'
+                : error.statusCode == 403
+                    ? 'Tylko rodzice mogą resetować hasło logowania dziecka.'
+                    : error.statusCode == 404
+                        ? 'Nie znaleziono konta dziecka w tej przestrzeni.'
+                        : 'Nie udało się zresetować hasła dziecka.',
+      };
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _authError = 'Nie udało się zresetować hasła dziecka.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Sets a new password from a one-time reset link. Does not log the user in.
   Future<bool> confirmPasswordReset({
     required String token,

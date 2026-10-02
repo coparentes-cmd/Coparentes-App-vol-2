@@ -362,6 +362,14 @@ class AuthRepository {
     );
   }
 
+  /// Parent-initiated login-password reset for a child account in this workspace.
+  Future<void> resetChildPassword({required String childUserId}) async {
+    await _apiClient.postJson(
+      '/workspace/children/$childUserId/reset-password',
+      {},
+    );
+  }
+
   /// Consumes a password-reset link token and sets [newPassword].
   Future<void> confirmPasswordReset({
     required String token,

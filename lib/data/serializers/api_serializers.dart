@@ -161,6 +161,7 @@ ChildProfile childProfileFromJson(Map<String, dynamic> json) {
     name: json['name'] as String,
     dateOfBirth: DateTime.parse(json['dateOfBirth'] as String),
     school: json['school'] as String?,
+    linkedAccountId: json['linkedAccountId'] as String?,
   );
 }
 
@@ -170,6 +171,7 @@ Map<String, dynamic> childProfileToJson(ChildProfile child) {
     'name': child.name,
     'dateOfBirth': child.dateOfBirth.toIso8601String(),
     'school': child.school,
+    'linkedAccountId': child.linkedAccountId,
   };
 }
 

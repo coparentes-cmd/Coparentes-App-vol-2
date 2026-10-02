@@ -10,10 +10,14 @@ class RecoveryCodeDisplayScreen extends StatefulWidget {
     super.key,
     required this.code,
     required this.onAcknowledged,
+    this.isChildAccount = false,
   });
 
   final String code;
   final VoidCallback onAcknowledged;
+
+  /// Child accounts: parents hold the mailed code; copy/checkbox differ.
+  final bool isChildAccount;
 
   @override
   State<RecoveryCodeDisplayScreen> createState() =>
@@ -39,6 +43,7 @@ class _RecoveryCodeDisplayScreenState extends State<RecoveryCodeDisplayScreen> {
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
+    final isChild = widget.isChildAccount;
 
     return PopScope(
       canPop: false,
@@ -59,8 +64,11 @@ class _RecoveryCodeDisplayScreenState extends State<RecoveryCodeDisplayScreen> {
                 const SizedBox(height: 12),
                 Text(
                   context.tr(
-                    'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. '
-                    'Wysłaliśmy go też mailem. Zapisz go w bezpiecznym miejscu.',
+                    isChild
+                        ? 'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. '
+                            'Wysłaliśmy go mailem Twoim rodzicom - oni go przechowają.'
+                        : 'Ten kod pozwoli odzyskać historię czatu, jeśli zapomnisz hasła. '
+                            'Wysłaliśmy go też mailem. Zapisz go w bezpiecznym miejscu.',
                   ),
                   style: TextStyle(
                     fontSize: 15,
@@ -113,7 +121,11 @@ class _RecoveryCodeDisplayScreenState extends State<RecoveryCodeDisplayScreen> {
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    context.tr('Zapisałem kod w bezpiecznym miejscu'),
+                    context.tr(
+                      isChild
+                          ? 'Rozumiem'
+                          : 'Zapisałem kod w bezpiecznym miejscu',
+                    ),
                     style: const TextStyle(fontSize: 15, height: 1.35),
                   ),
                 ),

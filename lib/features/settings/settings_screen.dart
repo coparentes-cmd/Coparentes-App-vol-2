@@ -255,18 +255,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               .join(', '),
                           isDark: isDark,
                         ),
-                        ...workspace.children.map(
-                          (child) => InfoTile(
-                            icon: Icons.child_care,
-                            label: child.name,
-                            value: [
-                              '${child.age} lat',
-                              if (child.school != null && child.school!.isNotEmpty)
-                                child.school!,
-                            ].join(' · '),
-                            isDark: isDark,
-                          ),
-                        ),
+                        ...workspace.children.expand((child) {
+                          final tiles = <Widget>[
+                            InfoTile(
+                              icon: Icons.child_care,
+                              label: child.name,
+                              value: [
+                                '${child.age} lat',
+                                if (child.school != null &&
+                                    child.school!.isNotEmpty)
+                                  child.school!,
+                              ].join(' · '),
+                              isDark: isDark,
+                            ),
+                          ];
+                          final linkedId = child.linkedAccountId;
+                          if (linkedId != null) {
+                            tiles.add(
+                              ActionTile(
+                                icon: Icons.lock_reset_outlined,
+                                label: context.tr(
+                                  'Zresetuj hasło logowania dziecka',
+                                ),
+                                subtitle: context.tr(
+                                  'Link na e-mail obojga rodziców',
+                                ),
+                                color: roleColor,
+                                isDark: isDark,
+                                onTap: () => _resetChildLoginPassword(
+                                  context,
+                                  childUserId: linkedId,
+                                  ap: ap,
+                                ),
+                              ),
+                            );
+                          }
+                          return tiles;
+                        }),
                       ],
                       ActionTile(
                         icon: Icons.person_add_outlined,
@@ -1099,6 +1124,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => ChangePasswordSheet(color: color),
+    );
+  }
+
+  Future<void> _resetChildLoginPassword(
+    BuildContext context, {
+    required String childUserId,
+    required AppProvider ap,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Zresetuj hasło logowania dziecka')),
+        content: Text(
+          context.tr(
+            'Wyślemy link do ustawienia nowego hasła na e-mail obojga rodziców. '
+            'Dziecko będzie musiało zalogować się nowym hasłem przy następnej okazji.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.tr('Anuluj')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(context.tr('Wyślij')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await ap.resetChildPassword(childUserId);
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? context.tr('Link wysłany na e-mail obojga rodziców.')
+              : (ap.authError ??
+                  context.tr('Nie udało się zresetować hasła dziecka.')),
+        ),
+        backgroundColor: ok ? null : AppTheme.errorColor,
+      ),
     );
   }
 
