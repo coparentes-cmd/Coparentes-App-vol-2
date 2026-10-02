@@ -108,13 +108,18 @@ class E2eSessionService {
 
   E2eKeyStorageService get keyStorage => _keyStorage;
 
-  /// Whether an unlocked private key is already in process memory.
+  /// Whether an unlocked private key is available - either already in process
+  /// memory, or recoverable from this device's durable storage without needing
+  /// the password again. Attempts restoreUnlockedKeyFromDevice() as a fallback
+  /// before concluding the key is truly unavailable (e.g. after a page reload
+  /// on web, or app relaunch on mobile, where RAM is empty but the durable
+  /// key persisted at the last unlock is still there).
   Future<bool> hasUnlockedKey() async {
     try {
       await _keyStorage.useUnlockedKeyPair((_) async {});
       return true;
     } on NoUnlockedKeyException {
-      return false;
+      return _keyStorage.restoreUnlockedKeyFromDevice();
     }
   }
 
