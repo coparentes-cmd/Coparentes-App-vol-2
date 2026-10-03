@@ -217,7 +217,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
             Text(
               _ocrMode ? 'Wydatek z paragonu' : context.tr('Nowy wydatek'),
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
               ),
@@ -330,9 +330,14 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: context.tr('Data wydatku'),
+                    labelStyle: const TextStyle(fontSize: 16),
                   ),
                   child: Text(
                     '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year}',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ),
               ),
@@ -341,18 +346,19 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                 Text(
                   context.tr('Dziecko'),
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     color: AppTheme.textSecondary,
                   ),
                 ),
                 SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
+                  runSpacing: 6,
                   children: [
                     ChoiceChip(
                       label: Text(
                         context.tr('Wszystkie dzieci'),
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 15),
                       ),
                       selected: _selectedChildIds.isEmpty,
                       onSelected: (_) =>
@@ -374,7 +380,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
                         return ChoiceChip(
                           label: Text(
                             child.name.split(' ').first,
-                            style: const TextStyle(fontSize: 12),
+                            style: const TextStyle(fontSize: 15),
                           ),
                           selected: selected,
                           onSelected: (value) => setState(() {
@@ -403,20 +409,20 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
               Text(
                 context.tr('Kategoria'),
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   color: AppTheme.textSecondary,
                 ),
               ),
               SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 6,
                 children: _categories
                     .map(
                       (cat) => ChoiceChip(
                         label: Text(
                           context.tr(cat),
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 15),
                         ),
                         selected: _selectedCategory == cat,
                         onSelected: (_) =>
@@ -431,19 +437,20 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
               SizedBox(height: 12),
               Text(context.tr('Podział kosztów (udział drugiego rodzica)'),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   color: AppTheme.textSecondary,
                 ),
               ),
               SizedBox(height: 8),
               Wrap(
                 spacing: 8,
+                runSpacing: 6,
                 children: _splitPresets
                     .map(
                       (preset) => ChoiceChip(
                         label: Text(
                           preset.label,
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 15),
                         ),
                         selected: _splitRatio == preset.ratio,
                         onSelected: (_) =>

@@ -261,7 +261,7 @@ class AddEventSheetState extends State<AddEventSheet> {
             Text(
               context.tr('Edytuj zdarzenie'),
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
               ),
@@ -272,11 +272,17 @@ class AddEventSheetState extends State<AddEventSheet> {
             controller: _titleController,
             focusNode: _titleFocusNode,
             maxLength: 200,
+            style: const TextStyle(fontSize: 17, color: AppTheme.textPrimary),
             textAlignVertical: TextAlignVertical.center,
             decoration: InputDecoration(
               labelText: context.tr('Opis zdarzenia'),
+              labelStyle: const TextStyle(fontSize: 16),
               floatingLabelBehavior: FloatingLabelBehavior.always,
               hintText: hintText,
+              hintStyle: const TextStyle(
+                fontSize: 16,
+                color: AppTheme.textHint,
+              ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             ),
@@ -287,20 +293,38 @@ class AddEventSheetState extends State<AddEventSheet> {
             child: InputDecorator(
               decoration: InputDecoration(
                 labelText: context.tr('Data'),
+                labelStyle: const TextStyle(fontSize: 16),
               ),
               child: Text(
                 '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year}',
+                style: const TextStyle(
+                  fontSize: 17,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 4),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading:
-                const Icon(Icons.access_time, color: AppTheme.textSecondary),
-            title: Text(context.tr('Godzina')),
-            subtitle: Text(_formatTime(_selectedTime)),
-            trailing: const Icon(Icons.chevron_right),
+            leading: const Icon(
+              Icons.access_time,
+              color: AppTheme.textSecondary,
+              size: 24,
+            ),
+            title: Text(
+              context.tr('Godzina'),
+              style: const TextStyle(fontSize: 16),
+            ),
+            subtitle: Text(
+              _formatTime(_selectedTime),
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 24),
             onTap: _pickTime,
           ),
           if (_selectedTime.hour == 0 && _selectedTime.minute == 0)
@@ -311,7 +335,7 @@ class AddEventSheetState extends State<AddEventSheet> {
                   'Północ (00:00) będzie wyświetlana jako wydarzenie całodniowe',
                 ),
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: AppTheme.textSecondary,
                 ),
               ),
@@ -321,18 +345,19 @@ class AddEventSheetState extends State<AddEventSheet> {
             Text(
               context.tr('Dziecko (opcjonalnie)'),
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 color: AppTheme.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 6,
               children: [
                 ChoiceChip(
                   label: Text(
                     context.tr('Wszystkie dzieci'),
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 15),
                   ),
                   selected: _selectedChildId == null,
                   onSelected: (_) => setState(() => _selectedChildId = null),
@@ -352,7 +377,7 @@ class AddEventSheetState extends State<AddEventSheet> {
                     return ChoiceChip(
                       label: Text(
                         child.name.split(' ').first,
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 15),
                       ),
                       selected: selected,
                       onSelected: (value) => setState(() {
@@ -378,10 +403,17 @@ class AddEventSheetState extends State<AddEventSheet> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               child: _isSubmitting
                   ? const SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 22,
+                      height: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : Text(_isEditing ? context.tr('Zapisz zmiany') : context.tr('Dodaj zdarzenie')),
