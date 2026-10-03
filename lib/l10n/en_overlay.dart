@@ -904,6 +904,8 @@ const enOverlay = <String, String>{
       'You’ll find the invite code in Settings. Tap to go there.',
   'Dodaj profil dziecka i wyślij mu kod w Ustawieniach. Dotknij, aby tam przejść.':
       'Add a child profile and send them the code in Settings. Tap to go there.',
+  'Wygeneruj kod': 'Generate code',
+  'Przejdź do Ustawień': 'Go to Settings',
   'Gdy dziecko dołączy, wyślemy Wam e-mailem kod odzyskiwania jego czatu - zachowajcie go.':
       'When the child joins, we’ll email you their chat recovery code — keep it safe.',
 };

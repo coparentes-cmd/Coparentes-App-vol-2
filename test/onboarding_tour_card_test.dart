@@ -46,6 +46,40 @@ class _FakeAuthRepository extends AuthRepository {
   }) async {
     return session;
   }
+
+  @override
+  Future<AuthSession> joinWorkspace({
+    required String name,
+    required String email,
+    required String password,
+    required String inviteCode,
+  }) async {
+    return session;
+  }
+}
+
+class _SessionRestoreAuth extends AuthRepository {
+  _SessionRestoreAuth({
+    required super.apiClient,
+    required super.preferences,
+    required super.offlineStore,
+    required this.session,
+  });
+
+  final AuthSession session;
+
+  @override
+  Future<AuthSession?> restoreSession() async => session;
+
+  @override
+  Future<AuthSession> registerWorkspace({
+    required String name,
+    required String email,
+    required String password,
+    required String workspaceName,
+    required Map<ConsentType, bool> consents,
+  }) async =>
+      session;
 }
 
 class _SilentE2e extends E2eSessionService {
@@ -62,12 +96,17 @@ class _SilentE2e extends E2eSessionService {
   Future<bool> hasUnlockedKey() async => true;
 }
 
-AuthSession _parentSession() {
+AuthSession _session({
+  required String id,
+  required UserRole role,
+  String name = 'Anna Test',
+  String email = 'anna@test.coparentes.app',
+}) {
   final user = AppUser(
-    id: 'user_a',
-    name: 'Anna Test',
-    email: 'anna@test.coparentes.app',
-    role: UserRole.parentA,
+    id: id,
+    name: name,
+    email: email,
+    role: role,
     createdAt: DateTime.utc(2026, 1, 1),
   );
   return AuthSession(
@@ -97,28 +136,30 @@ void main() {
     );
   });
 
+  Future<void> settleInit(WidgetTester tester, AppProvider ap) async {
+    for (var i = 0; i < 80 && ap.isInitializing; i++) {
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+    expect(ap.isInitializing, isFalse);
+  }
+
   Future<AppProvider> bootRegistered(WidgetTester tester) async {
     final prefs = await SharedPreferences.getInstance();
     final offline = OfflineStore(preferences: prefs);
     await offline.initialize();
-    final auth = _FakeAuthRepository(
-      apiClient: AppApiClient(baseUrl: 'http://fake'),
-      preferences: prefs,
-      offlineStore: offline,
-      session: _parentSession(),
-    );
     final ap = AppProvider(
-      authRepository: auth,
+      authRepository: _FakeAuthRepository(
+        apiClient: AppApiClient(baseUrl: 'http://fake'),
+        preferences: prefs,
+        offlineStore: offline,
+        session: _session(id: 'user_a', role: UserRole.parentA),
+      ),
       consentRepository: _FakeConsentRepository(),
       pinLockStore: PinLockStore(preferences: prefs),
       preferences: prefs,
       e2eSessionService: _SilentE2e(),
     );
-    // Widget tests use fake async — advance microtasks/timers via pump.
-    for (var i = 0; i < 50 && ap.isInitializing; i++) {
-      await tester.pump(const Duration(milliseconds: 1));
-    }
-    expect(ap.isInitializing, isFalse);
+    await settleInit(tester, ap);
     final ok = await ap.registerWorkspace(
       name: 'Anna Test',
       email: 'anna@test.coparentes.app',
@@ -131,118 +172,233 @@ void main() {
     return ap;
   }
 
-  Future<void> pumpCard(WidgetTester tester, AppProvider ap) async {
+  Future<AppProvider> bootRestored(
+    WidgetTester tester, {
+    required AuthSession session,
+    Map<String, Object> prefsSeed = const {},
+  }) async {
+    SharedPreferences.setMockInitialValues(prefsSeed);
+    final prefs = await SharedPreferences.getInstance();
+    final offline = OfflineStore(preferences: prefs);
+    await offline.initialize();
+    final ap = AppProvider(
+      authRepository: _SessionRestoreAuth(
+        apiClient: AppApiClient(baseUrl: 'http://fake'),
+        preferences: prefs,
+        offlineStore: offline,
+        session: session,
+      ),
+      consentRepository: _FakeConsentRepository(),
+      pinLockStore: PinLockStore(preferences: prefs),
+      preferences: prefs,
+      e2eSessionService: _SilentE2e(),
+    );
+    await settleInit(tester, ap);
+    return ap;
+  }
+
+  Future<void> pumpHost(WidgetTester tester, AppProvider ap) async {
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: ap,
         child: const MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: OnboardingTourCard(),
-            ),
+            body: OnboardingTourCard(),
           ),
         ),
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump();
   }
 
-  testWidgets('step 1 visible without timer; dismiss clears', (tester) async {
-    final ap = await bootRegistered(tester);
-    expect(ap.onboardingTourStep, 1);
+  void ignoreSettingsListTileNoise() {
+    final previous = FlutterError.onError;
+    FlutterError.onError = (details) {
+      if (details.exceptionAsString().contains('ListTile background color')) {
+        return;
+      }
+      previous?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = previous);
+  }
 
-    await pumpCard(tester, ap);
+  testWidgets('step 1 dialog visible and does not auto-dismiss after 10s', (
+    tester,
+  ) async {
+    final ap = await bootRegistered(tester);
+    await pumpHost(tester, ap);
+
     expect(find.text('Krok 1 z 3'), findsOneWidget);
-    expect(find.text('Zabezpiecz rozmowy'), findsOneWidget);
+    expect(find.text('Wygeneruj kod'), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsNothing);
 
-    await tester.tap(find.byIcon(Icons.close));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(ap.onboardingTourStep, isNull);
-    expect(find.text('Krok 1 z 3'), findsNothing);
+    await tester.pump(const Duration(seconds: 10));
+    expect(ap.onboardingTourStep, 1);
+    expect(find.text('Krok 1 z 3'), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
   });
 
-  testWidgets('steps 2 and 3 auto-advance after 3s', (tester) async {
+  testWidgets('system back does not dismiss step 1 or flicker a second dialog', (
+    tester,
+  ) async {
     final ap = await bootRegistered(tester);
-    await ap.setOnboardingTourStep(2);
-    await pumpCard(tester, ap);
-    expect(find.text('Krok 2 z 3'), findsOneWidget);
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    await pumpHost(tester, ap);
+    expect(find.text('Krok 1 z 3'), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 3, milliseconds: 120));
-    expect(ap.onboardingTourStep, 3);
+    // System / browser-style back (ModalRoute pop).
+    final handled = await tester.binding.handlePopRoute();
+    expect(handled, isTrue);
     await tester.pump();
+    await tester.pump();
+
+    expect(ap.onboardingTourStep, 1);
+    expect(find.text('Krok 1 z 3'), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Wygeneruj kod'), findsOneWidget);
+
+    // maybePop is "handled" (true) even when PopScope blocks; dialog must stay.
+    final handledByMaybePop = await Navigator.of(
+      tester.element(find.byType(Dialog)),
+    ).maybePop();
+    expect(handledByMaybePop, isTrue);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Krok 1 z 3'), findsOneWidget);
+    expect(ap.onboardingTourStep, 1);
+  });
+
+  testWidgets('X advances 1→2→3 then clears', (tester) async {
+    final ap = await bootRegistered(tester);
+    await pumpHost(tester, ap);
+    expect(find.text('Krok 1 z 3'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding_tour_close')));
+    await tester.pump();
+    await tester.pump();
+    expect(ap.onboardingTourStep, 2);
+    expect(find.text('Krok 2 z 3'), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding_tour_close')));
+    await tester.pump();
+    await tester.pump();
+    expect(ap.onboardingTourStep, 3);
     expect(find.text('Krok 3 z 3'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 3, milliseconds: 120));
-    expect(ap.onboardingTourStep, isNull);
-  });
-
-  testWidgets('only one step card content at a time', (tester) async {
-    final ap = await bootRegistered(tester);
-    await pumpCard(tester, ap);
-    expect(find.text('Zabezpiecz rozmowy'), findsOneWidget);
-    expect(find.text('Zaproś drugiego rodzica'), findsNothing);
-
-    await ap.setOnboardingTourStep(2);
+    await tester.tap(find.byKey(const Key('onboarding_tour_close')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 16));
-    expect(find.text('Zabezpiecz rozmowy'), findsNothing);
-    expect(find.text('Zaproś drugiego rodzica'), findsOneWidget);
+    await tester.pump();
+    expect(ap.onboardingTourStep, isNull);
+    expect(find.byType(Dialog), findsNothing);
   });
 
   testWidgets(
-    'step 2 tap opens route; step 3 timer freezes until pop',
+    'step 2 action opens Settings; after pop step 3 dialog shows',
     (tester) async {
       final ap = await bootRegistered(tester);
       await ap.setOnboardingTourStep(2);
-
-      // SettingsScreen emits pre-existing ListTile/Material ink assertions in tests.
-      final previousOnError = FlutterError.onError;
-      FlutterError.onError = (details) {
-        if (details.exceptionAsString().contains('ListTile background color')) {
-          return;
-        }
-        previousOnError?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = previousOnError);
-
-      await tester.pumpWidget(
-        ChangeNotifierProvider.value(
-          value: ap,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: OnboardingTourCard(),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 16));
+      ignoreSettingsListTileNoise();
+      await pumpHost(tester, ap);
       expect(find.text('Krok 2 z 3'), findsOneWidget);
 
-      // Tap advances to step 3 then pushes Settings over the dashboard.
-      await tester.tap(find.text('Zaproś drugiego rodzica'));
+      await tester.tap(find.byKey(const Key('onboarding_tour_action')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(ap.onboardingTourStep, 3);
-
-      // Covered by Settings: 5s must not auto-dismiss step 3.
-      await tester.pump(const Duration(seconds: 5));
-      expect(ap.onboardingTourStep, 3);
+      expect(find.byType(Dialog), findsNothing);
 
       final navigator = tester.state<NavigatorState>(find.byType(Navigator));
       expect(navigator.canPop(), isTrue);
       navigator.pop();
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump();
       expect(ap.onboardingTourStep, 3);
-
-      await tester.pump(const Duration(seconds: 3, milliseconds: 120));
-      expect(ap.onboardingTourStep, isNull);
+      expect(find.text('Krok 3 z 3'), findsOneWidget);
+      expect(find.byType(Dialog), findsOneWidget);
     },
   );
+
+  testWidgets('never two tour dialogs at once', (tester) async {
+    final ap = await bootRegistered(tester);
+    await pumpHost(tester, ap);
+    expect(find.byType(Dialog), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('onboarding_tour_close')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Krok 2 z 3'), findsOneWidget);
+  });
+
+  testWidgets('joining parentB without step does not see dialog', (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final offline = OfflineStore(preferences: prefs);
+    await offline.initialize();
+    final ap = AppProvider(
+      authRepository: _FakeAuthRepository(
+        apiClient: AppApiClient(baseUrl: 'http://fake'),
+        preferences: prefs,
+        offlineStore: offline,
+        session: _session(
+          id: 'user_b',
+          role: UserRole.parentB,
+          name: 'Bartek',
+          email: 'b@t.com',
+        ),
+      ),
+      consentRepository: _FakeConsentRepository(),
+      pinLockStore: PinLockStore(preferences: prefs),
+      preferences: prefs,
+      e2eSessionService: _SilentE2e(),
+    );
+    await settleInit(tester, ap);
+    final ok = await ap.joinWorkspace(
+      name: 'Bartek',
+      email: 'b@t.com',
+      password: 'JoinPass123!',
+      inviteCode: 'INVITE99',
+    );
+    expect(ok, isTrue);
+    expect(ap.onboardingTourStep, isNull);
+    await pumpHost(tester, ap);
+    expect(find.byType(Dialog), findsNothing);
+  });
+
+  testWidgets('child does not see dialog even with stale step prefs', (
+    tester,
+  ) async {
+    final ap = await bootRestored(
+      tester,
+      session: _session(id: 'user_c', role: UserRole.child, name: 'Ola'),
+      prefsSeed: {
+        AppProvider.onboardingTourPrefsKey('user_c'): 1,
+      },
+    );
+    expect(ap.currentUser?.role, UserRole.child);
+    expect(ap.onboardingTourStep, 1);
+    await pumpHost(tester, ap);
+    expect(find.byType(Dialog), findsNothing);
+  });
+
+  testWidgets('tour step survives provider recreate from prefs', (tester) async {
+    final ap1 = await bootRegistered(tester);
+    await ap1.setOnboardingTourStep(2);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt(AppProvider.onboardingTourPrefsKey('user_a')), 2);
+
+    final ap2 = await bootRestored(
+      tester,
+      session: _session(id: 'user_a', role: UserRole.parentA),
+      prefsSeed: {
+        AppProvider.onboardingTourPrefsKey('user_a'): 2,
+      },
+    );
+    expect(ap2.onboardingTourStep, 2);
+    await pumpHost(tester, ap2);
+    expect(find.text('Krok 2 z 3'), findsOneWidget);
+  });
 }

@@ -10,7 +10,10 @@ import '../../../theme/app_theme.dart';
 import '../../settings/generate_recovery_code_flow.dart';
 import '../../settings/settings_screen.dart';
 
-/// Floating post-registration tour card (steps 1–3) under the dashboard header.
+/// Host for the post-registration tour dialogs (steps 1–3).
+///
+/// Renders nothing in the scroll tree; presents a centered [showDialog] when
+/// the dashboard route is current and a step is stored for a parent.
 class OnboardingTourCard extends StatefulWidget {
   const OnboardingTourCard({super.key});
 
@@ -18,130 +21,93 @@ class OnboardingTourCard extends StatefulWidget {
   State<OnboardingTourCard> createState() => _OnboardingTourCardState();
 }
 
-class _OnboardingTourCardState extends State<OnboardingTourCard>
-    with WidgetsBindingObserver {
-  static const _autoAdvance = Duration(seconds: 3);
-  static const _tick = Duration(milliseconds: 50);
+class _OnboardingTourCardState extends State<OnboardingTourCard> {
+  bool _dialogOpen = false;
+  int? _scheduledForStep;
 
-  Timer? _timer;
-  int? _timerStep;
-  Duration _elapsed = Duration.zero;
-  Duration _total = _autoAdvance;
-  bool _paused = false;
-  double _progress = 1;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
+  bool _eligible(AppProvider ap) {
+    final step = ap.onboardingTourStep;
+    final user = ap.currentUser;
+    if (step == null || step < 1 || step > 3) return false;
+    if (user == null) return false;
+    return user.role == UserRole.parentA || user.role == UserRole.parentB;
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cancelTimer();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _paused = false;
-      _resumeTimerIfNeeded();
-    } else if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.detached) {
-      _paused = true;
-      _timer?.cancel();
-      _timer = null;
-    }
-  }
-
-  void _cancelTimer() {
-    _timer?.cancel();
-    _timer = null;
-    _timerStep = null;
-    _elapsed = Duration.zero;
-    _total = _autoAdvance;
-  }
-
-  void _resumeTimerIfNeeded() {
-    if (!mounted) return;
-    final step = context.read<AppProvider>().onboardingTourStep;
-    if (step == null || step < 2) return;
-    if (_elapsed >= _total) {
-      unawaited(_onTimerFinished(step));
-      return;
-    }
-    _startTicker(step);
-  }
-
-  void _syncTimer(int step) {
-    if (step < 2 || step > 3) {
-      _cancelTimer();
-      _paused = false;
-      if (_progress != 1 && mounted) {
-        setState(() => _progress = 1);
-      }
-      return;
-    }
-    if (_timer != null && _timerStep == step) {
-      return;
-    }
-    if (_paused) {
-      return;
-    }
-    _elapsed = Duration.zero;
-    _total = _autoAdvance;
-    _startTicker(step);
-  }
-
-  void _startTicker(int step) {
-    _timer?.cancel();
-    _timerStep = step;
-    if (mounted) {
-      setState(() {
-        _progress = 1 - (_elapsed.inMilliseconds / _total.inMilliseconds);
-      });
-    }
-    _timer = Timer.periodic(_tick, (_) {
-      if (!mounted || _paused) return;
-      // Freeze while Settings / dialogs / sheets cover the dashboard route.
-      if (ModalRoute.of(context)?.isCurrent != true) return;
-      _elapsed += _tick;
-      if (_elapsed >= _total) {
-        final finishedStep = step;
-        _cancelTimer();
-        setState(() => _progress = 0);
-        unawaited(_onTimerFinished(finishedStep));
-        return;
-      }
-      setState(() {
-        _progress = 1 - (_elapsed.inMilliseconds / _total.inMilliseconds);
-      });
+  void _queuePresent(int step) {
+    if (_dialogOpen || _scheduledForStep == step) return;
+    _scheduledForStep = step;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduledForStep = null;
+      unawaited(_presentIfNeeded());
     });
   }
 
-  Future<void> _onTimerFinished(int step) async {
-    if (!mounted) return;
+  Future<void> _presentIfNeeded() async {
+    if (!mounted || _dialogOpen) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+
     final ap = context.read<AppProvider>();
-    if (ap.onboardingTourStep != step) return;
-    if (step == 2) {
-      await ap.setOnboardingTourStep(3);
-    } else if (step == 3) {
-      await ap.setOnboardingTourStep(null);
+    if (!_eligible(ap)) return;
+
+    final step = ap.onboardingTourStep!;
+    _dialogOpen = true;
+
+    final result = await showDialog<_TourDialogResult>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (dialogContext) {
+        // PopScope must be the dialog route root so system/browser back is blocked.
+        return PopScope(
+          canPop: false,
+          child: _OnboardingTourDialog(
+            step: step,
+            onDismissToNext: () =>
+                Navigator.of(dialogContext).pop(_TourDialogResult.next),
+            onAction: () =>
+                Navigator.of(dialogContext).pop(_TourDialogResult.action),
+          ),
+        );
+      },
+    );
+
+    if (!mounted) {
+      _dialogOpen = false;
+      return;
+    }
+
+    await _handleResult(result, step);
+    if (!mounted) {
+      _dialogOpen = false;
+      return;
+    }
+    _dialogOpen = false;
+
+    // Present the next step only when dashboard is the top route again.
+    if (ModalRoute.of(context)?.isCurrent == true &&
+        _eligible(context.read<AppProvider>())) {
+      _queuePresent(context.read<AppProvider>().onboardingTourStep!);
     }
   }
 
-  Future<void> _dismissAll() async {
-    _cancelTimer();
-    _paused = false;
-    await context.read<AppProvider>().setOnboardingTourStep(null);
-  }
-
-  Future<void> _onTapStep(int step, Color roleColor) async {
+  Future<void> _handleResult(_TourDialogResult? result, int step) async {
+    if (result == null || !mounted) return;
     final ap = context.read<AppProvider>();
+    final roleColor = ap.currentUser?.role == UserRole.parentA
+        ? AppTheme.parentAColor
+        : AppTheme.parentBColor;
+
+    if (result == _TourDialogResult.next) {
+      if (step == 1) {
+        await ap.setOnboardingTourStep(2);
+      } else if (step == 2) {
+        await ap.setOnboardingTourStep(3);
+      } else {
+        await ap.setOnboardingTourStep(null);
+      }
+      return;
+    }
+
     if (step == 1) {
       final shown = await runGenerateRecoveryCodeFlow(
         context,
@@ -153,12 +119,12 @@ class _OnboardingTourCardState extends State<OnboardingTourCard>
       }
       return;
     }
+
     if (step == 2) {
-      _cancelTimer();
       await ap.setOnboardingTourStep(3);
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (_) => const SettingsScreen(
             focus: SettingsFocus.parentInvite,
           ),
@@ -166,12 +132,12 @@ class _OnboardingTourCardState extends State<OnboardingTourCard>
       );
       return;
     }
+
     if (step == 3) {
-      _cancelTimer();
       await ap.setOnboardingTourStep(null);
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (_) => const SettingsScreen(
             focus: SettingsFocus.addChild,
           ),
@@ -183,32 +149,30 @@ class _OnboardingTourCardState extends State<OnboardingTourCard>
   @override
   Widget build(BuildContext context) {
     final ap = context.watch<AppProvider>();
-    final step = ap.onboardingTourStep;
-    final user = ap.currentUser;
-    if (step == null ||
-        step < 1 ||
-        step > 3 ||
-        user == null ||
-        (user.role != UserRole.parentA && user.role != UserRole.parentB)) {
-      if (_timer != null) {
-        _cancelTimer();
-      }
-      return const SizedBox.shrink();
+    if (_eligible(ap) &&
+        !_dialogOpen &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      _queuePresent(ap.onboardingTourStep!);
     }
+    return const SizedBox.shrink();
+  }
+}
 
-    if (_timerStep != step && !_paused) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (context.read<AppProvider>().onboardingTourStep == step) {
-          _syncTimer(step);
-        }
-      });
-    }
+enum _TourDialogResult { next, action }
 
-    final roleColor = user.role == UserRole.parentA
-        ? AppTheme.parentAColor
-        : AppTheme.parentBColor;
+class _OnboardingTourDialog extends StatelessWidget {
+  final int step;
+  final VoidCallback onDismissToNext;
+  final VoidCallback onAction;
 
+  const _OnboardingTourDialog({
+    required this.step,
+    required this.onDismissToNext,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final title = switch (step) {
       1 => context.tr('Zabezpiecz rozmowy'),
       2 => context.tr('Zaproś drugiego rodzica'),
@@ -225,88 +189,113 @@ class _OnboardingTourCardState extends State<OnboardingTourCard>
           'Dodaj profil dziecka i wyślij mu kod w Ustawieniach. Dotknij, aby tam przejść.',
         ),
     };
+    final cta = switch (step) {
+      1 => context.tr('Wygeneruj kod'),
+      2 => context.tr('Przejdź do Ustawień'),
+      _ => context.tr('Dodaj dziecko'),
+    };
 
-    final showTimer = step >= 2;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Material(
-        color: Colors.white,
-        elevation: 2,
-        shadowColor: Colors.black26,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _onTapStep(step, roleColor),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr('Krok $step z 3'),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: roleColor,
-                              letterSpacing: 0.2,
-                            ),
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        child: Material(
+          color: AppTheme.brandHeaderBlue,
+          elevation: 12,
+          shadowColor: Colors.black54,
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onAction,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          context.tr('Krok $step z 3'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            letterSpacing: 0.2,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.25,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          body,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.45,
+                            color: Colors.white.withValues(alpha: 0.92),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            key: const Key('onboarding_tour_action'),
+                            onPressed: onAction,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppTheme.brandHeaderBlue,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            child: Text(cta),
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
-                      onPressed: _dismissAll,
-                      icon: const Icon(Icons.close, size: 18),
-                      tooltip: context.tr('Zamknij'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: AppTheme.textSecondary,
                   ),
                 ),
-                if (showTimer) ...[
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: _progress.clamp(0.0, 1.0),
-                      minHeight: 3,
-                      backgroundColor: roleColor.withValues(alpha: 0.12),
-                      color: roleColor.withValues(alpha: 0.7),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  elevation: 1,
+                  child: InkWell(
+                    key: const Key('onboarding_tour_close'),
+                    customBorder: const CircleBorder(),
+                    onTap: onDismissToNext,
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(
+                        Icons.close,
+                        size: 22,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                   ),
-                ],
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
