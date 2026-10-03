@@ -21,21 +21,18 @@ class _TrackingRecoveryE2e extends E2eSessionService {
   int withRecoveryCalls = 0;
   int setupNewKeysCalls = 0;
   String? lastPassword;
-  bool throwOnRecovery = false;
 
   @override
   Future<String> setupNewKeysWithRecoveryCode(String password) async {
     withRecoveryCalls += 1;
     lastPassword = password;
-    if (throwOnRecovery) {
-      throw Exception('recovery_setup_failed');
-    }
     return sampleCode;
   }
 
   @override
   Future<void> setupNewKeys(String password) async {
     setupNewKeysCalls += 1;
+    lastPassword = password;
   }
 
   @override
@@ -57,10 +54,12 @@ class _FakeAuthRepository extends AuthRepository {
     required super.offlineStore,
     required this.registerSession,
     required this.joinSession,
+    required this.childSession,
   });
 
   final AuthSession registerSession;
   final AuthSession joinSession;
+  final AuthSession childSession;
 
   @override
   Future<AuthSession?> restoreSession() async => null;
@@ -84,6 +83,16 @@ class _FakeAuthRepository extends AuthRepository {
     required String inviteCode,
   }) async {
     return joinSession;
+  }
+
+  @override
+  Future<AuthSession> accessChildAccount({
+    required String password,
+    required String childInviteCode,
+    required DateTime dateOfBirth,
+    String? name,
+  }) async {
+    return childSession;
   }
 }
 
@@ -123,7 +132,8 @@ void main() {
     );
   });
 
-  Future<({AppProvider ap, _TrackingRecoveryE2e e2e})> boot() async {
+  Future<({AppProvider ap, _TrackingRecoveryE2e e2e, SharedPreferences prefs})>
+      boot() async {
     final prefs = await SharedPreferences.getInstance();
     final offline = OfflineStore(preferences: prefs);
     await offline.initialize();
@@ -134,26 +144,29 @@ void main() {
       offlineStore: offline,
       registerSession: _session(id: 'user_a', role: UserRole.parentA),
       joinSession: _session(id: 'user_b', role: UserRole.parentB),
+      childSession: _session(id: 'user_c', role: UserRole.child),
     );
     final ap = AppProvider(
       authRepository: auth,
       consentRepository: _FakeConsentRepository(),
       pinLockStore: PinLockStore(preferences: prefs),
+      preferences: prefs,
       e2eSessionService: e2e,
     );
     await Future<void>.delayed(Duration.zero);
     while (ap.isInitializing) {
       await Future<void>.delayed(const Duration(milliseconds: 1));
     }
-    return (ap: ap, e2e: e2e);
+    return (ap: ap, e2e: e2e, prefs: prefs);
   }
 
   test(
-    'registerWorkspace sets pendingRecoveryCode via setupNewKeysWithRecoveryCode',
+    'registerWorkspace: setupNewKeys only, tour step 1 persisted',
     () async {
       final bootstrapped = await boot();
       final ap = bootstrapped.ap;
       final e2e = bootstrapped.e2e;
+      final prefs = bootstrapped.prefs;
 
       final ok = await ap.registerWorkspace(
         name: 'Anna Test',
@@ -166,66 +179,123 @@ void main() {
       );
 
       expect(ok, isTrue);
-      expect(e2e.withRecoveryCalls, 1);
-      expect(e2e.setupNewKeysCalls, 0);
-      expect(e2e.lastPassword, 'Password123!');
-      expect(ap.pendingRecoveryCode, _TrackingRecoveryE2e.sampleCode);
-      expect(ap.showingRecoveryCodeScreen, isTrue);
-
-      ap.clearPendingRecoveryCode();
-      expect(ap.pendingRecoveryCode, isNull);
-      expect(ap.showingRecoveryCodeScreen, isFalse);
-    },
-  );
-
-  test(
-    'joinWorkspace sets pendingRecoveryCode via setupNewKeysWithRecoveryCode',
-    () async {
-      final bootstrapped = await boot();
-      final ap = bootstrapped.ap;
-      final e2e = bootstrapped.e2e;
-
-      final ok = await ap.joinWorkspace(
-        name: 'Bartek Test',
-        email: 'bartek@test.coparentes.app',
-        password: 'JoinPass123!',
-        inviteCode: 'INVITE99',
-      );
-
-      expect(ok, isTrue);
-      expect(ap.currentUser?.role, UserRole.parentB);
-      expect(e2e.withRecoveryCalls, 1);
-      expect(e2e.setupNewKeysCalls, 0);
-      expect(e2e.lastPassword, 'JoinPass123!');
-      expect(ap.pendingRecoveryCode, _TrackingRecoveryE2e.sampleCode);
-      expect(ap.showingRecoveryCodeScreen, isTrue);
-    },
-  );
-
-  test(
-    'registerWorkspace does not show recovery screen when setup fails',
-    () async {
-      final bootstrapped = await boot();
-      final ap = bootstrapped.ap;
-      final e2e = bootstrapped.e2e;
-      e2e.throwOnRecovery = true;
-
-      final ok = await ap.registerWorkspace(
-        name: 'Anna Test',
-        email: 'anna@test.coparentes.app',
-        password: 'Password123!',
-        workspaceName: 'Rodzina',
-        consents: {
-          for (final t in ConsentType.values) t: true,
-        },
-      );
-
-      expect(ok, isTrue);
-      expect(e2e.withRecoveryCalls, 1);
-      // Fallback setupNewKeys when no unlocked key.
       expect(e2e.setupNewKeysCalls, 1);
-      expect(ap.pendingRecoveryCode, isNull);
-      expect(ap.showingRecoveryCodeScreen, isFalse);
+      expect(e2e.withRecoveryCalls, 0);
+      expect(e2e.lastPassword, 'Password123!');
+      expect(ap.onboardingTourStep, 1);
+      expect(
+        prefs.getInt(AppProvider.onboardingTourPrefsKey('user_a')),
+        1,
+      );
     },
   );
+
+  test('joinWorkspace: setupNewKeys, no tour step', () async {
+    final bootstrapped = await boot();
+    final ap = bootstrapped.ap;
+    final e2e = bootstrapped.e2e;
+    final prefs = bootstrapped.prefs;
+
+    final ok = await ap.joinWorkspace(
+      name: 'Bartek Test',
+      email: 'bartek@test.coparentes.app',
+      password: 'JoinPass123!',
+      inviteCode: 'INVITE99',
+    );
+
+    expect(ok, isTrue);
+    expect(ap.currentUser?.role, UserRole.parentB);
+    expect(e2e.setupNewKeysCalls, 1);
+    expect(e2e.withRecoveryCalls, 0);
+    expect(ap.onboardingTourStep, isNull);
+    expect(
+      prefs.getInt(AppProvider.onboardingTourPrefsKey('user_b')),
+      isNull,
+    );
+  });
+
+  test(
+    'accessChildAccount: recovery keys generated, no tour step',
+    () async {
+      final bootstrapped = await boot();
+      final ap = bootstrapped.ap;
+      final e2e = bootstrapped.e2e;
+
+      final ok = await ap.accessChildAccount(
+        password: 'ChildPass123!',
+        childInviteCode: 'CHILDCODE',
+        dateOfBirth: DateTime.utc(2015, 5, 1),
+        name: 'Ola',
+      );
+
+      expect(ok, isTrue);
+      expect(e2e.withRecoveryCalls, 1);
+      expect(ap.onboardingTourStep, isNull);
+    },
+  );
+
+  test('setOnboardingTourStep persists and clears', () async {
+    final bootstrapped = await boot();
+    final ap = bootstrapped.ap;
+    final prefs = bootstrapped.prefs;
+
+    await ap.registerWorkspace(
+      name: 'Anna Test',
+      email: 'anna@test.coparentes.app',
+      password: 'Password123!',
+      workspaceName: 'Rodzina',
+      consents: {
+        for (final t in ConsentType.values) t: true,
+      },
+    );
+
+    await ap.setOnboardingTourStep(2);
+    expect(ap.onboardingTourStep, 2);
+    expect(prefs.getInt(AppProvider.onboardingTourPrefsKey('user_a')), 2);
+
+    await ap.setOnboardingTourStep(3);
+    expect(ap.onboardingTourStep, 3);
+
+    await ap.setOnboardingTourStep(null);
+    expect(ap.onboardingTourStep, isNull);
+    expect(prefs.getInt(AppProvider.onboardingTourPrefsKey('user_a')), isNull);
+  });
+
+  test('tour step reloaded from SharedPreferences on session apply', () async {
+    SharedPreferences.setMockInitialValues({
+      AppProvider.onboardingTourPrefsKey('user_b'): 2,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final offline = OfflineStore(preferences: prefs);
+    await offline.initialize();
+    final e2e = _TrackingRecoveryE2e();
+    final auth = _FakeAuthRepository(
+      apiClient: AppApiClient(baseUrl: 'http://fake'),
+      preferences: prefs,
+      offlineStore: offline,
+      registerSession: _session(id: 'user_a', role: UserRole.parentA),
+      joinSession: _session(id: 'user_b', role: UserRole.parentB),
+      childSession: _session(id: 'user_c', role: UserRole.child),
+    );
+    final ap = AppProvider(
+      authRepository: auth,
+      consentRepository: _FakeConsentRepository(),
+      pinLockStore: PinLockStore(preferences: prefs),
+      preferences: prefs,
+      e2eSessionService: e2e,
+    );
+    await Future<void>.delayed(Duration.zero);
+    while (ap.isInitializing) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+
+    final ok = await ap.joinWorkspace(
+      name: 'Bartek',
+      email: 'b@test.coparentes.app',
+      password: 'JoinPass123!',
+      inviteCode: 'INVITE99',
+    );
+    expect(ok, isTrue);
+    expect(ap.onboardingTourStep, 2);
+  });
 }

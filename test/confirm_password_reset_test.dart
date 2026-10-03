@@ -71,6 +71,7 @@ void main() {
         apiClient: AppApiClient(baseUrl: 'http://fake'),
       ),
       pinLockStore: PinLockStore(preferences: prefs),
+      preferences: prefs,
     );
     await Future<void>.delayed(Duration.zero);
     while (ap.isInitializing) {

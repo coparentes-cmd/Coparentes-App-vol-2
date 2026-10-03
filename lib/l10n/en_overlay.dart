@@ -268,6 +268,7 @@ const enOverlay = <String, String>{
   'Wszystkie dzieci': 'All children',
   'Wejście dziecka': 'Child sign-in',
   'Zanim zaczniesz': 'Before you start',
+  'Zaznacz wymagane zgody': 'Select the required consents',
   'Zapisz dokument': 'Save document',
   'Zdjęcie = dowód': 'Photo = Proof',
   '🏠 Zostań na noc': '🏠 Stay the night',
@@ -871,10 +872,13 @@ const enOverlay = <String, String>{
   'Nie udało się zresetować hasła dziecka.':
       "Could not reset the child's password.",
   // R4 — unlock sheet: recover original key with mailed code
+  'Masz kod odzyskiwania?': 'Have a recovery code?',
   'Masz kod odzyskiwania z maila?': 'Have a recovery code from email?',
   'Masz kod odzyskiwania? (mają go Twoi rodzice)':
       'Have a recovery code? (your parents have it)',
   'Odzyskaj dostęp kodem': 'Recover access with a code',
+  'Wpisz kod odzyskiwania wygenerowany w Ustawieniach (wysłaliśmy go też na Twój e-mail)':
+      'Enter the recovery code generated in Settings (we also sent it to your email)',
   'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.':
       'Enter the recovery code you received by email when you created your account.',
   'Wpisz kod odzyskiwania - dostali go Twoi rodzice mailem. Poproś ich o niego.':
@@ -888,4 +892,18 @@ const enOverlay = <String, String>{
   'Podaj kod odzyskiwania.': 'Enter the recovery code.',
   'Nie udało się odzyskać dostępu. Spróbuj ponownie.':
       'Could not recover access. Try again.',
+  // Post-registration onboarding tour (dashboard)
+  'Krok 1 z 3': 'Step 1 of 3',
+  'Krok 2 z 3': 'Step 2 of 3',
+  'Krok 3 z 3': 'Step 3 of 3',
+  'Zabezpiecz rozmowy': 'Protect your chats',
+  'Czat jest szyfrowany end-to-end, więc przy zapomnianym haśle nie odzyskamy go za Ciebie. Kod odzyskiwania to zapasowy klucz. Dotknij, aby go wygenerować.':
+      'Chat is end-to-end encrypted, so if you forget your password we cannot recover it for you. A recovery code is a backup key. Tap to generate it.',
+  'Zaproś drugiego rodzica': 'Invite the other parent',
+  'Kod zaproszenia znajdziesz w Ustawieniach. Dotknij, aby tam przejść.':
+      'You’ll find the invite code in Settings. Tap to go there.',
+  'Dodaj profil dziecka i wyślij mu kod w Ustawieniach. Dotknij, aby tam przejść.':
+      'Add a child profile and send them the code in Settings. Tap to go there.',
+  'Gdy dziecko dołączy, wyślemy Wam e-mailem kod odzyskiwania jego czatu - zachowajcie go.':
+      'When the child joins, we’ll email you their chat recovery code — keep it safe.',
 };

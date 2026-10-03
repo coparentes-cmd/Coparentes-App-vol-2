@@ -68,6 +68,7 @@ void main() {
         apiClient: AppApiClient(baseUrl: 'http://fake'),
       ),
       pinLockStore: PinLockStore(preferences: prefs),
+      preferences: prefs,
       e2eSessionService: e2e,
     );
     await Future<void>.delayed(Duration.zero);

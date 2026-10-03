@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/country_profiles.dart';
 import '../data/api/app_api_client.dart';
@@ -70,6 +71,7 @@ class AppProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final ConsentRepository _consentRepository;
   final PinLockStore _pinLockStore;
+  final SharedPreferences _preferences;
   final LocaleStore? _localeStore;
   final E2eSessionService? _e2eSession;
 
@@ -87,12 +89,14 @@ class AppProvider extends ChangeNotifier {
     required AuthRepository authRepository,
     required ConsentRepository consentRepository,
     required PinLockStore pinLockStore,
+    required SharedPreferences preferences,
     LocaleStore? localeStore,
     Locale? initialLocale,
     E2eSessionService? e2eSessionService,
   })  : _authRepository = authRepository,
         _consentRepository = consentRepository,
         _pinLockStore = pinLockStore,
+        _preferences = preferences,
         _localeStore = localeStore,
         _e2eSession = e2eSessionService {
     if (initialLocale != null) {
@@ -109,9 +113,8 @@ class AppProvider extends ChangeNotifier {
   bool _aiShieldEnabled = true;
   bool _isInitializing = true;
   bool _isDemoMode = false;
-  bool _needsChildOnboarding = false;
-  /// Plaintext recovery code shown once after registration (RAM only).
-  String? _pendingRecoveryCode;
+  /// Post-registration dashboard tour step (1–3), or null when inactive.
+  int? _onboardingTourStep;
   String? _authError;
   LoginChallenge? _pendingLoginChallenge;
   int? _otpAttemptsRemaining;
@@ -165,12 +168,12 @@ class AppProvider extends ChangeNotifier {
       DemoTime.deactivate();
     }
   }
-  bool get needsChildOnboarding => _needsChildOnboarding;
-  /// True while the mandatory post-registration recovery-code screen is up.
-  bool get showingRecoveryCodeScreen =>
-      _pendingRecoveryCode != null && _pendingRecoveryCode!.isNotEmpty;
-  String? get pendingRecoveryCode => _pendingRecoveryCode;
+  /// 1–3 while the parent post-registration tour is active; otherwise null.
+  int? get onboardingTourStep => _onboardingTourStep;
   String? get authError => _authError;
+
+  static String onboardingTourPrefsKey(String userId) =>
+      'onboarding_tour_step_$userId';
   LoginChallenge? get pendingLoginChallenge => _pendingLoginChallenge;
   bool get needsOtpVerification => _pendingLoginChallenge != null;
   int? get otpAttemptsRemaining => _otpAttemptsRemaining;
@@ -429,9 +432,9 @@ class AppProvider extends ChangeNotifier {
         consents: consents,
       );
       _setDemoMode(false);
-      _needsChildOnboarding = true;
       _applySession(session);
-      await _e2eSetupNewKeysWithRecoveryCode(password);
+      await _e2eSetupNewKeys(password);
+      await setOnboardingTourStep(1);
       await loadUserConsents();
       notifyListeners();
       return true;
@@ -523,15 +526,27 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  void completeChildOnboarding() {
-    _needsChildOnboarding = false;
+  /// Persists post-registration tour step (1–3) or clears it when [step] is null.
+  Future<void> setOnboardingTourStep(int? step) async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+    final key = onboardingTourPrefsKey(userId);
+    if (step == null || step < 1 || step > 3) {
+      await _preferences.remove(key);
+      _onboardingTourStep = null;
+    } else {
+      await _preferences.setInt(key, step);
+      _onboardingTourStep = step;
+    }
     notifyListeners();
   }
 
-  /// Clears the one-shot recovery code after the user acknowledges it.
-  void clearPendingRecoveryCode() {
-    _pendingRecoveryCode = null;
-    notifyListeners();
+  void _loadOnboardingTourStep(String userId) {
+    final value = _preferences.getInt(onboardingTourPrefsKey(userId));
+    _onboardingTourStep =
+        (value != null && value >= 1 && value <= 3) ? value : null;
   }
 
   /// Settings / R3: seal the unlocked E2E key under a new recovery code.
@@ -935,7 +950,7 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      await _e2eSetupNewKeysWithRecoveryCode(password);
+      await _e2eSetupNewKeys(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -968,7 +983,8 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      await _e2eSetupNewKeysWithRecoveryCode(password);
+      // Child: generate keys + recovery envelope (e-mailed to parents); no UI.
+      await _e2eSetupNewKeysWithRecoveryCodeSilent(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -1296,8 +1312,7 @@ class AppProvider extends ChangeNotifier {
     _pendingE2ePassword = null;
     _pendingLoginPassword = null;
     _setDemoMode(false);
-    _needsChildOnboarding = false;
-    _pendingRecoveryCode = null;
+    _onboardingTourStep = null;
     _requirePinOnResume = false;
     _hasPinSet = false;
     _isPinLocked = false;
@@ -1314,6 +1329,7 @@ class AppProvider extends ChangeNotifier {
     _themeMode = session.user.themeMode;
     _colorScheme = session.user.colorScheme;
     _isPinLocked = false;
+    _loadOnboardingTourStep(session.user.id);
     unawaited(_loadPinSettings());
   }
 
@@ -1325,25 +1341,32 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// Registration / parentB-join path: keys + recovery envelope. On failure do
-  /// not block account creation; only show the recovery screen when a code was
-  /// returned.
-  Future<void> _e2eSetupNewKeysWithRecoveryCode(String password) async {
+  /// Parent register / join: password-sealed keys only (no recovery code UI).
+  Future<void> _e2eSetupNewKeys(String password) async {
     final e2e = _e2eSession;
     if (e2e == null || password.isEmpty) {
       return;
     }
     try {
-      final code = await e2e.setupNewKeysWithRecoveryCode(password);
-      if (code.isNotEmpty) {
-        _pendingRecoveryCode = code;
-      }
+      await e2e.setupNewKeys(password);
+    } catch (error) {
+      debugPrint('[e2e] setupNewKeys failed (best-effort): $error');
+    }
+  }
+
+  /// Child join: keys + recovery envelope (e-mailed to parents). Discard code;
+  /// never surface a recovery screen.
+  Future<void> _e2eSetupNewKeysWithRecoveryCodeSilent(String password) async {
+    final e2e = _e2eSession;
+    if (e2e == null || password.isEmpty) {
+      return;
+    }
+    try {
+      await e2e.setupNewKeysWithRecoveryCode(password);
     } catch (error) {
       debugPrint(
         '[e2e] setupNewKeysWithRecoveryCode failed (best-effort): $error',
       );
-      // Keys may already be unlocked if only recovery upload failed — do not
-      // call setupNewKeys again (would rotate identity). Fallback only if empty.
       try {
         if (!await e2e.hasUnlockedKey()) {
           await e2e.setupNewKeys(password);

@@ -204,7 +204,7 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
                       context.tr(
                         isChild
                             ? 'Wpisz kod odzyskiwania - dostali go Twoi rodzice mailem. Poproś ich o niego.'
-                            : 'Wpisz kod odzyskiwania, który otrzymałeś mailem przy zakładaniu konta.',
+                            : 'Wpisz kod odzyskiwania wygenerowany w Ustawieniach (wysłaliśmy go też na Twój e-mail)',
                       ),
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
@@ -520,7 +520,7 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
                     context.read<AppProvider>().currentUser?.role ==
                             UserRole.child
                         ? 'Masz kod odzyskiwania? (mają go Twoi rodzice)'
-                        : 'Masz kod odzyskiwania z maila?',
+                        : 'Masz kod odzyskiwania?',
                   ),
                   textAlign: TextAlign.left,
                   style: const TextStyle(fontSize: 13),

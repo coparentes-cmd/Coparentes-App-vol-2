@@ -113,6 +113,7 @@ void main() {
           apiClient: AppApiClient(baseUrl: 'http://fake'),
         ),
         pinLockStore: PinLockStore(preferences: prefs),
+        preferences: prefs,
         e2eSessionService: e2e,
       );
 
@@ -158,6 +159,7 @@ void main() {
           apiClient: AppApiClient(baseUrl: 'http://fake'),
         ),
         pinLockStore: PinLockStore(preferences: prefs),
+        preferences: prefs,
         e2eSessionService: tracking,
       );
 

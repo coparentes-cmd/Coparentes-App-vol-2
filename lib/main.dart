@@ -22,10 +22,8 @@ import 'providers/documents_provider.dart';
 import 'providers/exports_provider.dart';
 import 'providers/finance_provider.dart';
 import 'providers/offline_sync_provider.dart';
-import 'screens/auth/child_onboarding_sheet.dart';
 import 'screens/auth/role_selection_screen.dart';
 import 'screens/auth/auth_home_resolver.dart';
-import 'screens/auth/recovery_code_display_screen.dart';
 import 'screens/auth/reset_password_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_lifecycle_refresher.dart';
@@ -89,6 +87,7 @@ Future<void> main() async {
       pinLockStore: pinLockStore,
       apiClient: apiClient,
       localeStore: localeStore,
+      preferences: preferences,
       e2eSessionService: e2eSessionService,
     ),
   );
@@ -106,6 +105,7 @@ class CoparentesApp extends StatelessWidget {
   final PinLockStore pinLockStore;
   final AppApiClient apiClient;
   final LocaleStore localeStore;
+  final SharedPreferences preferences;
   final E2eSessionService e2eSessionService;
 
   const CoparentesApp({
@@ -121,6 +121,7 @@ class CoparentesApp extends StatelessWidget {
     required this.pinLockStore,
     required this.apiClient,
     required this.localeStore,
+    required this.preferences,
     required this.e2eSessionService,
   });
 
@@ -133,6 +134,7 @@ class CoparentesApp extends StatelessWidget {
             authRepository: authRepository,
             consentRepository: consentRepository,
             pinLockStore: pinLockStore,
+            preferences: preferences,
             localeStore: localeStore,
             initialLocale: localeStore.read(),
             e2eSessionService: e2eSessionService,
@@ -307,7 +309,6 @@ class _AppGate extends StatefulWidget {
 
 class _AppGateState extends State<_AppGate> {
   String? _hydratedUserId;
-  String? _onboardingPromptUserId;
   bool _e2eCacheBridgeWired = false;
 
   @override
@@ -334,23 +335,11 @@ class _AppGateState extends State<_AppGate> {
     final user = appProvider.currentUser;
     if (user == null) {
       _hydratedUserId = null;
-      _onboardingPromptUserId = null;
       return const RoleSelectionScreen();
-    }
-
-    // Mandatory one-shot gate after registration (before dashboard / mustChangePassword).
-    if (appProvider.showingRecoveryCodeScreen) {
-      final code = appProvider.pendingRecoveryCode!;
-      return RecoveryCodeDisplayScreen(
-        code: code,
-        isChildAccount: user.role == UserRole.child,
-        onAcknowledged: appProvider.clearPendingRecoveryCode,
-      );
     }
 
     if (!user.mustChangePassword) {
       _hydrateSession(user.id);
-      _maybeShowChildOnboarding(user.id, appProvider);
     }
 
     return resolveAuthenticatedHome(user);
@@ -427,37 +416,4 @@ class _AppGateState extends State<_AppGate> {
     });
   }
 
-  void _maybeShowChildOnboarding(String userId, AppProvider appProvider) {
-    final user = appProvider.currentUser;
-    final workspace = appProvider.currentWorkspace;
-
-    if (user == null ||
-        user.role != UserRole.parentA ||
-        !appProvider.needsChildOnboarding ||
-        appProvider.isDemoMode ||
-        _onboardingPromptUserId == userId) {
-      return;
-    }
-
-    if (workspace != null && workspace.children.isNotEmpty) {
-      appProvider.completeChildOnboarding();
-      return;
-    }
-
-    _onboardingPromptUserId = userId;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) {
-        return;
-      }
-
-      await showChildOnboardingSheet(context);
-      if (!mounted) {
-        return;
-      }
-
-      if (context.read<AppProvider>().needsChildOnboarding) {
-        context.read<AppProvider>().completeChildOnboarding();
-      }
-    });
-  }
 }

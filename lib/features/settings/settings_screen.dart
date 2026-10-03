@@ -14,10 +14,8 @@ import 'widgets/edit_profile_sheet.dart';
 import 'widgets/change_password_sheet.dart';
 import 'widgets/delete_account_sheet.dart';
 import 'widgets/email_invite_sheet.dart';
-import 'widgets/recovery_code_sheet.dart';
+import 'generate_recovery_code_flow.dart';
 import 'widgets/settings_divider.dart';
-import '../../../utils/password_normalization.dart';
-import '../../../services/e2e_crypto_service.dart';
 import 'widgets/info_tile.dart';
 import 'widgets/action_tile.dart';
 import 'widgets/switch_tile.dart';
@@ -29,8 +27,13 @@ import 'package:coparentes/l10n/app_strings.dart';
 
 const _showPreLaunchPlaceholderSections = false;
 
+/// Optional deep-link target when opening Settings from the onboarding tour.
+enum SettingsFocus { parentInvite, addChild }
+
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final SettingsFocus? focus;
+
+  const SettingsScreen({super.key, this.focus});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -39,6 +42,10 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   /// iOS-style accordion: one section open at a time (null = all collapsed).
   String? _expandedId = 'profile';
+  final _parentInviteKey = GlobalKey();
+  final _addChildKey = GlobalKey();
+  final _scrollController = ScrollController();
+  bool _didApplyFocus = false;
 
   void _toggleSection(String id) {
     setState(() {
@@ -47,7 +54,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _applyFocusIfNeeded() {
+    if (_didApplyFocus || widget.focus == null) return;
+    _didApplyFocus = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _expandedId = 'profile');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final key = widget.focus == SettingsFocus.parentInvite
+            ? _parentInviteKey
+            : _addChildKey;
+        final ctx = key.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: const Duration(milliseconds: 350),
+            alignment: 0.15,
+          );
+        }
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _applyFocusIfNeeded();
     final ap = context.watch<AppProvider>();
     final user = ap.currentUser;
     final workspace = ap.currentWorkspace;
@@ -63,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       body: AppContentShell(
         child: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           // ── App Bar ────────────────────────────────────────────────────────
           SliverAppBar(
@@ -217,7 +255,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ActionTile(
                           icon: Icons.child_care_outlined,
                           label: context.tr('Kod zaproszenia dziecka'),
-                          subtitle: workspace.childInviteCode!,
+                          subtitle:
+                              '${workspace.childInviteCode!}\n${context.tr('Gdy dziecko dołączy, wyślemy Wam e-mailem kod odzyskiwania jego czatu - zachowajcie go.')}',
                           color: roleColor,
                           isDark: isDark,
                           onTap: () => _copyInviteCode(
@@ -228,18 +267,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SettingsDivider(),
                       ],
-                      ActionTile(
-                        icon: Icons.family_restroom_outlined,
-                        label: context.tr('Kod zaproszenia dla drugiego rodzica'),
-                        subtitle: workspace.inviteCodeExpiresAt != null
-                            ? '${workspace.inviteCode!}\nWażny do ${_formatInviteExpiry(workspace.inviteCodeExpiresAt!)}'
-                            : workspace.inviteCode!,
-                        color: roleColor,
-                        isDark: isDark,
-                        onTap: () => _copyInviteCode(
-                          context,
-                          workspace.inviteCode!,
-                          roleColor,
+                      KeyedSubtree(
+                        key: _parentInviteKey,
+                        child: ActionTile(
+                          icon: Icons.family_restroom_outlined,
+                          label: context.tr('Kod zaproszenia dla drugiego rodzica'),
+                          subtitle: workspace.inviteCodeExpiresAt != null
+                              ? '${workspace.inviteCode!}\nWażny do ${_formatInviteExpiry(workspace.inviteCodeExpiresAt!)}'
+                              : workspace.inviteCode!,
+                          color: roleColor,
+                          isDark: isDark,
+                          onTap: () => _copyInviteCode(
+                            context,
+                            workspace.inviteCode!,
+                            roleColor,
+                          ),
                         ),
                       ),
                     ],
@@ -293,14 +335,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           return tiles;
                         }),
                       ],
-                      ActionTile(
-                        icon: Icons.person_add_outlined,
-                        label: context.tr('Dodaj dziecko'),
-                        subtitle: workspace?.children.isEmpty ?? true
-                            ? context.tr('Dodaj pierwszy profil dziecka') : context.tr('Dodaj kolejny profil dziecka'),
-                        color: roleColor,
-                        isDark: isDark,
-                        onTap: () => showChildOnboardingSheet(context),
+                      KeyedSubtree(
+                        key: _addChildKey,
+                        child: ActionTile(
+                          icon: Icons.person_add_outlined,
+                          label: context.tr('Dodaj dziecko'),
+                          subtitle: workspace?.children.isEmpty ?? true
+                              ? context.tr('Dodaj pierwszy profil dziecka')
+                              : context.tr('Dodaj kolejny profil dziecka'),
+                          color: roleColor,
+                          isDark: isDark,
+                          onTap: () => showChildOnboardingSheet(context),
+                        ),
                       ),
                     ],
 
@@ -332,7 +378,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         color: roleColor,
                         isDark: isDark,
-                        onTap: () => _generateRecoveryCode(context, roleColor),
+                        onTap: () => runGenerateRecoveryCodeFlow(
+                          context,
+                          color: roleColor,
+                        ),
                       ),
                     ],
                   ]),
@@ -1170,167 +1219,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: ok ? null : AppTheme.errorColor,
       ),
     );
-  }
-
-  Future<void> _generateRecoveryCode(BuildContext context, Color color) async {
-    final ap = context.read<AppProvider>();
-
-    var outcome = await ap.generateE2eRecoveryCode();
-
-    if (!context.mounted) return;
-
-    if (outcome.result == GenerateRecoveryCodeResult.needsUnlock) {
-      final unlocked = await _promptPasswordAndUnlockE2e(context);
-      if (!context.mounted) return;
-      if (!unlocked) return;
-      outcome = await ap.generateE2eRecoveryCode();
-      if (!context.mounted) return;
-    }
-
-    switch (outcome.result) {
-      case GenerateRecoveryCodeResult.needsUnlock:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.tr('Odblokuj szyfrowanie czatu, żeby wygenerować kod.'),
-            ),
-          ),
-        );
-      case GenerateRecoveryCodeResult.error:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              ap.authError ??
-                  context.tr('Nie udało się wygenerować kodu odzyskiwania.'),
-            ),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      case GenerateRecoveryCodeResult.success:
-        final code = outcome.code;
-        if (code == null || code.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                context.tr('Nie udało się wygenerować kodu odzyskiwania.'),
-              ),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-          return;
-        }
-        await showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (_) => RecoveryCodeSheet(code: code, color: color),
-        );
-    }
-  }
-
-  /// Returns true if E2E was unlocked successfully.
-  Future<bool> _promptPasswordAndUnlockE2e(BuildContext context) async {
-    final passwordController = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        var submitting = false;
-        String? dialogError;
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            return AlertDialog(
-              title: Text(context.tr('Odblokuj szyfrowanie czatu')),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.tr(
-                      'Podaj aktualne hasło, żeby wygenerować kod odzyskiwania.',
-                    ),
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    enabled: !submitting,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: context.tr('Aktualne hasło'),
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      errorText: dialogError == null
-                          ? null
-                          : context.tr(dialogError!),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: submitting
-                      ? null
-                      : () => Navigator.pop(dialogContext, false),
-                  child: Text(context.tr('Anuluj')),
-                ),
-                TextButton(
-                  onPressed: submitting
-                      ? null
-                      : () async {
-                          final normalized =
-                              normalizePassword(passwordController.text);
-                          if (normalized.isEmpty) {
-                            setDialogState(() {
-                              dialogError = 'Podaj aktualne hasło.';
-                            });
-                            return;
-                          }
-                          setDialogState(() {
-                            submitting = true;
-                            dialogError = null;
-                          });
-                          final app = context.read<AppProvider>();
-                          try {
-                            await app.unlockE2eWithPassword(normalized);
-                            if (!dialogContext.mounted) return;
-                            Navigator.pop(dialogContext, true);
-                          } on InvalidPasswordException {
-                            if (!dialogContext.mounted) return;
-                            setDialogState(() {
-                              submitting = false;
-                              dialogError = 'Nieprawidłowe hasło';
-                              passwordController.clear();
-                            });
-                          } catch (_) {
-                            if (!dialogContext.mounted) return;
-                            setDialogState(() {
-                              submitting = false;
-                              dialogError =
-                                  'Nie udało się odblokować wiadomości. Spróbuj ponownie.';
-                            });
-                          }
-                        },
-                  child: submitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(context.tr('Odblokuj')),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    passwordController.dispose();
-    return ok == true;
   }
 
   void _showEmailInviteSheet(BuildContext context, Color color) {

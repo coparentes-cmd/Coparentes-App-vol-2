@@ -16,6 +16,7 @@ import '../../../screens/settings/settings_screen.dart';
 import 'day_agenda_list.dart';
 import 'message_thread_preview.dart';
 import 'next_handover_bar.dart';
+import 'onboarding_tour_card.dart';
 import 'today_card.dart';
 
 enum _DashboardFeedTab { messages, finance, calendar, family }
@@ -243,6 +244,7 @@ class _DashboardHomeState extends State<DashboardHome> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
+                const OnboardingTourCard(),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TodayCard(
@@ -383,7 +385,9 @@ class _DashboardHomeState extends State<DashboardHome> {
   void _openSettings(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      MaterialPageRoute(
+        builder: (_) => const SettingsScreen(),
+      ),
     );
   }
 }

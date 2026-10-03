@@ -277,6 +277,7 @@ Future<AppProvider> _app({
     ),
     consentRepository: ConsentRepository(apiClient: apiClient),
     pinLockStore: PinLockStore(preferences: preferences),
+    preferences: preferences,
     localeStore: localeStore,
     initialLocale: initialLocale ?? localeStore.read(),
   );

@@ -245,6 +245,7 @@ Future<void> _pumpChildDashboard(WidgetTester tester, AppUser child) async {
     authRepository: authRepository,
     consentRepository: consentRepository,
     pinLockStore: pinLockStore,
+    preferences: preferences,
   );
   final calendarProvider = CalendarProvider(repository: calendarRepository);
   final messagingProvider = MessagingProvider(repository: messagingRepository);

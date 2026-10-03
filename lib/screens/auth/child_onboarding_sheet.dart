@@ -89,7 +89,6 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
   }
 
   void _finish() {
-    context.read<AppProvider>().completeChildOnboarding();
     Navigator.of(context).pop();
   }
 
