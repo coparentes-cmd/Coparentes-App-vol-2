@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/consent_config.dart';
@@ -40,6 +41,7 @@ class ConsentRegistrationScreen extends StatefulWidget {
 class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
   late Map<ConsentType, bool> _selections;
   bool _submitting = false;
+  bool _autofillCommitted = false;
 
   @override
   void initState() {
@@ -48,6 +50,19 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
   }
 
   bool get _canSubmit => areRequiredConsentsGranted(_selections);
+
+  String get _missingRequiredHint {
+    if (_canSubmit) {
+      return '';
+    }
+    return context.tr('Zaznacz wymagane zgody');
+  }
+
+  void _cancel() {
+    // Web: discard autofill context without prompting the browser to save.
+    TextInput.finishAutofillContext(shouldSave: false);
+    Navigator.of(context).pop();
+  }
 
   Future<void> _submit() async {
     if (!_canSubmit || _submitting) {
@@ -69,123 +84,193 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
       return;
     }
 
-    setState(() => _submitting = false);
-
     if (!success) {
+      setState(() => _submitting = false);
+      TextInput.finishAutofillContext(shouldSave: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            appProvider.authError ?? context.tr('Nie udało się zakończyć rejestracji.'),
+            appProvider.authError ??
+                context.tr('Nie udało się zakończyć rejestracji.'),
           ),
           backgroundColor: AppTheme.errorColor,
         ),
       );
+      return;
     }
+
+    // Web: only after a successful create should the browser be asked to save.
+    _autofillCommitted = true;
+    TextInput.finishAutofillContext(shouldSave: true);
+    // Reveal dashboard under this pushed route (AppGate already swapped home).
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BrandBackdrop(
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: LayoutTokens.authConsentMax,
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
-                child: BrandCard(
-                  padding: const EdgeInsets.all(26),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(child: BrandLogo(width: 168, height: 54)),
-                      SizedBox(height: 24),
-                      Text(
-                        'Zanim zaczniesz',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      SizedBox(height: 8),
-                      Text(context.tr('Przeczytaj i zaakceptuj poniższe zgody. Niektóre są wymagane do działania aplikacji.'),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
-                      ),
-                      const SizedBox(height: 18),
-                      ...ConsentConfig.registrationConsents.map((definition) {
-                        return Column(
-                          children: [
-                            ConsentRow(
-                              definition: definition,
-                              value: _selections[definition.type] ?? false,
-                              onChanged: (value) {
-                                setState(() {
-                                  _selections[definition.type] = value;
-                                });
-                              },
-                            ),
-                            if (definition != ConsentConfig.registrationConsents.last)
-                              const Divider(color: AppTheme.dividerColor, height: 1),
-                          ],
-                        );
-                      }),
-                      SizedBox(height: 18),
-                      Text(context.tr('Możesz wycofać zgody opcjonalne w dowolnym momencie w Ustawieniach → Prywatność.'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: AppTheme.textHint,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: _canSubmit ? AppTheme.brandGradient : null,
-                            color: _canSubmit ? null : AppTheme.dividerColor,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: _canSubmit ? AppTheme.softShadow : null,
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _canSubmit && !_submitting ? _submit : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              disabledBackgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              foregroundColor:
-                                  _canSubmit ? Colors.white : AppTheme.textHint,
-                            ),
-                            child: _submitting
-                                ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
+    return PopScope(
+      canPop: !_submitting,
+      onPopInvokedWithResult: (didPop, _) {
+        // System back / gesture: discard without prompting password save.
+        if (didPop && !_autofillCommitted) {
+          TextInput.finishAutofillContext(shouldSave: false);
+        }
+      },
+      child: Scaffold(
+        body: BrandBackdrop(
+          child: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: LayoutTokens.authConsentMax,
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
+                        child: BrandCard(
+                          padding: const EdgeInsets.all(26),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Center(
+                                child: BrandLogo(width: 168, height: 54),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                context.tr('Zanim zaczniesz'),
+                                style: Theme.of(context).textTheme.headlineSmall,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                context.tr(
+                                  'Przeczytaj i zaakceptuj poniższe zgody. Niektóre są wymagane do działania aplikacji.',
+                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppTheme.textSecondary,
                                     ),
-                                  )
-                                : Text(context.tr('Zakończ rejestrację')),
+                              ),
+                              const SizedBox(height: 18),
+                              ...ConsentConfig.registrationConsents.map(
+                                (definition) {
+                                  return Column(
+                                    children: [
+                                      ConsentRow(
+                                        definition: definition,
+                                        value: _selections[definition.type] ??
+                                            false,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selections[definition.type] =
+                                                value;
+                                          });
+                                        },
+                                      ),
+                                      if (definition !=
+                                          ConsentConfig
+                                              .registrationConsents.last)
+                                        const Divider(
+                                          color: AppTheme.dividerColor,
+                                          height: 1,
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                context.tr(
+                                  'Możesz wycofać zgody opcjonalne w dowolnym momencie w Ustawieniach → Prywatność.',
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.45,
+                                  color: AppTheme.textHint,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: _submitting
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          child: Text(context.tr('Anuluj rejestrację'),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textHint,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!_canSubmit) ...[
+                            Text(
+                              _missingRequiredHint,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textHint,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: _canSubmit
+                                    ? AppTheme.brandGradient
+                                    : null,
+                                color:
+                                    _canSubmit ? null : AppTheme.dividerColor,
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow:
+                                    _canSubmit ? AppTheme.softShadow : null,
+                              ),
+                              child: ElevatedButton(
+                                key: const Key('consent_create_button'),
+                                onPressed: _canSubmit && !_submitting
+                                    ? _submit
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  disabledBackgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  foregroundColor: _canSubmit
+                                      ? Colors.white
+                                      : AppTheme.textHint,
+                                ),
+                                child: _submitting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(context.tr('Utwórz')),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: TextButton(
+                              key: const Key('consent_cancel_button'),
+                              onPressed: _submitting ? null : _cancel,
+                              child: Text(
+                                context.tr('Anuluj rejestrację'),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textHint,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

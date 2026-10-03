@@ -417,12 +417,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   List<Widget> _buildModeFields() {
     switch (_mode) {
       case _AuthMode.login:
+        // Web: autofillHints: null → AutofillConfiguration.disabled →
+        // autocomplete="off". Empty list [] does NOT disable (still enabled).
+        // Browsers may still offer to save when type=password; Flutter cannot
+        // fully suppress that.
         return [
           _Field(
             controller: _emailController,
             label: 'E-mail',
             hint: 'twoj@email.pl',
             keyboardType: TextInputType.emailAddress,
+            autofillHints: null,
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
@@ -432,6 +437,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             hint: context.tr('Hasło lub 12 cyfr z maila'),
             obscureText: _obscureLoginPassword,
             keyboardType: TextInputType.visiblePassword,
+            autofillHints: null,
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _submitIfIdle(),
             onToggleObscure: () => setState(
@@ -460,65 +466,82 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           const SizedBox(height: 4),
         ];
       case _AuthMode.register:
+        // AutofillGroup stays mounted while ConsentRegistrationScreen is pushed
+        // on top. onDisposeAction.cancel avoids browser save on leave/cancel;
+        // ConsentRegistrationScreen calls finishAutofillContext(shouldSave: true)
+        // only after a successful "Utwórz".
         return [
-          _Field(
-            controller: _firstNameController,
-            label: context.tr('Imię'),
-            hint: 'np. Anna',
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          _Field(
-            controller: _lastNameController,
-            label: context.tr('Nazwisko'),
-            hint: 'np. Kowalska',
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
+          AutofillGroup(
+            onDisposeAction: AutofillContextAction.cancel,
+            child: Column(
               children: [
-                Expanded(
-                  child: _RoleChoiceChip(
-                    label: context.tr('Mama'),
-                    selected: _registerIsMama,
-                    onTap: () => setState(() => _registerIsMama = true),
+                _Field(
+                  controller: _firstNameController,
+                  label: context.tr('Imię'),
+                  hint: 'np. Anna',
+                  autofillHints: const [AutofillHints.givenName],
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                ),
+                _Field(
+                  controller: _lastNameController,
+                  label: context.tr('Nazwisko'),
+                  hint: 'np. Kowalska',
+                  autofillHints: const [AutofillHints.familyName],
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _RoleChoiceChip(
+                          label: context.tr('Mama'),
+                          selected: _registerIsMama,
+                          onTap: () => setState(() => _registerIsMama = true),
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: _RoleChoiceChip(
+                          label: context.tr('Tata'),
+                          selected: !_registerIsMama,
+                          onTap: () => setState(() => _registerIsMama = false),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: _RoleChoiceChip(
-                    label: context.tr('Tata'),
-                    selected: !_registerIsMama,
-                    onTap: () => setState(() => _registerIsMama = false),
-                  ),
+                _Field(
+                  controller: _workspaceController,
+                  label: context.tr('Nazwa przestrzeni'),
+                  hint: 'np. Rodzina Kowalska',
+                  autofillHints: const [AutofillHints.organizationName],
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                ),
+                _Field(
+                  controller: _emailController,
+                  label: 'E-mail',
+                  hint: 'twoj@email.pl',
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                ),
+                _Field(
+                  controller: _passwordController,
+                  label: context.tr('Hasło'),
+                  hint: context.tr('Minimum 8 znaków'),
+                  obscureText: true,
+                  keyboardType: TextInputType.visiblePassword,
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.go,
+                  onSubmitted: (_) => _submitIfIdle(),
                 ),
               ],
             ),
-          ),
-          _Field(
-            controller: _workspaceController,
-            label: context.tr('Nazwa przestrzeni'),
-            hint: 'np. Rodzina Kowalska',
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          _Field(
-            controller: _emailController,
-            label: 'E-mail',
-            hint: 'twoj@email.pl',
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          _Field(
-            controller: _passwordController,
-            label: context.tr('Hasło'),
-            hint: context.tr('Minimum 8 znaków'),
-            obscureText: true,
-            textInputAction: TextInputAction.go,
-            onSubmitted: (_) => _submitIfIdle(),
           ),
         ];
       case _AuthMode.join:
@@ -1302,6 +1325,7 @@ class _Field extends StatelessWidget {
   final bool obscureText;
   final TextInputType keyboardType;
   final TextInputAction textInputAction;
+  final Iterable<String>? autofillHints;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onToggleObscure;
 
@@ -1312,6 +1336,7 @@ class _Field extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
     this.textInputAction = TextInputAction.next,
+    this.autofillHints = const <String>[],
     this.onSubmitted,
     this.onToggleObscure,
   });
@@ -1325,6 +1350,7 @@ class _Field extends StatelessWidget {
         obscureText: obscureText,
         keyboardType: keyboardType,
         textInputAction: textInputAction,
+        autofillHints: autofillHints,
         onSubmitted: onSubmitted,
         autocorrect: false,
         enableSuggestions: false,
