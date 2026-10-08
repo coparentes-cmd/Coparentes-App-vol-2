@@ -9,13 +9,11 @@ import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
 import '../../../providers/messaging_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
-import '../../../services/ai_guidance_service.dart';
 import '../../../services/message_attachment_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/message_tag_search.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
-import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
 import '../../../widgets/message_send_countdown_bar.dart';
 import 'e2e_chat_gate.dart';
@@ -47,7 +45,6 @@ class InlineCategoryChatPanel extends StatefulWidget {
 class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  MessageTone _analyzedTone = MessageTone.neutral;
   Timer? _livePollTimer;
   Timer? _hcCountdownTimer;
   int _hcSecondsRemaining = 0;
@@ -356,7 +353,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
           threadId: threadId,
           channelCategory: widget.category,
           content: content,
-          tone: _analyzedTone,
+          tone: MessageTone.neutral,
           attachments: attachments,
           localOnly: appProvider.isDemoMode,
           demoSender: appProvider.currentUser,
@@ -371,7 +368,6 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       if (sent != null) {
         _threadId = sent.id;
         _controller.clear();
-        _analyzedTone = MessageTone.neutral;
         _pendingAttachments.clear();
       }
     });
@@ -390,10 +386,6 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
-    final isChild = user?.role == UserRole.child;
-    final aiCoach =
-        !isChild && context.watch<AppProvider>().aiCoachEnabled;
-    final aiShield = context.watch<AppProvider>().aiShieldEnabled;
     final isReadOnly = user?.role == UserRole.observer;
     final messaging = context.watch<MessagingProvider>();
     final thread = _threadId == null
@@ -574,7 +566,6 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                     threadId: thread.id,
                     threadCategory: panelCategory,
                     viewerUserId: user?.id,
-                    aiShieldEnabled: aiShield,
                     allowPrivateTags: widget.allowPrivateTags,
                     scrollController: _scrollController,
                   ),
@@ -593,14 +584,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
                   onRemoveAttachment: _removeAttachment,
                   onSend: _handleSendTap,
                   sending: _sending,
-                  cyclingPlaceholderHints:
-                      aiCoach ? AiTips.messagingPlaceholders : null,
-                  onChanged: (value) {
-                    setState(() {});
-                    if (aiCoach && value.length > 10) {
-                      _analyzedTone = AiGuidanceService.analyze(value).tone;
-                    }
-                  },
+                  onChanged: (_) => setState(() {}),
                 ),
       ],
     );

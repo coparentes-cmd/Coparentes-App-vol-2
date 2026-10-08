@@ -1013,7 +1013,7 @@ class _BrandIntroCard extends StatelessWidget {
             icon: Icons.chat_bubble_outline,
             title: context.tr('Komunikacja'),
             subtitle: context.tr(
-              'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.',
+              'Wiadomości i archiwizacja rozmów w jednym miejscu.',
             ),
           ),
           SizedBox(height: 14),

@@ -12,7 +12,6 @@ class ThreadMessagesList extends StatelessWidget {
   final String threadId;
   final String? threadCategory;
   final String? viewerUserId;
-  final bool aiShieldEnabled;
   final bool allowPrivateTags;
   final ScrollController? scrollController;
 
@@ -22,7 +21,6 @@ class ThreadMessagesList extends StatelessWidget {
     required this.threadId,
     this.threadCategory,
     required this.viewerUserId,
-    required this.aiShieldEnabled,
     this.allowPrivateTags = false,
     this.scrollController,
   });
@@ -53,7 +51,6 @@ class ThreadMessagesList extends StatelessWidget {
           threadId: threadId,
           threadCategory: threadCategory,
           isMe: isMe,
-          aiShieldEnabled: aiShieldEnabled,
           group: group,
           allowPrivateTags: allowPrivateTags,
           keyboardAcceptAutofocus: index == lastActionableIndex,

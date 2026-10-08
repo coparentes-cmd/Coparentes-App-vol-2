@@ -19,7 +19,6 @@ class AppTheme {
   static const Color textSecondary = Color(0xFF5F6673);
   static const Color textHint = Color(0xFF94A3B8);
   static const Color dividerColor = Color(0xFFE5ECF5);
-  static const Color aiCoachColor = accentColor;
   static const Color immutableBadge = primaryTeal;
   static const Color highConflictColor = coralColor;
 

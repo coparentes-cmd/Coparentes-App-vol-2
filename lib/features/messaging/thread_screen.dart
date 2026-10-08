@@ -10,16 +10,13 @@ import '../../../providers/calendar_provider.dart';
 import '../../../providers/exports_provider.dart';
 import '../../../providers/messaging_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
-import '../../../services/ai_guidance_service.dart';
 import '../../../services/message_attachment_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
-import '../../../widgets/common_widgets.dart';
 import '../../../widgets/message_compose_bar.dart';
 import '../../../widgets/message_send_countdown_bar.dart';
 import 'widgets/e2e_chat_gate.dart';
-import 'widgets/message_bubble.dart';
 import 'widgets/thread_messages_list.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
@@ -42,9 +39,6 @@ class ThreadScreen extends StatefulWidget {
 class ThreadScreenState extends State<ThreadScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  MessageTone _analyzedTone = MessageTone.neutral;
-  bool _showAiSuggestion = false;
-  String _aiSuggestion = '';
   Timer? _livePollTimer;
   Timer? _hcCountdownTimer;
   int _hcSecondsRemaining = 0;
@@ -188,10 +182,6 @@ class ThreadScreenState extends State<ThreadScreen> {
     }
 
     final user = context.watch<AppProvider>().currentUser;
-    final isChild = user?.role == UserRole.child;
-    final aiCoach =
-        !isChild && context.watch<AppProvider>().aiCoachEnabled;
-    final aiShield = context.watch<AppProvider>().aiShieldEnabled;
     final isReadOnly = user?.role == UserRole.observer;
     final thread = context.watch<MessagingProvider>().getThreadById(widget.threadId);
 
@@ -285,92 +275,10 @@ class ThreadScreenState extends State<ThreadScreen> {
                   threadId: widget.threadId,
                   threadCategory: thread.category,
                   viewerUserId: user?.id,
-                  aiShieldEnabled: aiShield,
                   scrollController: _scrollController,
                   allowPrivateTags: widget.allowPrivateTags,
                 ),
               ),
-            ),
-
-          // AI Coach area
-          if (_showAiSuggestion && aiCoach)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF90CAF9)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.auto_awesome,
-                        size: 14,
-                        color: AppTheme.aiCoachColor,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Sugestia AI Coach',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.aiCoachColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _aiSuggestion,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const AiDisclaimerBanner(),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() => _showAiSuggestion = false);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Text(context.tr('Użyj oryginału')),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _controller.text = _aiSuggestion;
-                            setState(() => _showAiSuggestion = false);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Text(context.tr('Użyj sugestii')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          // Tone indicator
-          if (_controller.text.isNotEmpty && aiCoach)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: ToneIndicator(tone: _analyzedTone),
             ),
 
           // Input area
@@ -387,33 +295,12 @@ class ThreadScreenState extends State<ThreadScreen> {
                     onRemoveAttachment: _removeAttachment,
                     onSend: _handleSendTap,
                     sending: _sending,
-                    cyclingPlaceholderHints:
-                        aiCoach ? AiTips.messagingPlaceholders : null,
-                    cyclingIntervalSeconds: 8,
-                    onChanged: (value) {
-                      setState(() {});
-                      if (aiCoach && value.length > 10) {
-                        _analyzeTone(value);
-                      }
-                    },
+                    onChanged: (_) => setState(() {}),
                   ),
         ],
       ),
       ),
     );
-  }
-
-  void _analyzeTone(String text) {
-    final result = AiGuidanceService.analyze(text);
-    setState(() => _analyzedTone = result.tone);
-  }
-
-  void _getAiSuggestion() {
-    final result = AiGuidanceService.analyze(_controller.text);
-    setState(() {
-      _aiSuggestion = result.rewrite;
-      _showAiSuggestion = true;
-    });
   }
 
   Future<void> _handleSendTap() async {
@@ -487,7 +374,7 @@ class ThreadScreenState extends State<ThreadScreen> {
     final sent = await messaging.sendMessage(
           threadId: widget.threadId,
           content: content,
-          tone: _analyzedTone,
+          tone: MessageTone.neutral,
           attachments: attachments,
           channelCategory: channelCategory,
           parentUserIds: context.read<AppProvider>().parentMemberIds,
@@ -511,8 +398,6 @@ class ThreadScreenState extends State<ThreadScreen> {
 
     _controller.clear();
     setState(() {
-      _showAiSuggestion = false;
-      _analyzedTone = MessageTone.neutral;
       _pendingAttachments.clear();
     });
   }

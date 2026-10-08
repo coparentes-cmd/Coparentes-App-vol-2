@@ -7,7 +7,6 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
 import '../../../providers/messaging_provider.dart';
-import '../../../services/ai_guidance_service.dart';
 import '../../../services/message_attachment_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
@@ -27,7 +26,6 @@ class MessageBubble extends StatefulWidget {
   final String threadId;
   final String? threadCategory;
   final bool isMe;
-  final bool aiShieldEnabled;
   final bool allowPrivateTags;
   final MessageGroupInfo group;
   final bool keyboardAcceptAutofocus;
@@ -38,7 +36,6 @@ class MessageBubble extends StatefulWidget {
     required this.threadId,
     this.threadCategory,
     required this.isMe,
-    required this.aiShieldEnabled,
     this.allowPrivateTags = false,
     required this.group,
     this.keyboardAcceptAutofocus = false,
@@ -49,16 +46,10 @@ class MessageBubble extends StatefulWidget {
 }
 
 class MessageBubbleState extends State<MessageBubble> {
-  bool _showOriginal = false;
   bool _downloadingAttachment = false;
   bool _respondingToSwap = false;
   bool _respondingToSchedule = false;
   bool _respondingToException = false;
-
-  bool get _isShielded =>
-      widget.aiShieldEnabled &&
-      !widget.isMe &&
-      widget.message.tone == MessageTone.tense;
 
   @override
   Widget build(BuildContext context) {
@@ -151,29 +142,8 @@ class MessageBubbleState extends State<MessageBubble> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_isShielded && !_showOriginal) ...[
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.shield,
-                          size: 12,
-                          color: bubbleStyle.secondaryTextColor,
-                        ),
-                        SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'AI Shield – wersja logistyczna',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: bubbleStyle.secondaryTextColor,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6),
+                  if (widget.message.content.isNotEmpty ||
+                      widget.message.needsDecryption)
                     E2eMessageText(
                       message: widget.message,
                       style: TextStyle(
@@ -182,42 +152,6 @@ class MessageBubbleState extends State<MessageBubble> {
                         color: bubbleStyle.textColor,
                       ),
                     ),
-                    SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: () => setState(() => _showOriginal = true),
-                      child: Text(context.tr('Pokaż oryginał'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: bubbleStyle.senderNameColor,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    if (widget.message.content.isNotEmpty ||
-                        widget.message.needsDecryption)
-                      E2eMessageText(
-                        message: widget.message,
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.35,
-                          color: bubbleStyle.textColor,
-                        ),
-                      ),
-                    if (_isShielded && _showOriginal) ...[
-                      SizedBox(height: 4),
-                      GestureDetector(
-                        onTap: () => setState(() => _showOriginal = false),
-                        child: Text(context.tr('Ukryj oryginał'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: bubbleStyle.senderNameColor,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
                   if (widget.message.attachments.isNotEmpty) ...[
                     if (widget.message.content.isNotEmpty)
                       const SizedBox(height: 8),
@@ -579,10 +513,6 @@ class MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  String _extractLogistics(String content) {
-    return AiGuidanceService.analyze(content).logisticsSummary;
-  }
-
   Future<void> _downloadAttachment(MessageAttachment attachment) async {
     setState(() => _downloadingAttachment = true);
     final payload = await context.read<MessagingProvider>().downloadMessageAttachment(
@@ -623,48 +553,4 @@ class MessageBubbleState extends State<MessageBubble> {
   }
 
   String _formatTime(DateTime dt) => formatClockTime(dt);
-}
-
-class ToneIndicator extends StatelessWidget {
-  final MessageTone tone;
-
-  const ToneIndicator({super.key, required this.tone});
-
-  @override
-  Widget build(BuildContext context) {
-    final isNeutral = tone == MessageTone.neutral || tone == MessageTone.positive;
-    final label = switch (tone) {
-      MessageTone.neutral => context.tr('Ton: Neutralny'),
-      MessageTone.positive => context.tr('Ton: Pozytywny'),
-      MessageTone.tense => context.tr('Ton: Napięty – rozważ AI Coach'),
-      MessageTone.aggressive => context.tr('Ton: Agresywny – rozważ AI Coach'),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: (isNeutral ? AppTheme.successColor : AppTheme.warningColor)
-            .withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isNeutral ? Icons.sentiment_satisfied : Icons.sentiment_neutral,
-            size: 14,
-            color: isNeutral ? AppTheme.successColor : AppTheme.warningColor,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: isNeutral ? AppTheme.successColor : AppTheme.warningColor,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

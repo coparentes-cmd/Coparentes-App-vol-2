@@ -109,8 +109,6 @@ class AppProvider extends ChangeNotifier {
   AppUser? _currentUser;
   Workspace? _currentWorkspace;
   bool _highConflictMode = false;
-  bool _aiCoachEnabled = true;
-  bool _aiShieldEnabled = true;
   bool _isInitializing = true;
   bool _isDemoMode = false;
   /// Post-registration dashboard tour step (1–3), or null when inactive.
@@ -145,8 +143,6 @@ class AppProvider extends ChangeNotifier {
   AppUser? get currentUser => _currentUser;
   Workspace? get currentWorkspace => _currentWorkspace;
   bool get highConflictMode => _highConflictMode;
-  bool get aiCoachEnabled => _aiCoachEnabled;
-  bool get aiShieldEnabled => _aiShieldEnabled;
   ThemeMode get themeMode => _themeMode;
   AppColorScheme get colorScheme => _colorScheme;
   bool get notifyMessages => _notifyMessages;
@@ -986,16 +982,6 @@ class AppProvider extends ChangeNotifier {
       _highConflictMode = !next;
       notifyListeners();
     }
-  }
-
-  void toggleAiCoach() {
-    _aiCoachEnabled = !_aiCoachEnabled;
-    notifyListeners();
-  }
-
-  void toggleAiShield() {
-    _aiShieldEnabled = !_aiShieldEnabled;
-    notifyListeners();
   }
 
   // ── Theme ──────────────────────────────────────────────────────────────────

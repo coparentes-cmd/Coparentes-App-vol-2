@@ -37,36 +37,6 @@ class ImmutableBadge extends StatelessWidget {
   }
 }
 
-class AiDisclaimerBanner extends StatelessWidget {
-  const AiDisclaimerBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.yellowColor.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFFFCC02).withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.warning_amber, size: 14, color: Color(0xFFF57F17)),
-          SizedBox(width: 6),
-          Expanded(
-            child: Text(context.tr('AI może się mylić. Zawsze sprawdź sugestię przed wysłaniem.'),
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFFF57F17),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? actionLabel;
@@ -279,13 +249,13 @@ class _AiContextualTipState extends State<AiContextualTip>
                   Row(
                     children: [
                       Icon(
-                        Icons.auto_awesome,
+                        Icons.lightbulb_outline,
                         color: Colors.white70,
                         size: compact ? 10 : 11,
                       ),
                       SizedBox(width: compact ? 3 : 4),
                       Text(
-                        'AI Coach',
+                        context.tr('Wskazówka'),
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: compact ? 9 : 10,
@@ -360,12 +330,6 @@ class AiTips {
   // Dashboard tips
   static const List<Map<String, String>> dashboard = [
     {
-      'icon': '🧠',
-      'title': 'Zacznij dzień z AI Coach',
-      'body':
-          'Przed każdą wiadomością do drugiego rodzica AI Coach oceni jej ton. Mniej napięcia, więcej współpracy.',
-    },
-    {
       'icon': '📅',
       'title': 'Zaplanuj zmianę terminu z wyprzedzeniem',
       'body':
@@ -378,14 +342,14 @@ class AiTips {
           'Zdjęcie paragonu + opis wydatku = dowód gotowy do sądu. Używaj kategorii, by ułatwić rozliczenie.',
     },
     {
-      'icon': '🛡️',
-      'title': 'AI Shield – Twoja tarcza',
+      'icon': '✍️',
+      'title': 'Pisz o faktach, nie ocenach',
       'body':
-          'Toksyczne wiadomości są automatycznie filtrowane. Widzisz wersję logistyczną, oryginał jest archiwizowany.',
+          'Np. „W dn. 12.03 odbiór nastąpił o 17:30" zamiast „Zawsze się spóźniasz".',
     },
   ];
 
-  /// Coaching copy shown as rotating placeholders in the message input.
+  /// Placeholders for rotating message input hints.
   static List<String> get messagingPlaceholders => messaging
       .map((tip) => tip['body'] ?? '')
       .where((text) => text.isNotEmpty)
@@ -397,7 +361,7 @@ class AiTips {
       'icon': '✍️',
       'title': 'Pisz o faktach, nie ocenach',
       'body':
-          'Np. „W dn. 12.03 odbiór nastąpił o 17:30" zamiast „Zawsze się spóźniasz". AI Coach zasygnalizuje napięty ton przed wysłaniem.',
+          'Np. „W dn. 12.03 odbiór nastąpił o 17:30" zamiast „Zawsze się spóźniasz".',
     },
     {
       'icon': '🎯',

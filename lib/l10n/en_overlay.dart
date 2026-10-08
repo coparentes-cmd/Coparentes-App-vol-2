@@ -667,6 +667,9 @@ const enOverlay = <String, String>{
       'Choose a new password for your Coparentes account. After saving, sign in with it on the login screen.',
   'Proszę o trwałe usunięcie mojego konta Coparentes.\\\\\\\\n\\\\\\\\n': 'Please permanently delete my Coparentes account.\\\\\\\\n\\\\\\\\n',
   'Wiadomości, AI Coach i archiwizacja rozmów w jednym miejscu.': 'Messages, AI Coach and archived conversations in one place.',
+  'Wiadomości i archiwizacja rozmów w jednym miejscu.':
+      'Messages and archived conversations in one place.',
+  'Wskazówka': 'Tip',
   'Data końca musi być taka sama lub późniejsza niż data startu.': 'The end date must be the same as or later than the start date.',
   'Potwierdzam odbiór dzieci w dniu [DATA] o godzinie [GODZINA].': 'I confirm the receipt of the children on [DATE] at [TIME].',
   'Brak profili dzieci. Poproś rodzica o dodanie Twojego profilu.': 'No child profiles. Ask a parent to add your profile.',

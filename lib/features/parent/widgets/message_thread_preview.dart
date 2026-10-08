@@ -19,7 +19,6 @@ import '../../../screens/calendar/calendar_screen.dart';
 import '../../../screens/finance/finance_screen.dart';
 import '../../../screens/exports/exports_screen.dart';
 import '../../../screens/documents/documents_screen.dart';
-import '../../../screens/ai_coach/ai_coach_screen.dart';
 import '../../../screens/settings/settings_screen.dart';
 
 import 'dashboard_home.dart';
@@ -27,7 +26,6 @@ import 'today_card.dart';
 import 'stat_card.dart';
 import 'finance_snapshot_card.dart';
 import 'child_chip.dart';
-import 'ai_coach_cta.dart';
 
 class MessageThreadPreview extends StatelessWidget {
   final MessageThread thread;

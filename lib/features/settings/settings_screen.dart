@@ -595,38 +595,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isDark: isDark,
                       onChanged: ap.setNotifyFinance,
                     ),
-                  ]),
-
-                  SizedBox(height: 20),
-
-                  // ── AI & Prywatność ────────────────────────────────────────
-                  IosSettingsAccordion(
-                    title: context.tr('AI i prywatność'),
-                    icon: Icons.auto_awesome_outlined,
-                    isDark: isDark,
-                    accent: roleColor,
-                    expanded: _expandedId == 'ai',
-                    onToggle: () => _toggleSection('ai'),
-                    children: [
-                    SwitchTile(
-                      icon: Icons.psychology_outlined,
-                      label: 'AI Coach (pre-send)',
-                      subtitle: context.tr('Analiza tonu przed wysłaniem wiadomości'),
-                      value: ap.aiCoachEnabled,
-                      activeColor: roleColor,
-                      isDark: isDark,
-                      onChanged: (_) => ap.toggleAiCoach(),
-                    ),
-                    SettingsDivider(),
-                    SwitchTile(
-                      icon: Icons.shield_outlined,
-                      label: 'AI Shield (post-receive)',
-                      subtitle: context.tr('Filtrowanie toksycznych treści'),
-                      value: ap.aiShieldEnabled,
-                      activeColor: roleColor,
-                      isDark: isDark,
-                      onChanged: (_) => ap.toggleAiShield(),
-                    ),
                     SettingsDivider(),
                     SwitchTile(
                       icon: Icons.warning_amber_outlined,
@@ -652,18 +620,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 );
                               }
                             },
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.privacy_tip_outlined,
-                      label: context.tr('Polityka prywatności AI'),
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showFeatureInfo(
-                          context,
-                          'AI i prywatność',
-                          'Modele AI nie przechowują Twoich wiadomości. Każda analiza jest efemeryczna i nie wpływa na treningowe zbiory danych. Zgodność z EU AI Act (tryb transparency).',
-                          roleColor),
                     ),
                   ]),
 
