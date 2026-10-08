@@ -7,22 +7,17 @@ import '../data/api/app_api_client.dart';
 import '../data/repositories/messaging_repository.dart';
 import '../l10n/demo_copy.dart';
 import '../models/models.dart';
-import '../services/e2e_crypto_service.dart';
-import '../services/e2e_key_storage_service.dart';
-import '../services/e2e_session_service.dart';
 import '../utils/demo_time.dart';
 import '../utils/messaging_helpers.dart';
 import '../utils/swap_message_utils.dart';
 
 class MessagingProvider extends ChangeNotifier {
   final MessagingRepository _repository;
-  final E2eSessionService? _e2eSession;
 
   MessagingProvider({
     required MessagingRepository repository,
-    E2eSessionService? e2eSessionService,
-  })  : _repository = repository,
-        _e2eSession = e2eSessionService;
+    Object? e2eSessionService, // kept for call-site stability (E2E removed)
+  }) : _repository = repository;
 
   final List<MessageThread> _threads = [];
   final Map<String, Set<String>> _tagsByMessageId = {};
@@ -32,16 +27,9 @@ class MessagingProvider extends ChangeNotifier {
   final Map<String, Set<String>> _knownMessageIds = {};
   String? _pendingNewMessageAlert;
   DateTime? _suppressRemoteLoadUntil;
-  /// In-flight decrypt attempts (single-flight per message id).
-  final Map<String, Future<String>> _decryptFutures = {};
 
-  /// Successfully decrypted plaintext (separate from in-flight Futures).
-  final Map<String, String> _decryptedCache = {};
-
-  /// Drops in-flight and resolved decrypt caches (e.g. after E2E unlock).
+  /// No-op: client E2E decrypt caches are retired.
   void clearDecryptCaches() {
-    _decryptFutures.clear();
-    _decryptedCache.clear();
     notifyListeners();
   }
 
@@ -507,14 +495,7 @@ class MessagingProvider extends ChangeNotifier {
 
     if (thread == null) {
       try {
-        final threadKeys = await _threadKeysForCategory(
-          category,
-          parentUserIds: parentUserIds,
-        );
-        thread = await _repository.getOrCreateCategoryThread(
-          category,
-          threadKeys: threadKeys,
-        );
+        thread = await _repository.getOrCreateCategoryThread(category);
         final index = _threads.indexWhere(
           (item) => isSameManagedChannelThread(item, thread!),
         );
@@ -524,37 +505,10 @@ class MessagingProvider extends ChangeNotifier {
           _threads.insert(0, thread);
         }
         notifyListeners();
-      } on IncompleteParticipantKeysException catch (error) {
-        debugPrint(
-          '[e2e] openCategoryChannel incomplete keys for $category: $error',
-        );
-        _error =
-            'Nie można teraz otworzyć rozmowy — brakuje kluczy szyfrowania u uczestników. Spróbuj ponownie później.';
-        notifyListeners();
-        return null;
       } catch (error) {
         _error = 'Nie udało się otworzyć rozmowy tematycznej.';
         notifyListeners();
         return null;
-      }
-    }
-
-    // Intentional: run even on cache hit so a child who gained E2E keys after
-    // the first open still gets family-sync without restarting the app.
-    if (category == familyCategoryChannel &&
-        childUserIds.isNotEmpty &&
-        _e2eSession != null) {
-      for (final childUserId in childUserIds) {
-        try {
-          await _e2eSession!.syncFamilyThreadKeyIfNeeded(
-            threadId: thread.id,
-            childUserId: childUserId,
-          );
-        } catch (error) {
-          debugPrint(
-            '[e2e] family-sync failed for childUserId=$childUserId: $error',
-          );
-        }
       }
     }
 
@@ -585,12 +539,10 @@ class MessagingProvider extends ChangeNotifier {
     }
 
     try {
-      final threadKeys = await _requireThreadKeys(parentUserIds);
       final thread = await _repository.createThread(
         subject: subject,
         category: category,
         childId: childId,
-        threadKeys: threadKeys,
       );
       final index = _threads.indexWhere((item) => item.id == thread.id);
       if (index >= 0) {
@@ -601,12 +553,6 @@ class MessagingProvider extends ChangeNotifier {
       notifyListeners();
       await loadThreads(silent: true);
       return getThreadById(thread.id) ?? thread;
-    } on IncompleteParticipantKeysException catch (error) {
-      debugPrint('[e2e] createThread incomplete keys: $error');
-      _error =
-          'Nie można teraz utworzyć wątku — brakuje kluczy szyfrowania u uczestników. Spróbuj ponownie później.';
-      notifyListeners();
-      return null;
     } catch (error) {
       _error = 'Nie udało się utworzyć wątku.';
       notifyListeners();
@@ -641,19 +587,12 @@ class MessagingProvider extends ChangeNotifier {
     }
 
     try {
-      final threadKeys = channelCategory == null
-          ? null
-          : await _threadKeysForCategory(
-              channelCategory,
-              parentUserIds: parentUserIds,
-            );
       final updatedThread = await _repository.sendMessage(
         threadId: threadId,
         content: content,
         tone: tone,
         attachments: attachments,
         channelCategory: channelCategory,
-        threadKeys: threadKeys,
       );
       // Just-sent outgoing messages must stay unread until the other parent
       // opens the thread — never trust a premature isRead on the send response.
@@ -717,17 +656,6 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   String _mapSendMessageError(Object error) {
-    if (error is NoUnlockedKeyException) {
-      return 'Odblokuj szyfrowanie czatu, żeby wysłać wiadomość.';
-    }
-    if (error is IncompleteParticipantKeysException) {
-      debugPrint('[e2e] sendMessage incomplete keys: $error');
-      return 'Nie można teraz wysłać wiadomości — brakuje kluczy szyfrowania u uczestników. Spróbuj ponownie później.';
-    }
-    if (error is MessageDecryptionException ||
-        error is SealedBoxDecryptionException) {
-      return 'Nie udało się zaszyfrować wiadomości. Spróbuj ponownie.';
-    }
     if (error is ApiException) {
       switch (error.message) {
         case 'missing_token':
@@ -754,59 +682,9 @@ class MessagingProvider extends ChangeNotifier {
     return 'Nie udało się wysłać wiadomości.';
   }
 
-  /// System schedule channel has no E2E threadKeys; all other creates need parents.
-  Future<List<Map<String, String>>?> _threadKeysForCategory(
-    String category, {
-    required List<String> parentUserIds,
-  }) async {
-    if (category == scheduleCategoryChannel) {
-      return null;
-    }
-    return _requireThreadKeys(parentUserIds);
-  }
-
-  Future<List<Map<String, String>>> _requireThreadKeys(
-    List<String> parentUserIds,
-  ) async {
-    final e2e = _e2eSession;
-    if (e2e == null) {
-      throw IncompleteParticipantKeysException(
-        missingKey: parentUserIds,
-        failed: const {},
-      );
-    }
-    return e2e.buildThreadKeysPayload(participantUserIds: parentUserIds);
-  }
-
-  /// Decrypts an E2E message body for UI (bubble / previews).
+  /// Returns plaintext body (client E2E decrypt retired).
   Future<String> decryptMessageBody(Message message) async {
-    if (!message.needsDecryption) {
-      return message.content;
-    }
-
-    // Resolved success cache — keep separate from in-flight Futures.
-    final cached = _decryptedCache[message.id];
-    if (cached != null) return cached;
-
-    return _decryptFutures.putIfAbsent(message.id, () async {
-      try {
-        final e2e = _e2eSession;
-        if (e2e == null) {
-          throw MessageDecryptionException('e2e_unavailable');
-        }
-        final result = await e2e.decryptMessageFromThread(
-          threadId: message.threadId,
-          ciphertext: message.ciphertext!,
-          nonce: message.nonce!,
-        );
-        _decryptedCache[message.id] = result;
-        return result;
-      } catch (error) {
-        // Allow a later call to retry instead of replaying a failed Future.
-        _decryptFutures.remove(message.id);
-        rethrow;
-      }
-    });
+    return message.content;
   }
 
   MessageThread? _appendLocalDemoMessage({

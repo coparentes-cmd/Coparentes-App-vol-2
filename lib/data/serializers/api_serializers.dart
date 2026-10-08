@@ -244,22 +244,20 @@ Map<String, dynamic> messageThreadToJson(MessageThread thread) {
 
 Message messageFromJson(Map<String, dynamic> json) {
   final messageType = json['messageType'] as String? ?? 'user';
-  final ciphertext = json['ciphertext'] as String?;
-  final nonce = json['nonce'] as String?;
-  final isSystem = messageType == 'system';
-  final isE2E = !isSystem &&
-      ciphertext != null &&
-      ciphertext.isNotEmpty &&
-      nonce != null &&
-      nonce.isNotEmpty;
+  final legacyE2e = json['legacyE2e'] == true;
+  final contentFromApi = json['content'] as String? ?? '';
+
+  // Abandoned client-E2E history: show a calm archive label, never decrypt.
+  final content = legacyE2e && contentFromApi.isEmpty
+      ? 'Starsza wiadomość nie jest już dostępna'
+      : contentFromApi;
 
   return Message(
     id: json['id'] as String,
     threadId: json['threadId'] as String,
     senderId: json['senderId'] as String,
     senderName: json['senderName'] as String,
-    // E2E payloads have no server-side plaintext `content`.
-    content: isE2E ? '' : (json['content'] as String? ?? ''),
+    content: content,
     aiSuggestedContent: json['aiSuggestedContent'] as String?,
     tone: messageToneFromApi(json['tone'] as String? ?? 'neutral'),
     attachments: (json['attachments'] as List<dynamic>? ?? [])
@@ -279,9 +277,9 @@ Message messageFromJson(Map<String, dynamic> json) {
     hash: json['hash'] as String? ?? '',
     isShielded: _jsonBool(json['isShielded'], fallback: false),
     messageType: messageType,
-    isE2E: isE2E,
-    ciphertext: isE2E ? ciphertext : null,
-    nonce: isE2E ? nonce : null,
+    isE2E: false,
+    ciphertext: null,
+    nonce: null,
   );
 }
 

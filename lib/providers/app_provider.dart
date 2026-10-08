@@ -302,7 +302,7 @@ class AppProvider extends ChangeNotifier {
         password: password,
       );
       if (response.requiresOtp) {
-        // Keep password in memory only until OTP completes (invisible E2E unlock).
+        // Keep password in memory only until OTP completes (forced PW change).
         _pendingE2ePassword = password;
         _pendingLoginChallenge = response.challenge;
         _setDemoMode(false);
@@ -315,11 +315,6 @@ class AppProvider extends ChangeNotifier {
       final session = response.session!;
       _applySession(session);
       _retainLoginPasswordIfMustChange(password);
-      // Temp password cannot open an existing E2E envelope — skip unlock and
-      // surface MustChangePasswordScreen immediately (no Argon2 delay).
-      if (!session.user.mustChangePassword) {
-        await _e2eUnlockAfterAuth(password);
-      }
       notifyListeners();
       return true;
     } catch (error) {
@@ -359,10 +354,6 @@ class AppProvider extends ChangeNotifier {
       _applySession(session);
       if (e2ePassword != null && e2ePassword.isNotEmpty) {
         _retainLoginPasswordIfMustChange(e2ePassword);
-        // Same as login(): do not try E2E unlock with a temporary password.
-        if (!session.user.mustChangePassword) {
-          await _e2eUnlockAfterAuth(e2ePassword);
-        }
       } else {
         _pendingLoginPassword = null;
       }
@@ -433,7 +424,6 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      await _e2eSetupNewKeys(password);
       await setOnboardingTourStep(1);
       await loadUserConsents();
       notifyListeners();
@@ -608,73 +598,23 @@ class AppProvider extends ChangeNotifier {
   Future<bool> changePassword({
     required String currentPassword,
     required String newPassword,
-    /// When true, do not attempt Argon2 unlock of an existing envelope (temp /
-    /// admin-reset password cannot open it — that path freezes web for a long time).
+    /// Kept for call-site stability; client E2E rewrap is no longer used.
     bool replaceOrphanedE2eKeys = false,
   }) async {
     try {
       _authError = null;
-
-      String? newPrivateKeyEnvelope;
-      String? newPublicKey;
-      E2eReplacementKeyMaterial? replacementMaterial;
-      final e2e = _e2eSession;
-      if (e2e != null) {
-        try {
-          final unlocked = await e2e.hasUnlockedKey();
-          final skipUnlockAttempt = replaceOrphanedE2eKeys ||
-              (_currentUser?.mustChangePassword == true);
-          if (!unlocked && !skipUnlockAttempt) {
-            // Normal Settings → change password: unlock with current password.
-            try {
-              await e2e.unlockWithPassword(currentPassword);
-            } on InvalidPasswordException {
-              // Fall through to replacement keys below.
-            }
-          }
-          if (await e2e.hasUnlockedKey()) {
-            newPrivateKeyEnvelope =
-                await e2e.rewrapEnvelopeForNewPassword(newPassword);
-          } else {
-            // Cannot open existing envelope — rotate to a fresh identity pair.
-            replacementMaterial =
-                await e2e.createReplacementKeyMaterial(newPassword);
-            newPrivateKeyEnvelope = replacementMaterial.privateKeyEnvelope;
-            newPublicKey = replacementMaterial.publicKey;
-          }
-        } catch (error) {
-          debugPrint('[e2e] prepare keys before password change failed: $error');
-          _authError =
-              'Nie udało się przygotować kluczy E2E do zmiany hasła. Spróbuj ponownie.';
-          notifyListeners();
-          return false;
-        }
-      }
-
       await _authRepository.changePassword(
         currentPassword: currentPassword,
         newPassword: newPassword,
-        newPrivateKeyEnvelope: newPrivateKeyEnvelope,
-        newPublicKey: newPublicKey,
       );
-
-      if (replacementMaterial != null) {
-        await e2e?.applyReplacementKeyMaterial(replacementMaterial);
-        onE2eSessionChanged?.call();
-      } else if (newPrivateKeyEnvelope != null) {
-        await e2e?.cacheEnvelope(newPrivateKeyEnvelope);
-      }
+      // Drop any leftover local E2E material after password change.
+      unawaited(_e2eSession?.clearAll());
+      onE2eSessionChanged?.call();
       return true;
     } on ApiException catch (error) {
-      if (error.message == 'private_key_envelope_required' ||
-          error.message == 'invalid_public_key') {
-        _authError =
-            'Nie udało się zmienić hasła (klucze E2E). Spróbuj ponownie.';
-      } else {
-        _authError = error.statusCode == 401
-            ? 'Aktualne hasło jest nieprawidłowe.'
-            : 'Nie udało się zmienić hasła.';
-      }
+      _authError = error.statusCode == 401
+          ? 'Aktualne hasło jest nieprawidłowe.'
+          : 'Nie udało się zmienić hasła.';
       notifyListeners();
       return false;
     } catch (_) {
@@ -950,7 +890,6 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      await _e2eSetupNewKeys(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -983,8 +922,6 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      // Child: generate keys + recovery envelope (e-mailed to parents); no UI.
-      await _e2eSetupNewKeysWithRecoveryCodeSilent(password);
       notifyListeners();
       return true;
     } catch (error) {
@@ -1341,55 +1278,6 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  /// Parent register / join: password-sealed keys only (no recovery code UI).
-  Future<void> _e2eSetupNewKeys(String password) async {
-    final e2e = _e2eSession;
-    if (e2e == null || password.isEmpty) {
-      return;
-    }
-    try {
-      await e2e.setupNewKeys(password);
-    } catch (error) {
-      debugPrint('[e2e] setupNewKeys failed (best-effort): $error');
-    }
-  }
-
-  /// Child join: keys + recovery envelope (e-mailed to parents). Discard code;
-  /// never surface a recovery screen.
-  Future<void> _e2eSetupNewKeysWithRecoveryCodeSilent(String password) async {
-    final e2e = _e2eSession;
-    if (e2e == null || password.isEmpty) {
-      return;
-    }
-    try {
-      await e2e.setupNewKeysWithRecoveryCode(password);
-    } catch (error) {
-      debugPrint(
-        '[e2e] setupNewKeysWithRecoveryCode failed (best-effort): $error',
-      );
-      try {
-        if (!await e2e.hasUnlockedKey()) {
-          await e2e.setupNewKeys(password);
-        }
-      } catch (fallbackError) {
-        debugPrint('[e2e] setupNewKeys fallback failed: $fallbackError');
-      }
-    }
-  }
-
-  Future<void> _e2eUnlockAfterAuth(String password) async {
-    final e2e = _e2eSession;
-    if (e2e == null || password.isEmpty) {
-      return;
-    }
-    try {
-      await e2e.unlockAfterAuthentication(password);
-      onE2eSessionChanged?.call();
-    } catch (error) {
-      debugPrint('[e2e] unlockAfterAuthentication failed (best-effort): $error');
-    }
-  }
-
   bool get hasE2eSession => _e2eSession != null;
 
   /// Parent A/B member ids in the current workspace (for E2E threadKeys).
@@ -1423,23 +1311,10 @@ class AppProvider extends ChangeNotifier {
         .toList();
   }
 
-  Future<bool> isE2eUnlocked() async {
-    final e2e = _e2eSession;
-    if (e2e == null) {
-      return true;
-    }
-    return e2e.hasUnlockedKey();
-  }
+  Future<bool> isE2eUnlocked() async => true;
 
-  /// Throws [InvalidPasswordException] on wrong password.
-  Future<void> unlockE2eWithPassword(String password) async {
-    final e2e = _e2eSession;
-    if (e2e == null) {
-      return;
-    }
-    await e2e.unlockWithPassword(password);
-    onE2eSessionChanged?.call();
-  }
+  /// No-op: chat no longer requires client E2E unlock.
+  Future<void> unlockE2eWithPassword(String password) async {}
 
   /// R4: restore the original E2E identity with a mailed recovery code, then
   /// rewrap under [currentPassword]. Propagates [RecoveryCodeNotSetUpException],

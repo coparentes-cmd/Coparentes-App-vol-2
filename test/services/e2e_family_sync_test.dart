@@ -265,7 +265,7 @@ void main() {
   });
 
   group('openCategoryChannel family cache hit', () {
-    test('still invokes syncFamilyThreadKeyIfNeeded for Rodzina', () async {
+    test('does not invoke family-sync after client E2E removal', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final counting = _CountingSyncE2e();
@@ -291,15 +291,7 @@ void main() {
       );
 
       expect(thread, isNotNull);
-      expect(counting.syncCalls, hasLength(2));
-      expect(
-        counting.syncCalls.map((c) => c.childUserId).toList(),
-        ['child-x', 'child-y'],
-      );
-      expect(
-        counting.syncCalls.every((c) => c.threadId == thread!.id),
-        isTrue,
-      );
+      expect(counting.syncCalls, isEmpty);
     });
   });
 }

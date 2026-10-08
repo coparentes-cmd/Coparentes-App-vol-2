@@ -161,7 +161,7 @@ void main() {
   }
 
   test(
-    'registerWorkspace: setupNewKeys only, tour step 1 persisted',
+    'registerWorkspace: no client E2E setup, tour step 1 persisted',
     () async {
       final bootstrapped = await boot();
       final ap = bootstrapped.ap;
@@ -179,9 +179,8 @@ void main() {
       );
 
       expect(ok, isTrue);
-      expect(e2e.setupNewKeysCalls, 1);
+      expect(e2e.setupNewKeysCalls, 0);
       expect(e2e.withRecoveryCalls, 0);
-      expect(e2e.lastPassword, 'Password123!');
       expect(ap.onboardingTourStep, 1);
       expect(
         prefs.getInt(AppProvider.onboardingTourPrefsKey('user_a')),
@@ -190,7 +189,7 @@ void main() {
     },
   );
 
-  test('joinWorkspace: setupNewKeys, no tour step', () async {
+  test('joinWorkspace: no client E2E setup, no tour step', () async {
     final bootstrapped = await boot();
     final ap = bootstrapped.ap;
     final e2e = bootstrapped.e2e;
@@ -205,7 +204,7 @@ void main() {
 
     expect(ok, isTrue);
     expect(ap.currentUser?.role, UserRole.parentB);
-    expect(e2e.setupNewKeysCalls, 1);
+    expect(e2e.setupNewKeysCalls, 0);
     expect(e2e.withRecoveryCalls, 0);
     expect(ap.onboardingTourStep, isNull);
     expect(
@@ -215,7 +214,7 @@ void main() {
   });
 
   test(
-    'accessChildAccount: recovery keys generated, no tour step',
+    'accessChildAccount: no client E2E recovery keys, no tour step',
     () async {
       final bootstrapped = await boot();
       final ap = bootstrapped.ap;
@@ -229,7 +228,8 @@ void main() {
       );
 
       expect(ok, isTrue);
-      expect(e2e.withRecoveryCalls, 1);
+      expect(e2e.withRecoveryCalls, 0);
+      expect(e2e.setupNewKeysCalls, 0);
       expect(ap.onboardingTourStep, isNull);
     },
   );

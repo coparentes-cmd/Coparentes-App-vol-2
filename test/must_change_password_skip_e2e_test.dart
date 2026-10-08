@@ -139,7 +139,7 @@ void main() {
   );
 
   test(
-    'login without mustChangePassword still calls unlockAfterAuthentication',
+    'login without mustChangePassword also skips unlockAfterAuthentication',
     () async {
       final prefs = await SharedPreferences.getInstance();
       final offline = OfflineStore(preferences: prefs);
@@ -174,7 +174,7 @@ void main() {
       );
 
       expect(ok, isTrue);
-      expect(tracking.unlockAfterAuthCalls, 1);
+      expect(tracking.unlockAfterAuthCalls, 0);
     },
   );
 }

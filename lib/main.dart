@@ -50,7 +50,6 @@ Future<void> main() async {
   final messagingRepository = MessagingRepository(
     apiClient: apiClient,
     offlineStore: offlineStore,
-    e2eSessionService: e2eSessionService,
   );
   final exportRepository = ExportRepository(
     apiClient: apiClient,
