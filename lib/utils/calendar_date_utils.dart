@@ -4,6 +4,16 @@ String calendarDateToApiIso(DateTime date) {
   return DateTime.utc(local.year, local.month, local.day, 12).toIso8601String();
 }
 
+/// Child date of birth for API — calendar day only (noon UTC).
+/// Never use [DateTime.toUtc] on local midnight: in PL that shifts the day.
+String dateOfBirthToApiIso(DateTime date) => calendarDateToApiIso(date);
+
+/// API DOB → local midnight of the UTC calendar day (stable across timezones).
+DateTime dateOfBirthFromApi(String iso) {
+  final utc = DateTime.parse(iso).toUtc();
+  return DateTime(utc.year, utc.month, utc.day);
+}
+
 /// Parse an API ISO timestamp into the device-local wall clock.
 DateTime parseApiDateTime(String value) => DateTime.parse(value).toLocal();
 

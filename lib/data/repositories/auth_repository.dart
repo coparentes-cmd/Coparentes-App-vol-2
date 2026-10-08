@@ -12,6 +12,7 @@ import '../models/user_consent.dart';
 import '../serializers/api_serializers.dart';
 import '../serializers/document_serializers.dart';
 import '../local/secure_offline_codec.dart';
+import '../../utils/calendar_date_utils.dart';
 import '../../utils/secure_storage_options.dart';
 
 class ChildJoinProfileOption {
@@ -288,7 +289,7 @@ class AuthRepository {
     final payload = await _apiClient.postJson('/auth/child/access', {
       'password': password,
       'childInviteCode': childInviteCode,
-      'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+      'dateOfBirth': dateOfBirthToApiIso(dateOfBirth),
       if (name != null && name.isNotEmpty) 'name': name,
     });
     return _saveSession(payload);
@@ -302,7 +303,7 @@ class AuthRepository {
     final payload = await _apiClient.postJson('/auth/child/login', {
       'login': login,
       'password': password,
-      'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+      'dateOfBirth': dateOfBirthToApiIso(dateOfBirth),
     });
     return _saveSession(payload);
   }
@@ -314,7 +315,7 @@ class AuthRepository {
   }) async {
     await _apiClient.postJson('/workspace/children', {
       'name': name,
-      'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+      'dateOfBirth': dateOfBirthToApiIso(dateOfBirth),
       if (school != null && school.isNotEmpty) 'school': school,
     });
     return refreshSession();
@@ -329,8 +330,7 @@ class AuthRepository {
   }) async {
     await _apiClient.patchJson('/workspace/children/$childId', {
       if (name != null) 'name': name,
-      if (dateOfBirth != null)
-        'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+      if (dateOfBirth != null) 'dateOfBirth': dateOfBirthToApiIso(dateOfBirth),
       if (school != null || clearSchool) 'school': school,
     });
     return refreshSession();
