@@ -107,8 +107,17 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
     // Web: only after a successful create should the browser be asked to save.
     _autofillCommitted = true;
     TextInput.finishAutofillContext(shouldSave: true);
-    // Reveal dashboard under this pushed route (AppGate already swapped home).
-    Navigator.of(context).pop();
+    // Let AppGate rebuild to ParentDashboard on the root route, then clear the
+    // consent/register stack so we land on home — not RoleSelection/login.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.popUntil((route) => route.isFirst);
+      }
+    });
   }
 
   @override

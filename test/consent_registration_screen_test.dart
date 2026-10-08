@@ -247,6 +247,73 @@ void main() {
     },
   );
 
+  testWidgets(
+    'successful Utwórz leaves AppGate-style home, not login',
+    (tester) async {
+      await settleInit(tester);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppProvider>.value(
+          value: appProvider,
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                final user = context.watch<AppProvider>().currentUser;
+                if (user == null) {
+                  return Scaffold(
+                    body: Center(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ConsentRegistrationScreen(
+                                draft: _draft,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('open-register'),
+                      ),
+                    ),
+                  );
+                }
+                return const Scaffold(
+                  body: Center(
+                    child: Text('parent-home', key: Key('parent_home')),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('open-register'), findsOneWidget);
+      await tester.tap(find.text('open-register'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await grantRequiredConsents(tester);
+      await tester.tap(find.byKey(const Key('consent_create_button')));
+      await tester.pump();
+      // registerWorkspace awaits prefs + consents load before popping the stack.
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        if (find.byType(ConsentRegistrationScreen).evaluate().isEmpty &&
+            appProvider.currentUser != null) {
+          break;
+        }
+      }
+
+      expect(auth.registerCalls, 1);
+      expect(appProvider.currentUser, isNotNull);
+      expect(find.byKey(const Key('parent_home')), findsOneWidget);
+      expect(find.text('open-register'), findsNothing);
+      expect(find.byType(ConsentRegistrationScreen), findsNothing);
+    },
+  );
+
   testWidgets('Anuluj does not call API and does not persist', (tester) async {
     await settleInit(tester);
 
