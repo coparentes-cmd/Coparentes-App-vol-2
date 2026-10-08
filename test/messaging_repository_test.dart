@@ -11,20 +11,41 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _ForbiddenChannelClient extends AppApiClient {
-  _ForbiddenChannelClient()
+  _ForbiddenChannelClient({List<MessageThread> listThreads = const []})
       : super(
           baseUrl: 'http://127.0.0.1:0/api',
-          httpClient: _ForbiddenHttpClient(),
+          httpClient: _ForbiddenHttpClient(listThreads: listThreads),
         );
 }
 
 class _ForbiddenHttpClient extends http.BaseClient {
+  final List<MessageThread> listThreads;
+
+  _ForbiddenHttpClient({this.listThreads = const []});
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     if (request.method == 'POST' && request.url.path.endsWith('/threads/channel')) {
       return http.StreamedResponse(
         Stream.value(utf8.encode('{"error":"forbidden"}')),
         403,
+        headers: {'content-type': 'application/json'},
+        request: request,
+      );
+    }
+    if (request.method == 'GET' &&
+        (request.url.path.endsWith('/threads') ||
+            request.url.path.endsWith('/threads/'))) {
+      return http.StreamedResponse(
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'threads': listThreads.map(messageThreadToJson).toList(),
+              'messageTags': <dynamic>[],
+            }),
+          ),
+        ),
+        200,
         headers: {'content-type': 'application/json'},
         request: request,
       );
@@ -171,6 +192,20 @@ void main() {
       );
 
       expect(thread.id, 'thread_family_local');
+    });
+
+    test('on 403 without cache reloads Rodzina from GET /threads', () async {
+      final family = _familyThread(id: 'thread_family_from_list');
+      final repository = MessagingRepository(
+        apiClient: _ForbiddenChannelClient(listThreads: [family]),
+        offlineStore: offlineStore,
+      );
+
+      final thread = await repository.getOrCreateCategoryThread(
+        familyCategoryChannel,
+      );
+
+      expect(thread.id, 'thread_family_from_list');
     });
   });
 

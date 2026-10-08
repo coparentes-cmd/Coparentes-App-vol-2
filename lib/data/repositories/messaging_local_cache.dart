@@ -6,10 +6,18 @@ import '../serializers/api_serializers.dart';
 class MessagingLocalCache {
   final OfflineStore _offlineStore;
 
+  /// In-memory copy — web [OfflineStore.saveThreads] is a no-op, but child send
+  /// still needs a session-local cache after [getThreads].
+  List<MessageThread> _memoryThreads = const [];
+
   MessagingLocalCache({required OfflineStore offlineStore})
-      : _offlineStore = offlineStore;
+    : _offlineStore = offlineStore;
 
   List<MessageThread> getCachedThreads() {
+    if (_memoryThreads.isNotEmpty) {
+      return List<MessageThread>.from(_memoryThreads)
+        ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
+    }
     return _offlineStore
         .getThreads()
         .map(messageThreadFromJson)
@@ -17,8 +25,9 @@ class MessagingLocalCache {
       ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
   }
 
-  Future<void> saveThreads(List<MessageThread> threads) {
-    return _offlineStore.saveThreads(threads.map(messageThreadToJson).toList());
+  Future<void> saveThreads(List<MessageThread> threads) async {
+    _memoryThreads = List<MessageThread>.from(threads);
+    await _offlineStore.saveThreads(threads.map(messageThreadToJson).toList());
   }
 
   Future<void> saveMessageTags(Map<String, Set<String>> tags) {

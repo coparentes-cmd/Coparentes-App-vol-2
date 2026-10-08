@@ -154,6 +154,12 @@ class MessagingRepository {
         if (fallback != null) {
           return fallback;
         }
+        // Web does not persist thread cache; child also cannot POST /channel
+        // for parent-only categories. Reload list and reuse an existing channel.
+        final fromApi = await _findCategoryThreadFromApi(category);
+        if (fromApi != null) {
+          return fromApi;
+        }
       }
       if (!_remote.isNetworkError(error)) {
         rethrow;
@@ -191,19 +197,34 @@ class MessagingRepository {
     }
   }
 
+  Future<MessageThread?> _findCategoryThreadFromApi(String category) async {
+    try {
+      final listed = await _remote.fetchThreads();
+      await _cache.saveThreads(listed.threads);
+      if (category == familyCategoryChannel) {
+        return findFamilyChannel(listed.threads);
+      }
+      return findCategoryChannel(listed.threads, category);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<String> _resolveThreadIdForSend(
     String threadId, {
     String? channelCategory,
   }) async {
+    // Prefer the already-open server thread. On web the offline cache is empty,
+    // so channelCategory → createChannel would 403 for child and block send.
+    if (!_cache.isLocalThreadId(threadId)) {
+      return threadId;
+    }
+
     if (channelCategory != null) {
       final channelThread = await getOrCreateCategoryThread(channelCategory);
       if (!_cache.isLocalThreadId(channelThread.id)) {
         return channelThread.id;
       }
-    }
-
-    if (!_cache.isLocalThreadId(threadId)) {
-      return threadId;
     }
 
     if (_offlineStore.getPendingActions().isNotEmpty) {
