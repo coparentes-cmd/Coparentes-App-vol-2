@@ -336,8 +336,14 @@ class AuthRepository {
     return refreshSession();
   }
 
-  Future<AuthSession> deleteWorkspaceChild(String childId) async {
-    await _apiClient.deleteJson('/workspace/children/$childId');
+  Future<AuthSession> deleteWorkspaceChild(
+    String childId, {
+    required String password,
+  }) async {
+    await _apiClient.postJson(
+      '/workspace/children/$childId/delete',
+      {'password': password},
+    );
     return refreshSession();
   }
 

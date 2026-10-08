@@ -593,10 +593,16 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteWorkspaceChild(String childId) async {
+  Future<bool> deleteWorkspaceChild(
+    String childId, {
+    required String password,
+  }) async {
     try {
       _authError = null;
-      final session = await _authRepository.deleteWorkspaceChild(childId);
+      final session = await _authRepository.deleteWorkspaceChild(
+        childId,
+        password: password,
+      );
       _applySession(session);
       notifyListeners();
       return true;

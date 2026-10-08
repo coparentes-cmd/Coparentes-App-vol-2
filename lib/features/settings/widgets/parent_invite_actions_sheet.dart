@@ -88,20 +88,21 @@ class ParentInviteActionsSheet extends StatelessWidget {
               const SizedBox(height: 10),
               SizedBox(
                 height: 48,
-                child: OutlinedButton.icon(
+                child: ElevatedButton.icon(
                   key: const Key('parent_invite_send_email'),
                   onPressed: () =>
                       Navigator.of(context).pop(ParentInviteAction.sendEmail),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white, width: 1.5),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: color,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   icon: const Icon(Icons.email_outlined),
                   label: Text(
-                    context.tr('Wyślij e-mail'),
+                    context.tr('Wyślij kod e-mailem'),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),

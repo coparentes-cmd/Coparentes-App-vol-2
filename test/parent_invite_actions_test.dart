@@ -36,6 +36,12 @@ void main() {
 
     expect(find.byKey(const Key('parent_invite_copy')), findsOneWidget);
     expect(find.byKey(const Key('parent_invite_send_email')), findsOneWidget);
+    // Test env locale is often en → overlay "Send code by email".
+    expect(
+      find.textContaining('kod e-mailem').evaluate().isNotEmpty ||
+          find.textContaining('code by email').evaluate().isNotEmpty,
+      isTrue,
+    );
     expect(find.text('TEST-CODE-123'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('parent_invite_copy')));

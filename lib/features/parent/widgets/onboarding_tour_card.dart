@@ -8,6 +8,55 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../settings/settings_screen.dart';
+import '../../settings/widgets/email_invite_sheet.dart';
+import '../../settings/widgets/parent_invite_actions_sheet.dart';
+import '../../../screens/auth/child_onboarding_sheet.dart';
+
+Color _tourAccent(UserRole? role) {
+  switch (role) {
+    case UserRole.parentA:
+      return AppTheme.parentAColor;
+    case UserRole.parentB:
+      return AppTheme.parentBColor;
+    default:
+      return AppTheme.primaryTeal;
+  }
+}
+
+/// Opens parent-invite actions (Skopiuj / Wyślij kod e-mailem).
+/// Used by tour krok 1 so the sheet appears immediately.
+Future<void> presentParentInviteFromTour(
+  BuildContext context, {
+  required String inviteCode,
+  required Color color,
+}) async {
+  final action = await ParentInviteActionsSheet.show(
+    context,
+    inviteCode: inviteCode,
+    color: color,
+  );
+  if (!context.mounted || action == null) return;
+  switch (action) {
+    case ParentInviteAction.copy:
+      await copyParentInviteCode(
+        context,
+        inviteCode: inviteCode,
+        color: color,
+      );
+    case ParentInviteAction.sendEmail:
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (_) => EmailInviteSheet(
+          color: color,
+          inviteCode: inviteCode,
+        ),
+      );
+  }
+}
 
 /// Host for the post-registration tour dialogs (invite parent → add child).
 ///
@@ -119,6 +168,17 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
     if (step == 2) {
       await ap.setOnboardingTourStep(3);
       if (!mounted) return;
+      final inviteCode = ap.currentWorkspace?.inviteCode;
+      final color = _tourAccent(ap.currentUser?.role);
+      if (inviteCode != null && inviteCode.isNotEmpty) {
+        // Directly the invite sheet (same UI as tapping the code in Settings).
+        await presentParentInviteFromTour(
+          context,
+          inviteCode: inviteCode,
+          color: color,
+        );
+        return;
+      }
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => const SettingsScreen(
@@ -132,13 +192,8 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
     if (step == 3) {
       await ap.setOnboardingTourStep(null);
       if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const SettingsScreen(
-            focus: SettingsFocus.addChild,
-          ),
-        ),
-      );
+      // Directly the add-child sheet (same UI as Settings → Dodaj dziecko).
+      await showChildOnboardingSheet(context);
     }
   }
 

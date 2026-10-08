@@ -96,11 +96,15 @@ class AppApiClient {
     return _decode(response);
   }
 
-  Future<Map<String, dynamic>> deleteJson(String path) async {
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     final response = await _httpClient
         .delete(
           Uri.parse('$baseUrl$path'),
           headers: _headers(),
+          body: body == null ? null : jsonEncode(body),
         )
         .timeout(_requestTimeout);
     return _decode(response);

@@ -218,6 +218,10 @@ const enOverlay = <String, String>{
   'Utwórz grafik': 'Create schedule',
   'Użyj sugestii': 'Use suggestion',
   'Wyślij e-mail': 'Send email',
+  'Wyślij kod e-mailem': 'Send code by email',
+  'Wpisz hasło, aby potwierdzić usunięcie.':
+      'Enter your password to confirm deletion.',
+  'Wpisz hasło': 'Enter password',
   'Zaakceptowane': 'Accepted',
   'Zaakceptowany': 'Accepted',
   'Zapisz zmiany': 'Save changes',

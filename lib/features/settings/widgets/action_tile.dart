@@ -29,6 +29,7 @@ class ActionTile extends StatelessWidget {
   final VoidCallback? onTap;
 
   const ActionTile({
+    super.key,
     required this.icon,
     required this.label,
     this.subtitle,
