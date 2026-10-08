@@ -1,0 +1,23 @@
+---
+description: Zawsze weryfikuj zmiany w Flutter (ten repo) i backendzie Coparentes
+alwaysApply: true
+---
+
+# Dwurepozytorium Coparentes — weryfikacja zmian
+
+Przed zaproponowaniem lub wdrożeniem zmiany zawsze sprawdź **oba** miejsca, nie tylko otwarty workspace:
+
+1. **Frontend (ten repo):** `/Users/kingastaszewska/Desktop/Coparentes-App-vol-2-main` (Flutter, `lib/`, `web/`, Netlify)
+2. **Backend (obok):** `/Users/kingastaszewska/Desktop/coparentes-backend-main` (`src/`, trasy API, Prisma, auth)
+
+## Obowiązkowy checklist przy każdej propozycji
+
+- Czy zmiana w Flutterze wymaga / łamie kontrakt API w backendzie (ścieżki, statusy, body, auth)?
+- Czy zmiana w backendzie wymaga zmian w kliencie (modele, `ApiException`, ekrany)?
+- Auth / sesja / E2E / cookies / CORS: przejrzyj odpowiadające pliki w **obu** repo (nie zakładaj, że wystarczy jedna strona).
+- Jeśli nie masz pewności albo nie przeczytałeś drugiej strony — napisz wprost „nie sprawdziłem backendu/frontu” zamiast zgadywać.
+
+## Zakaz
+
+- Nie proponuj „gotowej” poprawki tylko na podstawie jednego repo, gdy temat dotyczy API, auth, kluczy, rejestracji, 2FA lub danych workspace.
+- Nie wymyślaj ścieżek ani zachowania drugiej strony — odczytaj pliki po absolutnej ścieżce powyżej.

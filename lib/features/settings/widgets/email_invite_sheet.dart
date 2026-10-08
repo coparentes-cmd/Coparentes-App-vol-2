@@ -13,7 +13,13 @@ import 'package:coparentes/l10n/app_strings.dart';
 class EmailInviteSheet extends StatefulWidget {
   final Color color;
 
-  const EmailInviteSheet({required this.color});
+  /// Optional workspace invite code for the in-sheet "Skopiuj" action.
+  final String? inviteCode;
+
+  const EmailInviteSheet({
+    required this.color,
+    this.inviteCode,
+  });
 
   @override
   State<EmailInviteSheet> createState() => EmailInviteSheetState();
@@ -75,6 +81,26 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
         const Duration(seconds: 2),
         onTimeout: () => false,
       ).catchError((_) => false),
+    );
+  }
+
+  String _resolveInviteCode() {
+    final fromWidget = (widget.inviteCode ?? '').trim();
+    if (fromWidget.isNotEmpty) return fromWidget;
+    return (context.read<AppProvider>().currentWorkspace?.inviteCode ?? '')
+        .trim();
+  }
+
+  Future<void> _copyInviteCode() async {
+    final code = _resolveInviteCode();
+    if (code.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Kod zaproszenia skopiowany: $code'),
+        backgroundColor: widget.color,
+      ),
     );
   }
 
@@ -205,6 +231,22 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
                     ),
             ),
           ),
+          if (_resolveInviteCode().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('email_invite_copy_code'),
+                onPressed: _submitting ? null : _copyInviteCode,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: widget.color,
+                  side: BorderSide(color: widget.color),
+                ),
+                icon: const Icon(Icons.copy_outlined),
+                label: Text(context.tr('Skopiuj')),
+              ),
+            ),
+          ],
           SizedBox(height: 20),
           const Text(
             'Ostatnie zaproszenia',

@@ -1,0 +1,64 @@
+{
+  "id": "comic-a",
+  "title": "Pierwsze logowanie i założenie wspólnej przestrzeni",
+  "locale": "pl",
+  "width": 800,
+  "panels": [
+    {
+      "id": 1,
+      "image": "01-rejestracja.png",
+      "bubble": "Dwa domy, jedna aplikacja. Zakładam wspólną przestrzeń.",
+      "caption": "Otwórz aplikację i wybierz zakładkę Rejestracja.",
+      "alt": "Ekran startowy Coparentes z aktywną zakładką Rejestracja oraz polami Imię, Nazwisko i wyborem Mama lub Tata."
+    },
+    {
+      "id": 2,
+      "image": "02-formularz.png",
+      "bubble": "Wybieram rolę i nazywam naszą przestrzeń.",
+      "caption": "Uzupełnij imię, rolę, nazwę przestrzeni i e-mail.",
+      "alt": "Formularz rejestracji wypełniony danymi Anna Kowalska, rola Mama, przestrzeń Rodzina Kowalska i e-mail anna@example.com."
+    },
+    {
+      "id": 3,
+      "image": "03-haslo.png",
+      "bubble": "Hasło z samych liter i cyfr.",
+      "caption": "Najprościej użyć samych liter i cyfr.",
+      "alt": "Formularz rejestracji z wypełnionym polem Hasło (znaki ukryte) i przyciskiem Zarejestruj."
+    },
+    {
+      "id": 4,
+      "image": "04-zgody.png",
+      "bubble": "Wymagane zgody zaznaczone. Teraz Utwórz.",
+      "caption": "Konto powstaje dopiero po kliknięciu Utwórz.",
+      "alt": "Ekran Zanim zaczniesz ze zgodami wymaganymi włączonymi i przyciskiem Utwórz."
+    },
+    {
+      "id": 5,
+      "image": "05-krok1.png",
+      "bubble": "Czat jest szyfrowany. Kod odzyskiwania to zapasowy klucz.",
+      "caption": "Po rejestracji pojawia się podpowiedź w trzech krokach.",
+      "alt": "Pulpit po rejestracji z oknem Krok 1 z 3: Zabezpiecz rozmowy i przyciskiem Wygeneruj kod."
+    },
+    {
+      "id": 6,
+      "image": "06-kod-odzyskiwania.png",
+      "bubble": "Kopiuję kod i chowam go w bezpiecznym miejscu.",
+      "caption": "Kod wysyłamy też na Twój e-mail. Zachowaj go.",
+      "alt": "Arkusz Kod odzyskiwania czatu z wymyślonym kodem XK9M-PL7Q-2N4R-AB3C oraz przyciskami Kopiuj i Zamknij."
+    },
+    {
+      "id": 7,
+      "image": "07-kroki-2-3.png",
+      "bubble": "Teraz zapraszam drugiego rodzica i dodaję dziecko.",
+      "caption": "Krzyżyk zamyka krok i pokazuje następny.",
+      "alt": "Dwa okna touru: Krok 2 z 3 Zaproś drugiego rodzica oraz Krok 3 z 3 Dodaj dziecko."
+    },
+    {
+      "id": 8,
+      "image": "08-logowanie.png",
+      "bubble": "Następnym razem: e-mail, hasło i gotowe.",
+      "caption": "Zapomniane hasło? Użyj linku Nie pamiętam hasła.",
+      "alt": "Zakładka Logowanie z e-mailem anna@example.com i linkiem Nie pamiętam hasła."
+    }
+  ]
+}

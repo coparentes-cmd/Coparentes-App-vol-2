@@ -932,7 +932,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         _showMessage('Nazwa przestrzeni musi mieć co najmniej 2 znaki.');
         return;
       }
-      // Mama/Tata is UX-only — first registrant remains parentA on API.
+      // Mama/Tata is UX-only for labels — first registrant remains parentA on API.
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ConsentRegistrationScreen(
@@ -941,6 +941,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               email: email,
               password: password,
               workspaceName: workspaceName,
+              isMama: _registerIsMama,
             ),
           ),
         ),

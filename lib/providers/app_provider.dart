@@ -170,6 +170,11 @@ class AppProvider extends ChangeNotifier {
 
   static String onboardingTourPrefsKey(String userId) =>
       'onboarding_tour_step_$userId';
+
+  /// Local UX label from register (mama/tata); API role stays parentA/parentB.
+  static String parentFamilyRolePrefsKey(String userId) =>
+      'parent_family_role_$userId';
+
   LoginChallenge? get pendingLoginChallenge => _pendingLoginChallenge;
   bool get needsOtpVerification => _pendingLoginChallenge != null;
   int? get otpAttemptsRemaining => _otpAttemptsRemaining;
@@ -415,6 +420,7 @@ class AppProvider extends ChangeNotifier {
     required String password,
     required String workspaceName,
     required Map<ConsentType, bool> consents,
+    bool isMama = true,
   }) async {
     try {
       _authError = null;
@@ -427,7 +433,9 @@ class AppProvider extends ChangeNotifier {
       );
       _setDemoMode(false);
       _applySession(session);
-      await setOnboardingTourStep(1);
+      await saveParentFamilyRole(isMama ? 'mama' : 'tata');
+      // Tour starts at invite-parent (legacy step 1 = E2E recovery retired).
+      await setOnboardingTourStep(2);
       await loadUserConsents();
       notifyListeners();
       return true;
@@ -439,6 +447,41 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<void> saveParentFamilyRole(String role) async {
+    final userId = _currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+    final normalized = role.trim().toLowerCase();
+    if (normalized != 'mama' && normalized != 'tata') {
+      return;
+    }
+    await _preferences.setString(parentFamilyRolePrefsKey(userId), normalized);
+  }
+
+  /// Display label for settings / badges: mama, tata, or child / fallback.
+  String parentFamilyRoleLabel(AppUser? user) {
+    if (user == null) {
+      return '';
+    }
+    if (user.role == UserRole.child) {
+      return 'dziecko';
+    }
+    if (user.role == UserRole.parentA || user.role == UserRole.parentB) {
+      final stored =
+          _preferences.getString(parentFamilyRolePrefsKey(user.id));
+      if (stored == 'mama') {
+        return 'mama';
+      }
+      if (stored == 'tata') {
+        return 'tata';
+      }
+      // Fallback when prefs missing (join / older accounts): A→mama, B→tata.
+      return user.role == UserRole.parentA ? 'mama' : 'tata';
+    }
+    return user.roleLabel;
   }
 
   List<UserConsentRecord>? get userConsents => _userConsents;

@@ -14,7 +14,7 @@ import 'widgets/edit_profile_sheet.dart';
 import 'widgets/change_password_sheet.dart';
 import 'widgets/delete_account_sheet.dart';
 import 'widgets/email_invite_sheet.dart';
-import 'generate_recovery_code_flow.dart';
+import 'widgets/parent_invite_actions_sheet.dart';
 import 'widgets/settings_divider.dart';
 import 'widgets/info_tile.dart';
 import 'widgets/action_tile.dart';
@@ -174,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  _roleBadge(user?.role),
+                                  ap.parentFamilyRoleLabel(user),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 11,
@@ -225,10 +225,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     InfoTile(
                       icon: Icons.work_outline,
                       label: context.tr('Rola w aplikacji'),
-                      value: _roleBadge(user?.role),
+                      value: ap.parentFamilyRoleLabel(user),
                       isDark: isDark,
                     ),
-                    SettingsDivider(),
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.edit_outlined,
@@ -245,24 +244,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isDark: isDark,
                       onTap: () => _showChangePasswordSheet(context, roleColor),
                     ),
-                    if (!ap.isDemoMode &&
-                        (user?.role == UserRole.parentA ||
-                            user?.role == UserRole.parentB)) ...[
-                      SettingsDivider(),
-                      ActionTile(
-                        icon: Icons.vpn_key_outlined,
-                        label: context.tr('Wygeneruj kod odzyskiwania czatu'),
-                        subtitle: context.tr(
-                          'Zapasowy kod do odzyskania historii czatu',
-                        ),
-                        color: roleColor,
-                        isDark: isDark,
-                        onTap: () => runGenerateRecoveryCodeFlow(
-                          context,
-                          color: roleColor,
-                        ),
-                      ),
-                    ],
                   ]),
 
                   if (user?.role == UserRole.parentA ||
@@ -296,7 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             label: context.tr('Członkowie'),
                             value: workspace.members
                                 .map((m) =>
-                                    '${m.name} (${_roleBadge(m.role)})')
+                                    '${m.name} (${ap.parentFamilyRoleLabel(m)})')
                                 .join('\n'),
                             isDark: isDark,
                           ),
@@ -315,11 +296,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   : (workspace.inviteCode ?? '—'),
                               color: roleColor,
                               isDark: isDark,
-                              onTap: () => _copyInviteCode(
+                              onTap: () => _showParentInviteActions(
                                 context,
-                                workspace.inviteCode!,
-                                roleColor,
+                                inviteCode: workspace.inviteCode!,
+                                color: roleColor,
                               ),
+                            ),
+                          ),
+                          ActionTile(
+                            icon: Icons.copy_outlined,
+                            label: context.tr('Skopiuj'),
+                            subtitle: context.tr(
+                              'Skopiuj kod zaproszenia do schowka',
+                            ),
+                            color: roleColor,
+                            isDark: isDark,
+                            onTap: () => copyParentInviteCode(
+                              context,
+                              inviteCode: workspace.inviteCode!,
+                              color: roleColor,
                             ),
                           ),
                         ],
@@ -440,27 +435,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
 
-                  if (user?.role == UserRole.parentA) ...[
-                    SizedBox(height: 20),
-                    IosSettingsAccordion(
-                    title: context.tr('Zaproszenia e-mail'),
-                    icon: Icons.mail_outline,
-                    isDark: isDark,
-                    accent: roleColor,
-                    expanded: _expandedId == 'invites',
-                    onToggle: () => _toggleSection('invites'),
-                    children: [
-                      ActionTile(
-                        icon: Icons.send_outlined,
-                        label: context.tr('Zaproś drugiego rodzica mailem'),
-                        subtitle: context.tr('Wyślij link akceptacji na e-mail'),
-                        color: roleColor,
-                        isDark: isDark,
-                        onTap: () => _showEmailInviteSheet(context, roleColor),
-                      ),
-                    ]),
-                  ],
-
                   SizedBox(height: 20),
 
                   // ── Wygląd ────────────────────────────────────────────────
@@ -571,34 +545,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-                  ]),
-
-                  SizedBox(height: 20),
-
-                  // ── Bezpieczeństwo i logowanie ────────────────────────────
-                  IosSettingsAccordion(
-                    title: context.tr('Bezpieczeństwo'),
-                    icon: Icons.security_outlined,
-                    isDark: isDark,
-                    accent: roleColor,
-                    expanded: _expandedId == 'security',
-                    onToggle: () => _toggleSection('security'),
-                    children: [
-                    InfoTile(
-                      icon: Icons.lock_outline,
-                      label: context.tr('Logowanie'),
-                      value: context.tr('Tylko hasło (bez PIN / 2FA)'),
-                      isDark: isDark,
-                    ),
-                    if (_showPreLaunchPlaceholderSections) ...[
-                      SettingsDivider(),
-                      InfoTile(
-                        icon: Icons.history_outlined,
-                        label: context.tr('Ostatnie logowanie'),
-                        value: 'Dziś, ${_formatNow()}',
-                        isDark: isDark,
-                      ),
-                    ],
                   ]),
 
                   SizedBox(height: 20),
@@ -940,21 +886,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _roleBadge(UserRole? role) {
-    switch (role) {
-      case UserRole.parentA:
-        return 'Parent A';
-      case UserRole.parentB:
-        return 'Parent B';
-      case UserRole.child:
-        return 'Child';
-      case UserRole.observer:
-        return 'Professional / Observer';
-      default:
-        return 'User';
-    }
-  }
-
   Color _roleColor(UserRole? role) {
     switch (role) {
       case UserRole.parentA:
@@ -1072,14 +1003,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String inviteCode,
     Color color,
   ) async {
-    await Clipboard.setData(ClipboardData(text: inviteCode));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Kod zaproszenia skopiowany: $inviteCode'),
-        backgroundColor: color,
-      ),
+    await copyParentInviteCode(
+      context,
+      inviteCode: inviteCode,
+      color: color,
     );
+  }
+
+  Future<void> _showParentInviteActions(
+    BuildContext context, {
+    required String inviteCode,
+    required Color color,
+  }) async {
+    final action = await ParentInviteActionsSheet.show(
+      context,
+      inviteCode: inviteCode,
+      color: color,
+    );
+    if (!context.mounted || action == null) return;
+    switch (action) {
+      case ParentInviteAction.copy:
+        await copyParentInviteCode(
+          context,
+          inviteCode: inviteCode,
+          color: color,
+        );
+      case ParentInviteAction.sendEmail:
+        _showEmailInviteSheet(context, color);
+    }
   }
 
   void _showFeatureInfo(
@@ -1382,13 +1333,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showEmailInviteSheet(BuildContext context, Color color) {
+    final inviteCode =
+        context.read<AppProvider>().currentWorkspace?.inviteCode;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => EmailInviteSheet(color: color),
+      builder: (_) => EmailInviteSheet(
+        color: color,
+        inviteCode: inviteCode,
+      ),
     );
   }
 

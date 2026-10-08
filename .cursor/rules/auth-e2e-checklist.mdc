@@ -1,0 +1,26 @@
+---
+description: Checklist auth, sesji, E2E i cookies przy zmianach bezpieczeństwa
+alwaysApply: true
+---
+
+# Auth / sesja / E2E — checklist obu repo
+
+Przy zmianach w login, register, logout, 2FA/OTP, cookies, bearer, localStorage, kluczach E2E, CORS:
+
+## Zawsze
+
+1. Przeczytaj odpowiadające pliki w **Flutter** i **backend** (ścieżki z reguły dual-repo).
+2. Uwzględnij różnice **web vs mobile** (Safari, cookies `SameSite`, bearer fallback).
+3. Nie zakładaj, że „sesja działa”, jeśli nie sprawdziłeś przepływu cookie + token + odświeżanie.
+
+## Checklist
+
+- [ ] Gdzie trzymany jest token / cookie / klucz (web `localStorage` vs cookie vs secure storage)?
+- [ ] Co się dzieje po rejestracji / logowaniu / wylogowaniu (nawigacja, `AppGate`, refresh)?
+- [ ] CORS + credentials — czy zmiana frontu wymaga zmiany backendu (lub odwrotnie)?
+- [ ] E2E: czy zmiana dotyczy kluczy, unlock, re-encrypt — i czy backend `/keys` (lub równoważne) jest spójne?
+
+## Zakaz
+
+- Nie proponuj „gotowej” poprawki auth/E2E na podstawie jednego repo.
+- Nie zgaduj zachowania Safari / web — odczytaj kod lub napisz „nie sprawdziłem”.

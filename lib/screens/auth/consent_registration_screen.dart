@@ -17,11 +17,15 @@ class RegistrationDraft {
   final String password;
   final String workspaceName;
 
+  /// UX label chosen at register (Mama/Tata). API role stays parentA.
+  final bool isMama;
+
   const RegistrationDraft({
     required this.name,
     required this.email,
     required this.password,
     required this.workspaceName,
+    required this.isMama,
   });
 }
 
@@ -78,6 +82,7 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
       password: widget.draft.password,
       workspaceName: widget.draft.workspaceName,
       consents: _selections,
+      isMama: widget.draft.isMama,
     );
 
     if (!mounted) {

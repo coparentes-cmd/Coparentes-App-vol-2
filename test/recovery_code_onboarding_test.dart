@@ -161,7 +161,7 @@ void main() {
   }
 
   test(
-    'registerWorkspace: no client E2E setup, tour step 1 persisted',
+    'registerWorkspace: no client E2E setup, tour starts at step 2',
     () async {
       final bootstrapped = await boot();
       final ap = bootstrapped.ap;
@@ -181,10 +181,10 @@ void main() {
       expect(ok, isTrue);
       expect(e2e.setupNewKeysCalls, 0);
       expect(e2e.withRecoveryCalls, 0);
-      expect(ap.onboardingTourStep, 1);
+      expect(ap.onboardingTourStep, 2);
       expect(
         prefs.getInt(AppProvider.onboardingTourPrefsKey('user_a')),
-        1,
+        2,
       );
     },
   );

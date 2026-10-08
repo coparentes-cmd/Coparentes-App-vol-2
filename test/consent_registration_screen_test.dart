@@ -98,6 +98,7 @@ const _draft = RegistrationDraft(
   email: 'anna@test.coparentes.app',
   password: 'Password123!',
   workspaceName: 'Rodzina Kowalska',
+  isMama: true,
 );
 
 void main() {

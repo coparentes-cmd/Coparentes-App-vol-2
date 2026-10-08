@@ -1,0 +1,22 @@
+---
+description: Commit, push i deploy tylko na wyraźne polecenie użytkownika
+alwaysApply: true
+---
+
+# Commit / push / deploy — tylko na życzenie
+
+## Zakaz „przy okazji”
+
+- `git commit` — tylko gdy użytkownik wyraźnie prosi („zrób commit”, „zacommituj”)
+- `git push` — tylko na wyraźne polecenie
+- Deploy Netlify / Railway / produkcja — tylko na wyraźne polecenie
+- Nie twórz PR, nie merguj, nie taguj release bez prośby
+
+## Gdy użytkownik prosi o commit
+
+- Trzymaj się reguł git z User Rules (status, diff, log, HEREDOC, bez `--no-verify`, bez force push na main)
+- Nie dodawaj sekretów (`.env`, dumpy, tokeny, backupy DB)
+
+## Po zmianach kodu bez prośby o commit
+
+Zostaw pliki zmodyfikowane lokalnie i krótko powiedz, co poszło — nie commituj sam.

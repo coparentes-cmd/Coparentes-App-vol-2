@@ -7,13 +7,13 @@ import '../../../l10n/app_strings.dart';
 import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
-import '../../settings/generate_recovery_code_flow.dart';
 import '../../settings/settings_screen.dart';
 
-/// Host for the post-registration tour dialogs (steps 1–3).
+/// Host for the post-registration tour dialogs (invite parent → add child).
 ///
 /// Renders nothing in the scroll tree; presents a centered [showDialog] when
 /// the dashboard route is current and a step is stored for a parent.
+/// Legacy step 1 (E2E recovery) is skipped.
 class OnboardingTourCard extends StatefulWidget {
   const OnboardingTourCard({super.key});
 
@@ -24,6 +24,7 @@ class OnboardingTourCard extends StatefulWidget {
 class _OnboardingTourCardState extends State<OnboardingTourCard> {
   bool _dialogOpen = false;
   int? _scheduledForStep;
+  bool _skippingLegacy = false;
 
   bool _eligible(AppProvider ap) {
     final step = ap.onboardingTourStep;
@@ -42,6 +43,14 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
     });
   }
 
+  Future<void> _skipLegacyStep1IfNeeded(AppProvider ap) async {
+    if (_skippingLegacy) return;
+    if (ap.onboardingTourStep != 1) return;
+    _skippingLegacy = true;
+    await ap.setOnboardingTourStep(2);
+    _skippingLegacy = false;
+  }
+
   Future<void> _presentIfNeeded() async {
     if (!mounted || _dialogOpen) return;
     if (ModalRoute.of(context)?.isCurrent != true) return;
@@ -49,7 +58,13 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
     final ap = context.read<AppProvider>();
     if (!_eligible(ap)) return;
 
-    final step = ap.onboardingTourStep!;
+    await _skipLegacyStep1IfNeeded(ap);
+    if (!mounted) return;
+    if (!_eligible(context.read<AppProvider>())) return;
+
+    final step = context.read<AppProvider>().onboardingTourStep!;
+    if (step == 1) return;
+
     _dialogOpen = true;
 
     final result = await showDialog<_TourDialogResult>(
@@ -57,7 +72,6 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (dialogContext) {
-        // PopScope must be the dialog route root so system/browser back is blocked.
         return PopScope(
           canPop: false,
           child: _OnboardingTourDialog(
@@ -83,7 +97,6 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
     }
     _dialogOpen = false;
 
-    // Present the next step only when dashboard is the top route again.
     if (ModalRoute.of(context)?.isCurrent == true &&
         _eligible(context.read<AppProvider>())) {
       _queuePresent(context.read<AppProvider>().onboardingTourStep!);
@@ -93,29 +106,12 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
   Future<void> _handleResult(_TourDialogResult? result, int step) async {
     if (result == null || !mounted) return;
     final ap = context.read<AppProvider>();
-    final roleColor = ap.currentUser?.role == UserRole.parentA
-        ? AppTheme.parentAColor
-        : AppTheme.parentBColor;
 
     if (result == _TourDialogResult.next) {
-      if (step == 1) {
-        await ap.setOnboardingTourStep(2);
-      } else if (step == 2) {
+      if (step == 2) {
         await ap.setOnboardingTourStep(3);
       } else {
         await ap.setOnboardingTourStep(null);
-      }
-      return;
-    }
-
-    if (step == 1) {
-      final shown = await runGenerateRecoveryCodeFlow(
-        context,
-        color: roleColor,
-      );
-      if (!mounted) return;
-      if (shown) {
-        await ap.setOnboardingTourStep(2);
       }
       return;
     }
@@ -173,27 +169,20 @@ class _OnboardingTourDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = switch (step) {
-      1 => context.tr('Zabezpiecz rozmowy'),
-      2 => context.tr('Zaproś drugiego rodzica'),
-      _ => context.tr('Dodaj dziecko'),
-    };
-    final body = switch (step) {
-      1 => context.tr(
-          'Czat jest szyfrowany end-to-end, więc przy zapomnianym haśle nie odzyskamy go za Ciebie. Kod odzyskiwania to zapasowy klucz. Dotknij, aby go wygenerować.',
-        ),
-      2 => context.tr(
-          'Kod zaproszenia znajdziesz w Ustawieniach. Dotknij, aby tam przejść.',
-        ),
-      _ => context.tr(
-          'Dodaj profil dziecka i wyślij mu kod w Ustawieniach. Dotknij, aby tam przejść.',
-        ),
-    };
-    final cta = switch (step) {
-      1 => context.tr('Wygeneruj kod'),
-      2 => context.tr('Przejdź do Ustawień'),
-      _ => context.tr('Dodaj dziecko'),
-    };
+    final title = step == 2
+        ? context.tr('Zaproś drugiego rodzica')
+        : context.tr('Dodaj dziecko');
+    final body = step == 2
+        ? null
+        : context.tr(
+            'Dodaj profil dziecka i wyślij mu kod w Ustawieniach. Dotknij, aby tam przejść.',
+          );
+    final cta = step == 2
+        ? context.tr('Przejdź do Ustawień')
+        : context.tr('Dodaj dziecko');
+    // After retiring E2E step 1: invite = krok 1, add child = krok 2.
+    final stepLabel = step == 2 ? 'krok 1' : 'krok 2';
+    const bannerColor = AppTheme.primaryTeal;
 
     return PopScope(
       canPop: false,
@@ -201,7 +190,7 @@ class _OnboardingTourDialog extends StatelessWidget {
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
         child: Material(
-          color: AppTheme.brandHeaderBlue,
+          color: bannerColor,
           elevation: 12,
           shadowColor: Colors.black54,
           borderRadius: BorderRadius.circular(20),
@@ -219,7 +208,7 @@ class _OnboardingTourDialog extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          context.tr('Krok $step z 3'),
+                          context.tr(stepLabel),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -237,15 +226,17 @@ class _OnboardingTourDialog extends StatelessWidget {
                             height: 1.25,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          body,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.45,
-                            color: Colors.white.withValues(alpha: 0.92),
+                        if (body != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            body,
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.45,
+                              color: Colors.white.withValues(alpha: 0.92),
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 22),
                         SizedBox(
                           height: 48,
@@ -254,7 +245,7 @@ class _OnboardingTourDialog extends StatelessWidget {
                             onPressed: onAction,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
-                              foregroundColor: AppTheme.brandHeaderBlue,
+                              foregroundColor: bannerColor,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),

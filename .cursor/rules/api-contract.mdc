@@ -1,0 +1,24 @@
+---
+description: Weryfikuj kontrakt API front↔backend przed proponowaniem zmian
+alwaysApply: true
+---
+
+# Kontrakt API — front i backend
+
+Przed zmianą endpointu, modelu odpowiedzi, statusu błędu lub wywołania HTTP:
+
+## Obowiązkowo
+
+1. Odczytaj trasę / handler w backendzie: `/Users/kingastaszewska/Desktop/coparentes-backend-main`
+2. Odczytaj klienta / repozytorium / model w Flutterze: ten repo (`lib/`)
+3. Porównaj: **ścieżka, metoda, body, query, statusy, kształt JSON, auth**
+
+## Checklist
+
+- Czy nowy/zmieniony status lub body nie zepsuje `ApiException` / mapowania błędów po stronie Flutter?
+- Czy ekran zakłada pola, których backend nie zwraca (lub odwrotnie)?
+- Czy zmiana auth na endpoincie (cookie vs bearer vs public) jest obsłużona po obu stronach?
+
+## Jeśli nie przeczytałeś drugiej strony
+
+Napisz w odpowiedzi wprost: „nie sprawdziłem backendu/frontu” — nie zgaduj ścieżek ani zachowania.

@@ -1,0 +1,24 @@
+---
+description: Zakaz zmian danych produkcyjnych bez wyraźnej zgody
+alwaysApply: true
+---
+
+# Produkcja / dane — bez zgody nie ruszaj
+
+## Zakaz (dopóki użytkownik nie napisze wprost, np. „usuń na produkcji”)
+
+- `DELETE` / `UPDATE` / hard-delete na produkcyjnej bazie
+- `railway run` / SSH / `psql` zmieniające dane na prod
+- soft-delete → hard-delete, czyszczenie workspace, kont, dzieci, wiadomości
+- „przy okazji” naprawianie danych prod podczas diagnostyki
+
+## Zanim cokolwiek zmienisz na prod (po wyraźnej zgodzie)
+
+1. Potwierdź, że to **prod**, nie lokalne `DATABASE_URL`.
+2. Wypisz **co dokładnie zniknie** (user, workspace, powiązania).
+3. Zrób / wskaż **backup** przed destrukcyjną operacją.
+4. Po operacji krótko potwierdź wynik (co usunięto / co zostało).
+
+## Diagnostyka
+
+Odczyt (SELECT, logi, status) — OK. Zapis na prod — tylko po jawnej zgodzie w wiadomości użytkownika.

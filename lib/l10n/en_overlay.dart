@@ -897,19 +897,14 @@ const enOverlay = <String, String>{
   'Nie udało się odzyskać dostępu. Spróbuj ponownie.':
       'Could not recover access. Try again.',
   // Post-registration onboarding tour (dashboard)
-  'Krok 1 z 3': 'Step 1 of 3',
-  'Krok 2 z 3': 'Step 2 of 3',
-  'Krok 3 z 3': 'Step 3 of 3',
-  'Zabezpiecz rozmowy': 'Protect your chats',
-  'Czat jest szyfrowany end-to-end, więc przy zapomnianym haśle nie odzyskamy go za Ciebie. Kod odzyskiwania to zapasowy klucz. Dotknij, aby go wygenerować.':
-      'Chat is end-to-end encrypted, so if you forget your password we cannot recover it for you. A recovery code is a backup key. Tap to generate it.',
+  'krok 1': 'step 1',
+  'krok 2': 'step 2',
   'Zaproś drugiego rodzica': 'Invite the other parent',
-  'Kod zaproszenia znajdziesz w Ustawieniach. Dotknij, aby tam przejść.':
-      'You’ll find the invite code in Settings. Tap to go there.',
   'Dodaj profil dziecka i wyślij mu kod w Ustawieniach. Dotknij, aby tam przejść.':
       'Add a child profile and send them the code in Settings. Tap to go there.',
-  'Wygeneruj kod': 'Generate code',
   'Przejdź do Ustawień': 'Go to Settings',
+  'Skopiuj': 'Copy',
+  'Skopiuj kod zaproszenia do schowka': 'Copy the invite code to the clipboard',
   'Gdy dziecko dołączy, wyślemy Wam e-mailem kod odzyskiwania jego czatu - zachowajcie go.':
       'When the child joins, we’ll email you their chat recovery code — keep it safe.',
 };

@@ -1,0 +1,21 @@
+---
+description: Główny cel produktu Coparentes — niezawodność przez uproszczenie
+alwaysApply: true
+---
+
+# Cel produktu Coparentes
+
+**Główny cel:** stworzyć **niezawodnie działającą** aplikację Coparentes.
+
+## Jak do tego dojść (priorytet)
+
+1. **Uprościć szyfrowanie (E2E)** — mniej ścieżek awarii, jaśniejszy flow unlock / kluczy / odzyskiwania.
+2. **Uprościć logowanie / auth** — rejestracja, sesja, 2FA/OTP, dołączanie rodzica/dziecka: mniej tarć, przewidywalne błędy.
+3. **Eliminować bugi** — najpierw stabilność i poprawki, potem nowe funkcje.
+
+## Przy decyzjach
+
+- Preferuj prostsze rozwiązanie, które działa zawsze, zamiast złożonego „idealnego”.
+- Nie dokładaj złożoności E2E/auth bez konieczności.
+- Przed nową funkcją: czy nie pogarsza niezawodności logowania lub szyfrowania?
+- Auth / E2E: zawsze weryfikuj **oba** repo (Flutter + backend) — reguły dual-repo.
