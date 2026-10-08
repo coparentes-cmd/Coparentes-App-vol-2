@@ -294,6 +294,19 @@ class AuthRepository {
     return _saveSession(payload);
   }
 
+  Future<AuthSession> loginChildAccount({
+    required String login,
+    required String password,
+    required DateTime dateOfBirth,
+  }) async {
+    final payload = await _apiClient.postJson('/auth/child/login', {
+      'login': login,
+      'password': password,
+      'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+    });
+    return _saveSession(payload);
+  }
+
   Future<AuthSession> addWorkspaceChild({
     required String name,
     required DateTime dateOfBirth,
@@ -304,6 +317,32 @@ class AuthRepository {
       'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
       if (school != null && school.isNotEmpty) 'school': school,
     });
+    return refreshSession();
+  }
+
+  Future<AuthSession> updateWorkspaceChild({
+    required String childId,
+    String? name,
+    DateTime? dateOfBirth,
+    String? school,
+    bool clearSchool = false,
+  }) async {
+    await _apiClient.patchJson('/workspace/children/$childId', {
+      if (name != null) 'name': name,
+      if (dateOfBirth != null)
+        'dateOfBirth': dateOfBirth.toUtc().toIso8601String(),
+      if (school != null || clearSchool) 'school': school,
+    });
+    return refreshSession();
+  }
+
+  Future<AuthSession> deleteWorkspaceChild(String childId) async {
+    await _apiClient.deleteJson('/workspace/children/$childId');
+    return refreshSession();
+  }
+
+  Future<AuthSession> renameWorkspace(String name) async {
+    await _apiClient.patchJson('/workspace/current', {'name': name});
     return refreshSession();
   }
 

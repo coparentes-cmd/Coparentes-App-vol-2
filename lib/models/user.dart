@@ -126,6 +126,9 @@ class ChildProfile {
   final DateTime dateOfBirth;
   final String? school;
 
+  /// Unique invite code for this child profile (join / re-entry).
+  final String? inviteCode;
+
   /// Linked child [AppUser.id] after invite login; null if not joined yet.
   final String? linkedAccountId;
 
@@ -134,6 +137,7 @@ class ChildProfile {
     required this.name,
     required this.dateOfBirth,
     this.school,
+    this.inviteCode,
     this.linkedAccountId,
   });
 

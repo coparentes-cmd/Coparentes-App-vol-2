@@ -229,125 +229,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isDark: isDark,
                     ),
                     SettingsDivider(),
-                    InfoTile(
-                      icon: Icons.group_outlined,
-                      label: context.tr('Nazwa przestrzeni'),
-                      value: workspace?.name ?? '—',
-                      isDark: isDark,
-                    ),
-                    if (workspace != null && workspace.members.isNotEmpty) ...[
-                      SettingsDivider(),
-                      InfoTile(
-                        icon: Icons.people_outline,
-                        label: context.tr('Członkowie'),
-                        value:
-                            '${workspace.members.length} (${workspace.members.map((m) => m.name.split(' ').first).join(', ')})',
-                        isDark: isDark,
-                      ),
-                    ],
-                    if (canShowInviteCode) ...[
-                      SettingsDivider(),
-                      if (user?.role == UserRole.parentA &&
-                          workspace.childInviteCode != null &&
-                          workspace.childInviteCode!.isNotEmpty) ...[
-                        ActionTile(
-                          icon: Icons.child_care_outlined,
-                          label: context.tr('Kod zaproszenia dziecka'),
-                          subtitle:
-                              '${workspace.childInviteCode!}\n${context.tr('Gdy dziecko dołączy, wyślemy Wam e-mailem kod odzyskiwania jego czatu - zachowajcie go.')}',
-                          color: roleColor,
-                          isDark: isDark,
-                          onTap: () => _copyInviteCode(
-                            context,
-                            workspace.childInviteCode!,
-                            roleColor,
-                          ),
-                        ),
-                        SettingsDivider(),
-                      ],
-                      KeyedSubtree(
-                        key: _parentInviteKey,
-                        child: ActionTile(
-                          icon: Icons.family_restroom_outlined,
-                          label: context.tr('Kod zaproszenia dla drugiego rodzica'),
-                          subtitle: workspace.inviteCodeExpiresAt != null
-                              ? '${workspace.inviteCode!}\nWażny do ${_formatInviteExpiry(workspace.inviteCodeExpiresAt!)}'
-                              : workspace.inviteCode!,
-                          color: roleColor,
-                          isDark: isDark,
-                          onTap: () => _copyInviteCode(
-                            context,
-                            workspace.inviteCode!,
-                            roleColor,
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    if (user?.role == UserRole.parentA) ...[
-                      SettingsDivider(),
-                      if (workspace != null && workspace.children.isNotEmpty) ...[
-                        InfoTile(
-                          icon: Icons.people_outline,
-                          label: context.tr('Dzieci w rodzinie'),
-                          value: workspace.children
-                              .map((c) => c.name.split(' ').first)
-                              .join(', '),
-                          isDark: isDark,
-                        ),
-                        ...workspace.children.expand((child) {
-                          final tiles = <Widget>[
-                            InfoTile(
-                              icon: Icons.child_care,
-                              label: child.name,
-                              value: [
-                                '${child.age} lat',
-                                if (child.school != null &&
-                                    child.school!.isNotEmpty)
-                                  child.school!,
-                              ].join(' · '),
-                              isDark: isDark,
-                            ),
-                          ];
-                          final linkedId = child.linkedAccountId;
-                          if (linkedId != null) {
-                            tiles.add(
-                              ActionTile(
-                                icon: Icons.lock_reset_outlined,
-                                label: context.tr(
-                                  'Zresetuj hasło logowania dziecka',
-                                ),
-                                subtitle: context.tr(
-                                  'Link na e-mail obojga rodziców',
-                                ),
-                                color: roleColor,
-                                isDark: isDark,
-                                onTap: () => _resetChildLoginPassword(
-                                  context,
-                                  childUserId: linkedId,
-                                  ap: ap,
-                                ),
-                              ),
-                            );
-                          }
-                          return tiles;
-                        }),
-                      ],
-                      KeyedSubtree(
-                        key: _addChildKey,
-                        child: ActionTile(
-                          icon: Icons.person_add_outlined,
-                          label: context.tr('Dodaj dziecko'),
-                          subtitle: workspace?.children.isEmpty ?? true
-                              ? context.tr('Dodaj pierwszy profil dziecka')
-                              : context.tr('Dodaj kolejny profil dziecka'),
-                          color: roleColor,
-                          isDark: isDark,
-                          onTap: () => showChildOnboardingSheet(context),
-                        ),
-                      ),
-                    ],
-
                     SettingsDivider(),
                     ActionTile(
                       icon: Icons.edit_outlined,
@@ -383,6 +264,181 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ]),
+
+                  if (user?.role == UserRole.parentA ||
+                      user?.role == UserRole.parentB) ...[
+                    SizedBox(height: 20),
+                    IosSettingsAccordion(
+                      title: context.tr('Przestrzeń'),
+                      icon: Icons.home_outlined,
+                      isDark: isDark,
+                      accent: roleColor,
+                      expanded: _expandedId == 'workspace',
+                      onToggle: () => _toggleSection('workspace'),
+                      children: [
+                        ActionTile(
+                          icon: Icons.edit_outlined,
+                          label: context.tr('Nazwa przestrzeni'),
+                          subtitle: workspace?.name ?? '—',
+                          color: roleColor,
+                          isDark: isDark,
+                          onTap: () => _showRenameWorkspace(
+                            context,
+                            ap,
+                            roleColor,
+                          ),
+                        ),
+                        if (workspace != null &&
+                            workspace.members.isNotEmpty) ...[
+                          SettingsDivider(),
+                          InfoTile(
+                            icon: Icons.people_outline,
+                            label: context.tr('Członkowie'),
+                            value: workspace.members
+                                .map((m) =>
+                                    '${m.name} (${_roleBadge(m.role)})')
+                                .join('\n'),
+                            isDark: isDark,
+                          ),
+                        ],
+                        if (canShowInviteCode) ...[
+                          SettingsDivider(),
+                          KeyedSubtree(
+                            key: _parentInviteKey,
+                            child: ActionTile(
+                              icon: Icons.family_restroom_outlined,
+                              label: context.tr(
+                                'Kod zaproszenia dla drugiego rodzica',
+                              ),
+                              subtitle: workspace.inviteCodeExpiresAt != null
+                                  ? '${workspace.inviteCode!}\nWażny do ${_formatInviteExpiry(workspace.inviteCodeExpiresAt!)}'
+                                  : (workspace.inviteCode ?? '—'),
+                              color: roleColor,
+                              isDark: isDark,
+                              onTap: () => _copyInviteCode(
+                                context,
+                                workspace.inviteCode!,
+                                roleColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (workspace != null &&
+                            workspace.children.isNotEmpty) ...[
+                          SettingsDivider(),
+                          InfoTile(
+                            icon: Icons.child_care_outlined,
+                            label: context.tr('Dzieci'),
+                            value: context.tr('Profile i status zaproszeń'),
+                            isDark: isDark,
+                          ),
+                          ...workspace.children.expand((child) {
+                            final status = child.linkedAccountId != null
+                                ? context.tr('Dołączyło')
+                                : context.tr('Oczekuje');
+                            final dob =
+                                '${child.dateOfBirth.day.toString().padLeft(2, '0')}-'
+                                '${child.dateOfBirth.month.toString().padLeft(2, '0')}-'
+                                '${child.dateOfBirth.year}';
+                            final tiles = <Widget>[
+                              SettingsDivider(),
+                              InfoTile(
+                                icon: Icons.child_care,
+                                label: child.name,
+                                value: [
+                                  dob,
+                                  status,
+                                  if (child.inviteCode != null &&
+                                      child.inviteCode!.isNotEmpty)
+                                    'Kod: ${child.inviteCode}',
+                                ].join(' · '),
+                                isDark: isDark,
+                              ),
+                              if (child.inviteCode != null &&
+                                  child.inviteCode!.isNotEmpty)
+                                ActionTile(
+                                  icon: Icons.copy_outlined,
+                                  label: context.tr('Kopiuj kod dziecka'),
+                                  subtitle: child.inviteCode,
+                                  color: roleColor,
+                                  isDark: isDark,
+                                  onTap: () => _copyInviteCode(
+                                    context,
+                                    child.inviteCode!,
+                                    roleColor,
+                                  ),
+                                ),
+                              ActionTile(
+                                icon: Icons.edit_outlined,
+                                label: context.tr('Edytuj dziecko'),
+                                color: roleColor,
+                                isDark: isDark,
+                                onTap: () => _showEditChild(
+                                  context,
+                                  ap,
+                                  child,
+                                  roleColor,
+                                ),
+                              ),
+                            ];
+                            final linkedId = child.linkedAccountId;
+                            if (linkedId != null) {
+                              tiles.add(
+                                ActionTile(
+                                  icon: Icons.lock_reset_outlined,
+                                  label: context.tr(
+                                    'Zresetuj hasło logowania dziecka',
+                                  ),
+                                  subtitle: context.tr(
+                                    'Link na e-mail obojga rodziców',
+                                  ),
+                                  color: roleColor,
+                                  isDark: isDark,
+                                  onTap: () => _resetChildLoginPassword(
+                                    context,
+                                    childUserId: linkedId,
+                                    ap: ap,
+                                  ),
+                                ),
+                              );
+                            }
+                            if (user?.role == UserRole.parentA) {
+                              tiles.add(
+                                ActionTile(
+                                  icon: Icons.delete_outline,
+                                  label: context.tr('Usuń profil dziecka'),
+                                  color: AppTheme.errorColor,
+                                  isDark: isDark,
+                                  onTap: () => _confirmDeleteChild(
+                                    context,
+                                    ap,
+                                    child,
+                                  ),
+                                ),
+                              );
+                            }
+                            return tiles;
+                          }),
+                        ],
+                        if (user?.role == UserRole.parentA) ...[
+                          SettingsDivider(),
+                          KeyedSubtree(
+                            key: _addChildKey,
+                            child: ActionTile(
+                              icon: Icons.person_add_outlined,
+                              label: context.tr('Dodaj dziecko'),
+                              subtitle: workspace?.children.isEmpty ?? true
+                                  ? context.tr('Dodaj pierwszy profil dziecka')
+                                  : context.tr('Dodaj kolejny profil dziecka'),
+                              color: roleColor,
+                              isDark: isDark,
+                              onTap: () => showChildOnboardingSheet(context),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
 
                   if (user?.role == UserRole.parentA) ...[
                     SizedBox(height: 20),
@@ -1053,6 +1109,219 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => EditProfileSheet(user: user, color: color),
+    );
+  }
+
+  Future<void> _showRenameWorkspace(
+    BuildContext context,
+    AppProvider ap,
+    Color color,
+  ) async {
+    final controller = TextEditingController(
+      text: ap.currentWorkspace?.name ?? '',
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Nazwa przestrzeni')),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: context.tr('Nazwa'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.tr('Anuluj')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(backgroundColor: color),
+            child: Text(
+              context.tr('Zapisz'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) {
+      controller.dispose();
+      return;
+    }
+    final name = controller.text.trim();
+    controller.dispose();
+    final success = await ap.renameWorkspace(name);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? context.tr('Zapisano nazwę przestrzeni.')
+              : (ap.authError ?? context.tr('Nie udało się zapisać.')),
+        ),
+        backgroundColor: success ? color : AppTheme.errorColor,
+      ),
+    );
+  }
+
+  Future<void> _showEditChild(
+    BuildContext context,
+    AppProvider ap,
+    ChildProfile child,
+    Color color,
+  ) async {
+    final nameController = TextEditingController(text: child.name);
+    final schoolController = TextEditingController(text: child.school ?? '');
+    var dob = child.dateOfBirth;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: Text(context.tr('Edytuj dziecko')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Imię i nazwisko'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.tr('Data urodzenia')),
+                    subtitle: Text(
+                      '${dob.day.toString().padLeft(2, '0')}-'
+                      '${dob.month.toString().padLeft(2, '0')}-'
+                      '${dob.year}',
+                    ),
+                    trailing: const Icon(Icons.calendar_today_outlined),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: dob,
+                        firstDate: DateTime(DateTime.now().year - 25),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        setLocal(() => dob = picked);
+                      }
+                    },
+                  ),
+                  TextField(
+                    controller: schoolController,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Szkoła (opcjonalnie)'),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(context.tr('Anuluj')),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  style: ElevatedButton.styleFrom(backgroundColor: color),
+                  child: Text(
+                    context.tr('Zapisz'),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (ok != true || !context.mounted) {
+      nameController.dispose();
+      schoolController.dispose();
+      return;
+    }
+
+    final success = await ap.updateWorkspaceChild(
+      childId: child.id,
+      name: nameController.text.trim(),
+      dateOfBirth: dob,
+      school: schoolController.text.trim().isEmpty
+          ? null
+          : schoolController.text.trim(),
+    );
+    nameController.dispose();
+    schoolController.dispose();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? context.tr('Zapisano profil dziecka.')
+              : (ap.authError ?? context.tr('Nie udało się zapisać.')),
+        ),
+        backgroundColor: success ? color : AppTheme.errorColor,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteChild(
+    BuildContext context,
+    AppProvider ap,
+    ChildProfile child,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Usuń profil dziecka')),
+        content: Text(
+          'Usuniesz profil „${child.name}” i powiązane konto logowania, jeśli istnieje. Tej operacji nie da się cofnąć.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.tr('Anuluj')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: Text(
+              context.tr('Usuń'),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) {
+      return;
+    }
+    final success = await ap.deleteWorkspaceChild(child.id);
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? context.tr('Usunięto profil dziecka.')
+              : (ap.authError ?? context.tr('Nie udało się usunąć.')),
+        ),
+        backgroundColor: success ? AppTheme.successColor : AppTheme.errorColor,
+      ),
     );
   }
 

@@ -21,6 +21,8 @@ import 'package:coparentes/l10n/app_strings.dart';
 
 enum _AuthMode { login, register, join, joinChild }
 
+enum _Audience { adult, child }
+
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
 
@@ -30,12 +32,14 @@ class RoleSelectionScreen extends StatefulWidget {
 
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   _AuthMode _mode = _AuthMode.login;
+  _Audience _audience = _Audience.adult;
   final _nameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _workspaceController = TextEditingController();
   final _inviteCodeController = TextEditingController();
   final _childInviteCodeController = TextEditingController();
+  final _childLoginController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
@@ -46,7 +50,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   bool? _backendReachable;
   ChildJoinPreview? _childJoinPreview;
   bool _loadingChildPreview = false;
-  DateTime _childDateOfBirth = DateTime(DateTime.now().year - 8, 6, 1);
+  DateTime? _childDateOfBirth;
 
   bool _obscureLoginPassword = true;
 
@@ -85,10 +89,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     _workspaceController.dispose();
     _inviteCodeController.dispose();
     _childInviteCodeController.dispose();
+    _childLoginController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
+
+  String _formatDob(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
 
   void _setSubmitting(bool value) {
     _submittingHintTimer?.cancel();
@@ -181,10 +189,57 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                           ? _AuthMode.join
                                           : _mode,
                                       onChanged: (mode) => setState(() {
-                                        _mode = mode;
                                         _childJoinPreview = null;
+                                        if (mode == _AuthMode.register) {
+                                          _audience = _Audience.adult;
+                                          _mode = mode;
+                                        } else if (mode == _AuthMode.join &&
+                                            _audience == _Audience.child) {
+                                          _mode = _AuthMode.joinChild;
+                                        } else {
+                                          _mode = mode;
+                                        }
                                       }),
                                     ),
+                                    if (_mode == _AuthMode.login ||
+                                        _mode == _AuthMode.join ||
+                                        _mode == _AuthMode.joinChild) ...[
+                                      const SizedBox(height: 14),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _RoleChoiceChip(
+                                              label: context.tr('Dorosły'),
+                                              selected:
+                                                  _audience == _Audience.adult,
+                                              onTap: () => setState(() {
+                                                _audience = _Audience.adult;
+                                                if (_mode ==
+                                                    _AuthMode.joinChild) {
+                                                  _mode = _AuthMode.join;
+                                                }
+                                                _childJoinPreview = null;
+                                              }),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: _RoleChoiceChip(
+                                              label: context.tr('Dziecko'),
+                                              selected:
+                                                  _audience == _Audience.child,
+                                              onTap: () => setState(() {
+                                                _audience = _Audience.child;
+                                                if (_mode == _AuthMode.join) {
+                                                  _mode = _AuthMode.joinChild;
+                                                }
+                                                _childJoinPreview = null;
+                                              }),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                     const SizedBox(height: 22),
                                     if (_backendReachable == false) ...[
                                       Container(
@@ -293,31 +348,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                               ),
                                       ),
                                     ),
-                                    if (_mode == _AuthMode.join) ...[
-                                      const SizedBox(height: 12),
-                                      Center(
-                                        child: TextButton(
-                                          onPressed: () => setState(() {
-                                            _mode = _AuthMode.joinChild;
-                                            _childJoinPreview = null;
-                                          }),
-                                          child: Text(context.tr('Wejście dziecka')),
-                                        ),
-                                      ),
-                                    ],
-                                    if (_mode == _AuthMode.joinChild) ...[
-                                      const SizedBox(height: 8),
-                                      Center(
-                                        child: TextButton(
-                                          onPressed: () => setState(() {
-                                            _mode = _AuthMode.join;
-                                            _childJoinPreview = null;
-                                          }),
-                                          child: Text(context.tr('← Powrót do dołączania rodzica'),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                     SizedBox(height: 14),
                                     if (_mode != _AuthMode.register)
                                       Text(
@@ -412,6 +442,41 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   List<Widget> _buildModeFields() {
     switch (_mode) {
       case _AuthMode.login:
+        if (_audience == _Audience.child) {
+          return [
+            _Field(
+              controller: _childLoginController,
+              label: context.tr('Login'),
+              hint: context.tr('Imię użyte przy pierwszym dołączeniu'),
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(context.tr('Data urodzenia')),
+              subtitle: Text(
+                _childDateOfBirth == null
+                    ? context.tr('Wybierz datę (DD-MM-RRRR)')
+                    : _formatDob(_childDateOfBirth!),
+              ),
+              trailing: const Icon(Icons.calendar_today_outlined),
+              onTap: _pickChildDateOfBirth,
+            ),
+            _Field(
+              controller: _passwordController,
+              label: context.tr('Hasło'),
+              hint: context.tr('Minimum 8 znaków'),
+              obscureText: _obscureLoginPassword,
+              keyboardType: TextInputType.visiblePassword,
+              autofillHints: null,
+              textInputAction: TextInputAction.go,
+              onSubmitted: (_) => _submitIfIdle(),
+              onToggleObscure: () => setState(
+                () => _obscureLoginPassword = !_obscureLoginPassword,
+              ),
+            ),
+          ];
+        }
         // Web: autofillHints: null → AutofillConfiguration.disabled →
         // autocomplete="off". Empty list [] does NOT disable (still enabled).
         // Browsers may still offer to save when type=password; Flutter cannot
@@ -625,9 +690,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               contentPadding: EdgeInsets.zero,
               title: Text(context.tr('Data urodzenia')),
               subtitle: Text(
-                '${_childDateOfBirth.day.toString().padLeft(2, '0')}.'
-                '${_childDateOfBirth.month.toString().padLeft(2, '0')}.'
-                '${_childDateOfBirth.year}',
+                _childDateOfBirth == null
+                    ? context.tr('Wybierz datę (DD-MM-RRRR)')
+                    : _formatDob(_childDateOfBirth!),
               ),
               trailing: const Icon(Icons.calendar_today_outlined),
               onTap: _pickChildDateOfBirth,
@@ -635,7 +700,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ],
           _Field(
             controller: _nameController,
-            label: context.tr('Imię (przy pierwszym logowaniu)'),
+            label: context.tr('Login (imię przy pierwszym dołączeniu)'),
             hint: 'np. Zosia',
             textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
@@ -653,12 +718,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   Future<void> _pickChildDateOfBirth() async {
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _childDateOfBirth,
-      firstDate: DateTime(DateTime.now().year - 25),
-      lastDate: DateTime.now(),
-      helpText: 'Twoja data urodzenia',
+      initialDate: _childDateOfBirth ?? DateTime(now.year - 8, 6, 1),
+      firstDate: DateTime(now.year - 25),
+      lastDate: now,
+      helpText: 'Twoja data urodzenia (DD-MM-RRRR)',
     );
 
     if (picked != null) {
@@ -830,13 +896,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final email = _emailController.text.trim();
     final password = normalizePassword(_passwordController.text);
 
-    if (_mode != _AuthMode.joinChild) {
-      if (email.isEmpty || password.isEmpty) {
-        _showMessage('Uzupełnij e-mail i hasło.');
+    final isChildLogin =
+        _mode == _AuthMode.login && _audience == _Audience.child;
+    final isChildJoin = _mode == _AuthMode.joinChild;
+
+    if (isChildLogin || isChildJoin) {
+      if (password.isEmpty) {
+        _showMessage('Uzupełnij hasło.');
         return;
       }
-    } else if (password.isEmpty) {
-      _showMessage('Uzupełnij hasło.');
+    } else if (email.isEmpty || password.isEmpty) {
+      _showMessage('Uzupełnij e-mail i hasło.');
       return;
     }
 
@@ -891,7 +961,18 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       }
     }
 
-    if (_mode == _AuthMode.joinChild) {
+    if (isChildLogin) {
+      if (_childLoginController.text.trim().length < 2) {
+        _showMessage('Podaj login (min. 2 znaki).');
+        return;
+      }
+      if (_childDateOfBirth == null) {
+        _showMessage('Wybierz datę urodzenia.');
+        return;
+      }
+    }
+
+    if (isChildJoin) {
       final childInviteCode = _childInviteCodeController.text.trim();
       if (childInviteCode.length < 6) {
         _showMessage('Kod zaproszenia dziecka musi mieć co najmniej 6 znaków.');
@@ -901,7 +982,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         _showMessage('Najpierw sprawdź kod zaproszenia dziecka.');
         return;
       }
-      if (_childDateOfBirth.isAfter(DateTime.now())) {
+      if (_childDateOfBirth == null) {
+        _showMessage('Wybierz datę urodzenia.');
+        return;
+      }
+      if (_childDateOfBirth!.isAfter(DateTime.now())) {
         _showMessage('Data urodzenia nie może być w przyszłości.');
         return;
       }
@@ -912,7 +997,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     bool success;
     switch (_mode) {
       case _AuthMode.login:
-        success = await appProvider.login(email: email, password: password);
+        if (isChildLogin) {
+          success = await appProvider.loginChildAccount(
+            login: _childLoginController.text.trim(),
+            password: password,
+            dateOfBirth: _childDateOfBirth!,
+          );
+        } else {
+          success = await appProvider.login(email: email, password: password);
+        }
         break;
       case _AuthMode.register:
         success = false;
@@ -929,7 +1022,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         success = await appProvider.accessChildAccount(
           password: password,
           childInviteCode: _childInviteCodeController.text.trim(),
-          dateOfBirth: _childDateOfBirth,
+          dateOfBirth: _childDateOfBirth!,
           name: _nameController.text.trim().isEmpty
               ? null
               : _nameController.text.trim(),

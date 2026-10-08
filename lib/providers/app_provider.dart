@@ -228,13 +228,17 @@ class AppProvider extends ChangeNotifier {
         case 'parent_already_joined':
           return 'Drugi rodzic dołączył już do tej rodziny.';
         case 'child_not_found':
-          return 'Nie znaleziono profilu dziecka dla tej daty urodzenia.';
+          return 'Nie znaleziono profilu dziecka. Poproś rodzica o nowy kod zaproszenia.';
+        case 'child_dob_mismatch':
+          return 'Data urodzenia nie zgadza się. Sprawdź ją z rodzicem.';
         case 'ambiguous_child_profile':
-          return 'Kilka profili ma tę samą datę urodzenia. Poproś rodzica o pomoc.';
+          return 'Ten stary kod rodzinny pasuje do kilku dzieci. Poproś rodzica o osobny kod dla Ciebie.';
+        case 'ambiguous_child_login':
+          return 'Kilka kont pasuje do tych danych. Poproś rodzica o pomoc w Ustawieniach.';
         case 'child_name_required':
-          return 'Podaj imię — jest wymagane przy pierwszym logowaniu.';
+          return 'Podaj login (imię) — jest wymagany przy pierwszym dołączeniu.';
         case 'child_profile_taken':
-          return 'Ten profil ma już konto. Zaloguj się hasłem.';
+          return 'To dziecko ma już konto. Zaloguj się loginem, hasłem i datą urodzenia.';
         case 'invalid_date_of_birth':
           return 'Podaj poprawną datę urodzenia.';
         case 'cors_not_allowed':
@@ -509,7 +513,72 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (error) {
-      _authError = 'Nie udało się dodać dziecka.';
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się dodać dziecka.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateWorkspaceChild({
+    required String childId,
+    String? name,
+    DateTime? dateOfBirth,
+    String? school,
+  }) async {
+    try {
+      _authError = null;
+      final session = await _authRepository.updateWorkspaceChild(
+        childId: childId,
+        name: name,
+        dateOfBirth: dateOfBirth,
+        school: school,
+        clearSchool: school == null,
+      );
+      _applySession(session);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się zaktualizować profilu dziecka.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteWorkspaceChild(String childId) async {
+    try {
+      _authError = null;
+      final session = await _authRepository.deleteWorkspaceChild(childId);
+      _applySession(session);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się usunąć profilu dziecka.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> renameWorkspace(String name) async {
+    try {
+      _authError = null;
+      final session = await _authRepository.renameWorkspace(name);
+      _applySession(session);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się zmienić nazwy przestrzeni.',
+      );
       notifyListeners();
       return false;
     }
@@ -918,6 +987,32 @@ class AppProvider extends ChangeNotifier {
         childInviteCode: childInviteCode,
         dateOfBirth: dateOfBirth,
         name: name,
+      );
+      _setDemoMode(false);
+      _applySession(session);
+      notifyListeners();
+      return true;
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się zalogować jako dziecko.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginChildAccount({
+    required String login,
+    required String password,
+    required DateTime dateOfBirth,
+  }) async {
+    try {
+      _authError = null;
+      final session = await _authRepository.loginChildAccount(
+        login: login,
+        password: password,
+        dateOfBirth: dateOfBirth,
       );
       _setDemoMode(false);
       _applySession(session);
