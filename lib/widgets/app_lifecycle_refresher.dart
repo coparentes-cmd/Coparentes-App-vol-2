@@ -38,18 +38,7 @@ class _AppLifecycleRefresherState extends State<AppLifecycleRefresher>
       return;
     }
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      appProvider.lockOnBackground();
-      return;
-    }
-
     if (state != AppLifecycleState.resumed) {
-      return;
-    }
-
-    if (appProvider.isPinLocked) {
       return;
     }
 

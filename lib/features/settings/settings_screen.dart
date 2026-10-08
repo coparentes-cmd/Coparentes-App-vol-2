@@ -19,8 +19,6 @@ import 'widgets/settings_divider.dart';
 import 'widgets/info_tile.dart';
 import 'widgets/action_tile.dart';
 import 'widgets/switch_tile.dart';
-import 'widgets/setup_pin_sheet.dart';
-import 'widgets/change_pin_sheet.dart';
 import 'widgets/ios_settings_accordion.dart';
 import '../../../widgets/language_flag.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -530,61 +528,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     expanded: _expandedId == 'security',
                     onToggle: () => _toggleSection('security'),
                     children: [
-                    SwitchTile(
+                    InfoTile(
                       icon: Icons.lock_outline,
-                      label: context.tr('PIN przy wznowieniu'),
-                      subtitle: ap.hasPinSet
-                          ? context.tr('Wymagaj PIN-u po przejściu aplikacji w tło') : context.tr('Najpierw ustaw PIN w „Zmień PIN logowania”'),
-                      value: ap.requirePinOnResume,
-                      activeColor: roleColor,
+                      label: context.tr('Logowanie'),
+                      value: context.tr('Tylko hasło (bez PIN / 2FA)'),
                       isDark: isDark,
-                      onChanged: ap.hasPinSet
-                          ? (value) => _togglePinOnResume(context, ap, value)
-                          : (value) {
-                              if (value) {
-                                _showSetupPinSheet(context, roleColor, ap,
-                                    enableOnResume: true);
-                              }
-                            },
-                    ),
-                    SettingsDivider(),
-                    SwitchTile(
-                      icon: Icons.verified_user_outlined,
-                      label: context.tr('2FA (dwuetapowa weryfikacja)'),
-                      subtitle: context.tr('Kod weryfikacyjny e-mail przy logowaniu'),
-                      value: user?.twoFactorEnabled ?? false,
-                      activeColor: roleColor,
-                      isDark: isDark,
-                      onChanged: ap.isDemoMode
-                          ? null
-                          : (value) async {
-                              final ok = await ap.updateProfile(
-                                twoFactorEnabled: value,
-                              );
-                              if (!context.mounted) return;
-                              if (!ok) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      ap.authError ??
-                                          context.tr('Nie udało się zaktualizować 2FA.'),
-                                    ),
-                                    backgroundColor: AppTheme.errorColor,
-                                  ),
-                                );
-                              }
-                            },
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.pin_outlined,
-                      label: context.tr('Zmień PIN logowania'),
-                      subtitle: ap.hasPinSet
-                          ? context.tr('Zmień 4-cyfrowy PIN')
-                          : context.tr('Ustaw 4-cyfrowy PIN'),
-                      color: roleColor,
-                      isDark: isDark,
-                      onTap: () => _showChangePinDialog(context, roleColor, ap),
                     ),
                     if (_showPreLaunchPlaceholderSections) ...[
                       SettingsDivider(),
@@ -593,19 +541,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: context.tr('Ostatnie logowanie'),
                         value: 'Dziś, ${_formatNow()}',
                         isDark: isDark,
-                      ),
-                      SettingsDivider(),
-                      ActionTile(
-                        icon: Icons.devices_outlined,
-                        label: context.tr('Zaufane urządzenia'),
-                        subtitle: context.tr('1 urządzenie zarejestrowane'),
-                        color: roleColor,
-                        isDark: isDark,
-                        onTap: () => _showFeatureInfo(
-                            context,
-                            'Zaufane urządzenia',
-                            'Zarządzaj urządzeniami z dostępem do konta. Ta funkcja będzie dostępna w pełnej wersji.',
-                            roleColor),
                       ),
                     ],
                   ]),
@@ -1229,59 +1164,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => EmailInviteSheet(color: color),
-    );
-  }
-
-  Future<void> _togglePinOnResume(
-    BuildContext context,
-    AppProvider ap,
-    bool enabled,
-  ) async {
-    final ok = await ap.setRequirePinOnResumeEnabled(enabled);
-    if (!context.mounted) {
-      return;
-    }
-    if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('Nie udało się zmienić ustawienia PIN'))),
-      );
-    }
-  }
-
-  Future<void> _showSetupPinSheet(
-    BuildContext context,
-    Color color,
-    AppProvider ap, {
-    bool enableOnResume = false,
-  }) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => SetupPinSheet(
-        color: color,
-        enableOnResume: enableOnResume,
-      ),
-    );
-  }
-
-  void _showChangePinDialog(
-    BuildContext context,
-    Color color,
-    AppProvider ap,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => ChangePinSheet(
-        color: color,
-        hasExistingPin: ap.hasPinSet,
-      ),
     );
   }
 

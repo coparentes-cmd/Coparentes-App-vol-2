@@ -29,7 +29,6 @@ import 'theme/app_theme.dart';
 import 'widgets/app_lifecycle_refresher.dart';
 import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
-import 'widgets/pin_lock_overlay.dart';
 import 'data/local/locale_store.dart';
 import 'services/e2e_session_service.dart';
 import 'utils/app_browser_back.dart';
@@ -221,20 +220,18 @@ class CoparentesApp extends StatelessWidget {
             darkTheme: AppTheme.buildDark(ap.colorScheme.primary),
             builder: (context, child) {
               return _DemoLocaleSync(
-                child: PinLockGate(
-                  child: AppLifecycleRefresher(
-                    child: MessageNotificationListener(
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: child ?? const SizedBox.shrink(),
-                          ),
-                          const Align(
-                            alignment: Alignment.topCenter,
-                            child: OfflineStatusBanner(),
-                          ),
-                        ],
-                      ),
+                child: AppLifecycleRefresher(
+                  child: MessageNotificationListener(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: child ?? const SizedBox.shrink(),
+                        ),
+                        const Align(
+                          alignment: Alignment.topCenter,
+                          child: OfflineStatusBanner(),
+                        ),
+                      ],
                     ),
                   ),
                 ),

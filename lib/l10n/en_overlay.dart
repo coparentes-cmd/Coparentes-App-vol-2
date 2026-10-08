@@ -338,6 +338,7 @@ const enOverlay = <String, String>{
   'Oczekuje akceptacji': 'Waiting for approval',
   'Okres obowiązywania': 'Validity period',
   'PIN przy wznowieniu': 'PIN when resuming',
+  'Tylko hasło (bez PIN / 2FA)': 'Password only (no PIN / 2FA)',
   'Pamiętaj o plecaku!': 'Don\'t forget your backpack!',
   'Pamiętaj o świętach': 'Keep Christmas in mind',
   'Plombowanie 2 zębów': 'Two fillings',

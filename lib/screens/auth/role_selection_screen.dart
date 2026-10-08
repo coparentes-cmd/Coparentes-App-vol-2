@@ -17,7 +17,6 @@ import '../../utils/password_normalization.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/language_flag.dart';
 import 'consent_registration_screen.dart';
-import 'otp_verification_screen.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
 enum _AuthMode { login, register, join, joinChild }
@@ -122,14 +121,6 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final appProvider = context.watch<AppProvider>();
-    final pendingOtp = appProvider.pendingLoginChallenge;
-    if (pendingOtp != null) {
-      return OtpVerificationScreen(
-        challenge: pendingOtp,
-        onCancel: appProvider.clearLoginChallenge,
-      );
-    }
-
     final authError = appProvider.authError;
 
     return Scaffold(
@@ -341,7 +332,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             ),
                           ),
                         ),
-                        if (kDebugMode)
+                        // Comic / marketing captures: --dart-define=COPARENTES_HIDE_DEBUG_BANNER=true
+                        if (kDebugMode &&
+                            !const bool.fromEnvironment(
+                              'COPARENTES_HIDE_DEBUG_BANNER',
+                            ))
                           SizedBox(
                             width: narrow ? constraints.maxWidth : 962,
                             child: Container(

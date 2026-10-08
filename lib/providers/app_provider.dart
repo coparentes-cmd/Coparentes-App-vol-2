@@ -303,13 +303,14 @@ class AppProvider extends ChangeNotifier {
         email: email,
         password: password,
       );
-      if (response.requiresOtp) {
-        // Keep password in memory only until OTP completes (forced PW change).
-        _pendingE2ePassword = password;
-        _pendingLoginChallenge = response.challenge;
-        _setDemoMode(false);
+      // Login OTP / 2FA retired — backend must return a session.
+      if (response.requiresOtp || response.session == null) {
+        _pendingLoginChallenge = null;
+        _pendingE2ePassword = null;
+        _authError =
+            'Logowanie dwuetapowe nie jest już obsługiwane. Spróbuj ponownie lub skontaktuj się z pomocą.';
         notifyListeners();
-        return true;
+        return false;
       }
       _pendingLoginChallenge = null;
       _pendingE2ePassword = null;
@@ -1178,16 +1179,8 @@ class AppProvider extends ChangeNotifier {
     return ok;
   }
 
-  void lockOnBackground() {
-    if (_currentUser == null ||
-        _isDemoMode ||
-        !_requirePinOnResume ||
-        !_hasPinSet) {
-      return;
-    }
-    _isPinLocked = true;
-    notifyListeners();
-  }
+  /// PIN-on-resume retired — kept as no-op for call-site stability.
+  void lockOnBackground() {}
 
   String? _validatePinPair(String newPin, String confirmPin) {
     if (!PinLockStore.isValidPin(newPin)) {
