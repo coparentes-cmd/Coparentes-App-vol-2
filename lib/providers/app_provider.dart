@@ -209,6 +209,8 @@ class AppProvider extends ChangeNotifier {
           return 'Ta zgoda jest wymagana do korzystania z aplikacji.';
         case 'invalid_credentials':
           return 'Nieprawidłowy e-mail lub hasło.';
+        case 'role_not_supported':
+          return 'To konto nie jest już obsługiwane (rola obserwatora została wyłączona).';
         case 'invalid_otp':
           return 'Nieprawidłowy kod weryfikacyjny.';
         case 'otp_expired':

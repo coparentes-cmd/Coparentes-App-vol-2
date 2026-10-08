@@ -2,7 +2,7 @@
 class FeatureFlags {
   FeatureFlags._();
 
-  /// Parent / observer bottom-nav and rail tab "Eksporty".
+  /// Parent bottom-nav and rail tab "Eksporty".
   ///
   /// Set to `true` to show the tab again. Finance PDF export and
   /// [ExportsProvider] keep working independently of this flag.

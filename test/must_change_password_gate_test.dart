@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:coparentes/models/models.dart';
 import 'package:coparentes/screens/auth/auth_home_resolver.dart';
 import 'package:coparentes/screens/auth/must_change_password_screen.dart';
+import 'package:coparentes/screens/auth/unsupported_role_screen.dart';
 import 'package:coparentes/screens/child/child_dashboard.dart';
 import 'package:coparentes/screens/dashboard/parent_dashboard.dart';
-import 'package:coparentes/screens/observer/observer_dashboard.dart';
 
 AppUser _user({
   required UserRole role,
@@ -61,7 +61,7 @@ void main() {
         resolveAuthenticatedHome(
           _user(role: UserRole.observer, mustChangePassword: false),
         ),
-        isA<ObserverDashboard>(),
+        isA<UnsupportedRoleScreen>(),
       );
     });
   });

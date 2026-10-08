@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../child/child_dashboard.dart';
 import '../dashboard/parent_dashboard.dart';
-import '../observer/observer_dashboard.dart';
 import 'must_change_password_screen.dart';
+import 'unsupported_role_screen.dart';
 
 /// Resolves the post-auth home widget (forced password gate, then role dashboard).
 ///
@@ -19,7 +19,8 @@ Widget resolveAuthenticatedHome(AppUser user) {
     case UserRole.child:
       return const ChildDashboard();
     case UserRole.observer:
-      return const ObserverDashboard();
+      // Product path retired; enum kept so leftover member payloads still parse.
+      return const UnsupportedRoleScreen();
     case UserRole.parentA:
     case UserRole.parentB:
       return const ParentDashboard();
