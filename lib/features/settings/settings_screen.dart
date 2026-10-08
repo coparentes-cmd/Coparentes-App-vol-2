@@ -260,6 +260,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isDark: isDark,
                       onTap: () => _showChangePasswordSheet(context, roleColor),
                     ),
+                    SettingsDivider(),
+                    ActionTile(
+                      icon: Icons.delete_outline,
+                      label: context.tr('Usuń konto'),
+                      subtitle: context.tr('Nieodwracalne – wymaga potwierdzenia'),
+                      color: AppTheme.errorColor,
+                      isDark: isDark,
+                      onTap: () => _showDeleteDialog(context, ap, roleColor),
+                    ),
                   ]),
 
                   if (user?.role == UserRole.parentA ||
@@ -649,15 +658,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: roleColor,
                       isDark: isDark,
                       onTap: () => _showRodoExportDialog(context, ap, roleColor),
-                    ),
-                    SettingsDivider(),
-                    ActionTile(
-                      icon: Icons.delete_outline,
-                      label: context.tr('Usuń konto'),
-                      subtitle: context.tr('Nieodwracalne – wymaga potwierdzenia'),
-                      color: AppTheme.errorColor,
-                      isDark: isDark,
-                      onTap: () => _showDeleteDialog(context, ap, roleColor),
                     ),
                   ]),
 

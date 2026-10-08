@@ -56,8 +56,13 @@ class DeleteAccountSheetState extends State<DeleteAccountSheet> {
     }
 
     final doneMessage = context.tr('Twoje konto zostało usunięte');
-    Navigator.of(context).pop();
-    // Same local cleanup as Settings → Wyloguj (E2E clearAll + token + offline).
+    final navigator = Navigator.of(context);
+    // Close password sheet, then Settings (same as Wyloguj) so AppGate can
+    // show RoleSelectionScreen / login without Settings left on the stack.
+    navigator.pop();
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
     ap.logout();
     messenger.showSnackBar(
       SnackBar(
