@@ -42,6 +42,79 @@ void main() {
     );
   });
 
+  test('Kinga 500 / Lukasz 1100 → Kinga winna 600 (not 1100)', () {
+    finance.debugReplaceExpenses([
+      _expense(
+        id: 'ubrania',
+        amount: 500,
+        paidBy: 'kinga',
+        status: ExpenseStatus.accepted,
+      ),
+      _expense(
+        id: 'szkola',
+        amount: 1100,
+        paidBy: 'lukasz',
+        status: ExpenseStatus.accepted,
+      ),
+    ]);
+
+    final totals = finance.paidTotalsForParents(
+      parentAId: 'kinga',
+      parentBId: 'lukasz',
+    );
+    expect(totals.paidByA, 500);
+    expect(totals.paidByB, 1100);
+
+    final balance = finance.netBalanceBetweenParents(
+      parentAId: 'kinga',
+      parentBId: 'lukasz',
+      parentAName: 'Kinga Staszewska',
+      parentBName: 'Lukasz Nowak',
+    );
+    expect(balance, isNotNull);
+    expect(balance!.debtorId, 'kinga');
+    expect(balance.creditorId, 'lukasz');
+    expect(balance.amount, 600);
+    expect(
+      finance.balanceHeadline(
+        parentAId: 'kinga',
+        parentBId: 'lukasz',
+        parentAName: 'Kinga Staszewska',
+        parentBName: 'Lukasz Nowak',
+      ),
+      'Kinga winien Lukasz: 600 PLN',
+    );
+  });
+
+  test('settled payments still count toward paid difference', () {
+    finance.debugReplaceExpenses([
+      _expense(
+        id: 'a',
+        amount: 500,
+        paidBy: 'kinga',
+        status: ExpenseStatus.settled,
+      ),
+      _expense(
+        id: 'b',
+        amount: 1100,
+        paidBy: 'lukasz',
+        status: ExpenseStatus.accepted,
+      ),
+    ]);
+
+    expect(
+      finance
+          .netBalanceBetweenParents(
+            parentAId: 'kinga',
+            parentBId: 'lukasz',
+            parentAName: 'Kinga',
+            parentBName: 'Lukasz',
+          )
+          ?.amount,
+      600,
+    );
+  });
+
   test('balance is difference of accepted paid totals (1000 - 300 = 700)', () {
     finance.debugReplaceExpenses([
       _expense(

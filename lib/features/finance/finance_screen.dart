@@ -623,7 +623,7 @@ class FinanceScreenState extends State<FinanceScreen>
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
           SizedBox(height: 20),
-          Text(context.tr('Kto zapłacił (wszystkie wydatki)'),
+          Text(context.tr('Kto zapłacił (zaakceptowane)'),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,

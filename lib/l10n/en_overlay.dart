@@ -508,6 +508,7 @@ const enOverlay = <String, String>{
   'Brak nieprzeczytanych wiadomości': 'No unread messages',
   'Eksport wątku zapisany jako PDF.': 'Thread export saved as PDF.',
   'Kto zapłacił (wszystkie wydatki)': 'Who paid (all expenses)',
+  'Kto zapłacił (zaakceptowane)': 'Who paid (accepted)',
   'Najpierw dodaj zdjęcie lub plik.': 'Add a photo or file first.',
   'Nie udało się pobrać załącznika.': 'Could not download the attachment.',
   'Nie udało się wysłać wiadomości.': 'Failed to send the message. ',

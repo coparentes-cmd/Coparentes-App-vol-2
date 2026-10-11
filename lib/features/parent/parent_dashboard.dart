@@ -101,12 +101,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   bool _handleDashboardBack() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-      return true;
-    }
-
+    // Prefer in-app tab / sub-screen history over Navigator. On Flutter web,
+    // canPop() is sometimes true for routes that do not match what the user sees,
+    // which made Safari ← appear to do nothing.
     if (_selectedIndex == 1) {
       if (_messagingKey.currentState?.handleBack() ?? false) {
         return true;
@@ -130,6 +127,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
       return true;
     }
 
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return true;
+    }
+
     return false;
   }
 
@@ -141,6 +144,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
   void initState() {
     super.initState();
     registerBrowserBackHandler(_onBrowserBack);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      markBrowserHistoryForward();
+    });
   }
 
   @override

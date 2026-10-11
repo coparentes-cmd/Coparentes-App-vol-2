@@ -1,24 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
-import '../../../../data/api/app_api_client.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
-import '../../../../providers/exports_provider.dart';
-import '../../../../providers/offline_sync_provider.dart';
+import '../../../../providers/finance_provider.dart';
 import '../../../../theme/app_theme.dart';
-import '../../../../services/receipt_attachment_service.dart';
-import '../../../../widgets/common_widgets.dart';
-import '../../../../widgets/parent_tab_scaffold.dart';
-
-import 'status_count_chip.dart';
-import 'period_chip.dart';
-import 'summary_card.dart';
-import 'category_bar.dart';
-import 'expense_card.dart';
-import 'dispute_expense_sheet.dart';
-import 'add_expense_sheet.dart';
 
 class SplitOverviewCard extends StatelessWidget {
   final FinanceProvider finance;
@@ -41,16 +26,16 @@ class SplitOverviewCard extends StatelessWidget {
       }
     }
 
-    final totalA = parentA == null
-        ? 0.0
-        : finance.expenses
-            .where((e) => e.paidBy == parentA!.id)
-            .fold(0.0, (sum, e) => sum + e.amount);
-    final totalB = parentB == null
-        ? 0.0
-        : finance.expenses
-            .where((e) => e.paidBy == parentB!.id)
-            .fold(0.0, (sum, e) => sum + e.amount);
+    final a = parentA;
+    final b = parentB;
+    final totals = a != null && b != null
+        ? finance.paidTotalsForParents(
+            parentAId: a.id,
+            parentBId: b.id,
+          )
+        : (paidByA: 0.0, paidByB: 0.0);
+    final totalA = totals.paidByA;
+    final totalB = totals.paidByB;
     final total = totalA + totalB;
     final ratioA = total > 0 ? totalA / total : 0.5;
     final nameA = parentA?.name.split(' ').first ?? 'Rodzic A';

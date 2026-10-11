@@ -50,8 +50,12 @@ class FinanceProvider extends ChangeNotifier {
     return expense.status == ExpenseStatus.pending && expense.paidBy == userId;
   }
 
-  Iterable<Expense> get _acceptedForBalance =>
-      _expenses.where((e) => e.status == ExpenseStatus.accepted);
+  /// Expenses that count toward who-paid / saldo (confirmed payments).
+  /// Pending and disputed are excluded; settled stays (money was actually paid).
+  bool _countsTowardPaidBalance(Expense expense) {
+    return expense.status == ExpenseStatus.accepted ||
+        expense.status == ExpenseStatus.settled;
+  }
 
   int get acceptedCount =>
       _expenses.where((e) => e.status == ExpenseStatus.accepted).length;
@@ -134,11 +138,47 @@ class FinanceProvider extends ChangeNotifier {
     return _expenses.where((e) => e.status == status).toList();
   }
 
+  /// Paid totals per parent for saldo / „Kto zapłacił”.
+  ///
+  /// Uses full [Expense.amount] (not amountDue / splitRatio).
+  /// Example: Kinga 500 + Łukasz 1100 → (500, 1100), saldo 600.
+  ({double paidByA, double paidByB}) paidTotalsForParents({
+    required String parentAId,
+    required String parentBId,
+    DateTime? from,
+    DateTime? to,
+    String? childId,
+  }) {
+    final Iterable<Expense> base = from != null && to != null
+        ? expensesInRange(from, to, childId: childId)
+        : _expenses;
+
+    var paidByA = 0.0;
+    var paidByB = 0.0;
+    for (final expense in base) {
+      if (!_countsTowardPaidBalance(expense)) {
+        continue;
+      }
+      if (childId != null &&
+          from == null &&
+          expense.childIds.isNotEmpty &&
+          !expense.childIds.contains(childId)) {
+        continue;
+      }
+      final payer = expense.paidBy.trim();
+      if (payer == parentAId.trim()) {
+        paidByA += expense.amount;
+      } else if (payer == parentBId.trim()) {
+        paidByB += expense.amount;
+      }
+    }
+    return (paidByA: paidByA, paidByB: paidByB);
+  }
+
   /// Positive = parent B owes parent A.
   ///
-  /// Saldo = różnica sum zaakceptowanych wydatków, które każdy rodzic
-  /// faktycznie zapłacił (np. Łukasz 1000 − Kinga 300 → Kinga winna 700).
-  /// Aktualizuje się przy każdej zmianie listy zaakceptowanych wydatków.
+  /// Saldo = |suma zapłaconych przez A − suma zapłaconych przez B|
+  /// na zaakceptowanych i rozliczonych wydatkach (pełna kwota, nie share).
   double netBalanceParentBOwesParentA({
     required String parentAId,
     required String parentBId,
@@ -146,27 +186,15 @@ class FinanceProvider extends ChangeNotifier {
     DateTime? to,
     String? childId,
   }) {
-    var paidByA = 0.0;
-    var paidByB = 0.0;
-    final source = from != null && to != null
-        ? expensesInRange(from, to, childId: childId)
-            .where((e) => e.status == ExpenseStatus.accepted)
-        : _acceptedForBalance.where((e) {
-            if (childId == null) {
-              return true;
-            }
-            return e.childIds.isEmpty || e.childIds.contains(childId);
-          });
-
-    for (final expense in source) {
-      if (expense.paidBy == parentAId) {
-        paidByA += expense.amount;
-      } else if (expense.paidBy == parentBId) {
-        paidByB += expense.amount;
-      }
-    }
+    final totals = paidTotalsForParents(
+      parentAId: parentAId,
+      parentBId: parentBId,
+      from: from,
+      to: to,
+      childId: childId,
+    );
     // A paid more → B owes the difference (positive).
-    return paidByA - paidByB;
+    return totals.paidByA - totals.paidByB;
   }
 
   ParentNetBalance? netBalanceBetweenParents({

@@ -58,6 +58,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
   void initState() {
     super.initState();
     registerBrowserBackHandler(_onBrowserBack);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      markBrowserHistoryForward();
+    });
   }
 
   @override
@@ -69,12 +72,6 @@ class _ChildDashboardState extends State<ChildDashboard> {
   }
 
   bool _handleDashboardBack() {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-      return true;
-    }
-
     if (_selectedIndex == 2) {
       if (_messagingKey.currentState?.handleBack() ?? false) {
         return true;
@@ -89,6 +86,12 @@ class _ChildDashboardState extends State<ChildDashboard> {
 
     if (_selectedIndex != 0) {
       setState(() => _selectedIndex = 0);
+      return true;
+    }
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
       return true;
     }
 
@@ -119,51 +122,51 @@ class _ChildDashboardState extends State<ChildDashboard> {
         }
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFFFFF8F0),
-      body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            _buildTodayTab(context, firstName),
-            const CalendarScreen(),
-            MessagingScreen(
-              key: _messagingKey,
-              familyOnly: true,
-              isTabActive: _selectedIndex == 2,
+        backgroundColor: const Color(0xFFFFF8F0),
+        body: SafeArea(
+          child: IndexedStack(
+            index: _selectedIndex,
+            children: [
+              _buildTodayTab(context, firstName),
+              const CalendarScreen(),
+              MessagingScreen(
+                key: _messagingKey,
+                familyOnly: true,
+                isTabActive: _selectedIndex == 2,
+              ),
+              _buildListTab(),
+            ],
+          ),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _navigateToTab,
+          backgroundColor: Colors.white,
+          selectedItemColor: AppTheme.childColor,
+          unselectedItemColor: AppTheme.textHint,
+          type: BottomNavigationBarType.fixed,
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.today),
+              label: context.tr('Dzisiaj'),
             ),
-            _buildListTab(),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month_outlined),
+              activeIcon: Icon(Icons.calendar_month),
+              label: context.tr('Kalendarz'),
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.family_restroom_outlined),
+              activeIcon: Icon(Icons.family_restroom),
+              label: familyCategoryDisplayLabel,
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.list_alt_outlined),
+              activeIcon: Icon(Icons.list_alt),
+              label: context.tr('Lista'),
+            ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _navigateToTab,
-        backgroundColor: Colors.white,
-        selectedItemColor: AppTheme.childColor,
-        unselectedItemColor: AppTheme.textHint,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.today),
-            label: context.tr('Dzisiaj'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month_outlined),
-            activeIcon: Icon(Icons.calendar_month),
-            label: context.tr('Kalendarz'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.family_restroom_outlined),
-            activeIcon: Icon(Icons.family_restroom),
-            label: familyCategoryDisplayLabel,
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt_outlined),
-            activeIcon: Icon(Icons.list_alt),
-            label: context.tr('Lista'),
-          ),
-        ],
-      ),
       ),
     );
   }
