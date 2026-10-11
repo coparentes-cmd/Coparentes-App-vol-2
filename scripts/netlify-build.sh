@@ -121,7 +121,25 @@ else:
         meta.strip(),
         html,
     )
+# Cache-bust Flutter entry scripts so Safari/SW cannot keep a stale main.dart.js.
+html = re.sub(
+    r"""(['"])flutter_bootstrap\.js\1""",
+    rf'\1flutter_bootstrap.js?v={build_id}\1',
+    html,
+)
+html = re.sub(
+    r"""(['"])main\.dart\.js\1""",
+    rf'\1main.dart.js?v={build_id}\1',
+    html,
+)
 index.write_text(html)
+# Also bust inside flutter_bootstrap.js if it hardcodes main.dart.js.
+bootstrap = Path("build/web/flutter_bootstrap.js")
+if bootstrap.exists():
+    text = bootstrap.read_text()
+    text2 = text.replace("main.dart.js", f"main.dart.js?v={build_id}")
+    if text2 != text:
+        bootstrap.write_text(text2)
 PY
 
 echo "Flutter web build completed successfully (buildId=$BUILD_ID)."

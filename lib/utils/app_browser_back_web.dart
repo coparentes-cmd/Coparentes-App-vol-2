@@ -6,6 +6,7 @@ typedef BrowserBackHandler = bool Function();
 final List<BrowserBackHandler> _handlers = <BrowserBackHandler>[];
 bool _installed = false;
 int _seq = 0;
+bool _reentrancy = false;
 
 void installAppBrowserBackHandling() {
   if (_installed) {
@@ -15,9 +16,12 @@ void installAppBrowserBackHandling() {
 
   _pushSentinel('root');
 
-  html.window.onPopState.listen((_) {
+  // Capture phase so we run before Flutter's own popstate listener.
+  html.window.addEventListener('popstate', (html.Event event) {
+    if (_reentrancy) {
+      return;
+    }
     var handled = false;
-    // Newest (deepest) handler first — e.g. finance sub-tabs before dashboard tabs.
     for (final handler in _handlers.reversed) {
       try {
         if (handler()) {
@@ -25,23 +29,25 @@ void installAppBrowserBackHandling() {
           break;
         }
       } catch (_) {
-        // Keep trying other handlers; never let a throw leave the site.
+        // Keep trying other handlers.
       }
     }
-    // Re-seed after a successful in-app back so the next Safari ← stays
-    // inside the app instead of leaving the site.
     if (handled) {
-      _pushSentinel('layer');
+      // Re-seed so the next Safari ← stays inside the app.
+      _reentrancy = true;
+      try {
+        _pushSentinel('layer');
+      } finally {
+        _reentrancy = false;
+      }
     }
-  });
+  }, true);
 }
 
 void registerBrowserBackHandler(BrowserBackHandler handler) {
   if (!_handlers.contains(handler)) {
     _handlers.add(handler);
   }
-  // Re-seed after dashboard mounts so Flutter's own history setup cannot
-  // leave us without a sentinel entry (common Safari failure mode).
   _pushSentinel('register');
 }
 
@@ -55,9 +61,13 @@ void markBrowserHistoryForward() {
 
 void _pushSentinel(String kind) {
   _seq += 1;
+  // Unique hash creates a real Safari history entry. With path URL strategy
+  // Flutter ignores the hash, so this no longer fights the router.
+  final loc = html.window.location;
+  final url = '${loc.pathname}${loc.search}#cp=$_seq';
   html.window.history.pushState(
     <String, dynamic>{'coparentes': kind, 'seq': _seq},
     '',
-    html.window.location.href,
+    url,
   );
 }

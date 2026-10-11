@@ -149,9 +149,11 @@ class FinanceProvider extends ChangeNotifier {
     DateTime? to,
     String? childId,
   }) {
-    final Iterable<Expense> base = from != null && to != null
+    final idA = parentAId.trim();
+    final idB = parentBId.trim();
+    final List<Expense> base = from != null && to != null
         ? expensesInRange(from, to, childId: childId)
-        : _expenses;
+        : List<Expense>.from(_expenses);
 
     var paidByA = 0.0;
     var paidByB = 0.0;
@@ -165,10 +167,11 @@ class FinanceProvider extends ChangeNotifier {
           !expense.childIds.contains(childId)) {
         continue;
       }
+      // Compare via == (value equality). Avoid relying on identical refs.
       final payer = expense.paidBy.trim();
-      if (payer == parentAId.trim()) {
+      if (payer == idA) {
         paidByA += expense.amount;
-      } else if (payer == parentBId.trim()) {
+      } else if (payer == idB) {
         paidByB += expense.amount;
       }
     }

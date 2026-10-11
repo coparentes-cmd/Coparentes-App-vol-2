@@ -440,23 +440,41 @@ class FinanceScreenState extends State<FinanceScreen>
     final currencyCode = app.currencyCode;
     final categoryTotals = finance.categoryTotals;
 
-    final balanceHeadline = parentA != null && parentB != null
-        ? finance.balanceHeadline(
-            parentAId: parentA.id,
-            parentBId: parentB.id,
-            parentAName: parentA.name,
-            parentBName: parentB.name,
-            currencyCode: currencyCode,
-          )
-        : context.tr('Saldo niedostępne');
-
-    final signedBalance = user != null && parentA != null && parentB != null
-        ? finance.signedBalanceForUser(
-            userId: user.id,
-            parentAId: parentA.id,
-            parentBId: parentB.id,
-          )
-        : 0.0;
+    // Headline from the same paid totals as „Kto zapłacił” (full amounts).
+    final String balanceHeadline;
+    final double signedBalance;
+    if (parentA != null && parentB != null) {
+      final totals = finance.paidTotalsForParents(
+        parentAId: parentA.id,
+        parentBId: parentB.id,
+      );
+      final net = totals.paidByA - totals.paidByB;
+      if (net.abs() < 0.01) {
+        balanceHeadline = 'Saldo';
+      } else if (net > 0) {
+        final debtor = parentB.name.split(' ').first;
+        final creditor = parentA.name.split(' ').first;
+        balanceHeadline =
+            '$debtor winien $creditor: ${net.toStringAsFixed(0)} $currencyCode';
+      } else {
+        final debtor = parentA.name.split(' ').first;
+        final creditor = parentB.name.split(' ').first;
+        balanceHeadline =
+            '$debtor winien $creditor: ${(-net).toStringAsFixed(0)} $currencyCode';
+      }
+      if (user == null) {
+        signedBalance = 0.0;
+      } else if (user.id == parentA.id) {
+        signedBalance = net;
+      } else if (user.id == parentB.id) {
+        signedBalance = -net;
+      } else {
+        signedBalance = 0.0;
+      }
+    } else {
+      balanceHeadline = context.tr('Saldo niedostępne');
+      signedBalance = 0.0;
+    }
 
     final pendingRefund = user != null
         ? finance.pendingRefundForUser(user.id)

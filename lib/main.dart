@@ -35,9 +35,13 @@ import 'services/analytics/analytics_navigator_observer.dart';
 import 'services/analytics/analytics_service.dart';
 import 'utils/app_browser_back.dart';
 import 'utils/reset_password_url.dart';
+import 'utils/url_strategy.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Path URLs (no /#/) so in-app Safari ← can use #cp=N history without
+  // fighting Flutter's default HashUrlStrategy router.
+  configureAppUrlStrategy();
   installAppBrowserBackHandling();
   await initializeDateFormatting('pl_PL', null);
   await initializeDateFormatting('en_GB', null);
