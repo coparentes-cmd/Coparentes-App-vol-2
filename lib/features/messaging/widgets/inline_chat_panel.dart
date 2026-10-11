@@ -19,6 +19,7 @@ import '../../../widgets/message_send_countdown_bar.dart';
 import 'e2e_chat_gate.dart';
 import 'thread_messages_list.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class InlineCategoryChatPanel extends StatefulWidget {
   final String? category;
@@ -58,7 +59,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
 
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Możesz dodać maksymalnie 3 załączniki.')),
         ),
@@ -76,7 +77,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(error.toString())),
       );
     }
@@ -339,7 +340,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
     final threadId = await _resolveActiveThreadId(messaging);
     if (threadId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(content: Text(context.tr('Nie udało się otworzyć rozmowy.'))),
         );
       }
@@ -372,7 +373,7 @@ class InlineCategoryChatPanelState extends State<InlineCategoryChatPanel> {
       }
     });
     if (sent == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             messaging.error ?? context.tr('Nie udało się wysłać wiadomości.'),

@@ -18,6 +18,7 @@ import '../../widgets/brand_widgets.dart';
 import '../../widgets/language_flag.dart';
 import 'consent_registration_screen.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 enum _AuthMode { login, register, join, joinChild }
 
@@ -823,7 +824,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           final appProvider =
                               this.context.read<AppProvider>();
                           if (email.isEmpty || !email.contains('@')) {
-                            messenger.showSnackBar(
+                            messenger.showTopSnackBar(
                               SnackBar(
                                 content: Text(context.tr('Podaj prawidłowy adres e-mail.')),
                               ),
@@ -847,7 +848,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             _emailController.text = email;
                             _passwordController.clear();
                             setState(() => _obscureLoginPassword = false);
-                            messenger.showSnackBar(
+                            messenger.showTopSnackBar(
                               SnackBar(
                                 content: Text(context.tr('Sprawdź swoją skrzynkę e-mail i kliknij w link, aby ustawić nowe hasło.')),
                                 backgroundColor: AppTheme.successColor,
@@ -855,7 +856,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               ),
                             );
                           } else {
-                            messenger.showSnackBar(
+                            messenger.showTopSnackBar(
                               SnackBar(
                                 content: Text(
                                   appProvider.authError ??
@@ -1052,7 +1053,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.tr(message))));
+    ScaffoldMessenger.of(context).showTopSnackBar(SnackBar(content: Text(context.tr(message))));
   }
 
   String _buttonLabel(_AuthMode mode) {

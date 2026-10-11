@@ -17,6 +17,19 @@ DateTime normalizeScheduleDate(DateTime date) =>
 bool isSameCustodyDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
+/// Monday 00:00 UTC of the ISO-style week containing [date] (Mon–Sun).
+DateTime mondayOfCalendarWeek(DateTime date) {
+  final day = normalizeScheduleDate(date);
+  return day.subtract(Duration(days: day.weekday - DateTime.monday));
+}
+
+/// Week index relative to the calendar week of [start] (Mon–Sun weeks).
+int calendarWeekIndexSince(DateTime start, DateTime current) {
+  final startMonday = mondayOfCalendarWeek(start);
+  final currentMonday = mondayOfCalendarWeek(current);
+  return currentMonday.difference(startMonday).inDays ~/ 7;
+}
+
 ({CustodyWeekPattern weekA, CustodyWeekPattern weekB}) resolveWeekPatterns(
   CustodySchedule schedule,
 ) {
@@ -76,7 +89,7 @@ UserRole custodianForScheduleDate(CustodySchedule schedule, DateTime date) {
   final patterns = resolveWeekPatterns(schedule);
   final start = normalizeScheduleDate(schedule.startDate);
   final current = normalizeScheduleDate(date);
-  final weekIndex = current.difference(start).inDays ~/ 7;
+  final weekIndex = calendarWeekIndexSince(start, current);
   if (schedule.patternType == CustodySchedulePattern.customWeek) {
     final interval = resolveCustomWeekInterval(schedule);
     final pattern =

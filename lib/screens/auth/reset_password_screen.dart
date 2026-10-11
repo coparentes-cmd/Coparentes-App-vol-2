@@ -5,6 +5,7 @@ import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/password_normalization.dart';
+import '../../utils/app_snackbar.dart';
 
 /// Full-screen form opened from a password-reset e-mail link.
 class ResetPasswordScreen extends StatefulWidget {
@@ -39,7 +40,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       rawConfirm: _confirmController.text,
     );
     if (validated.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr(validated.errorMessage!))),
       );
       return;
@@ -55,7 +56,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _submitting = false);
 
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             ap.authError ?? context.tr('Nie udało się zmienić hasła.'),
@@ -69,7 +70,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     // Backend wiped sessions; clear any local session so _AppGate shows login.
     ap.logout();
     final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
+    messenger.showTopSnackBar(
       SnackBar(
         content: Text(
           context.tr('Hasło zostało zmienione. Zaloguj się nowym hasłem.'),

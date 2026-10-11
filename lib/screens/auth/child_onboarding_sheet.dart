@@ -10,6 +10,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 Future<void> showChildOnboardingSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -159,7 +160,7 @@ class _ChildOnboardingSheetState extends State<ChildOnboardingSheet> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(content: Text(context.tr(message))),
     );
   }

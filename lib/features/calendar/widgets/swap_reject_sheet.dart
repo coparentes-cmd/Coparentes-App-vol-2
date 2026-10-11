@@ -26,6 +26,7 @@ import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class SwapRejectSheet extends StatefulWidget {
   final SwapRequest swap;
@@ -141,7 +142,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
       }
       widget.onSubmitted?.call();
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             useCounter
@@ -155,7 +156,7 @@ class SwapRejectSheetState extends State<SwapRejectSheet> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(calendarActionError(error, 'odpowiedzi na wymianę'))),
           backgroundColor: AppTheme.errorColor,

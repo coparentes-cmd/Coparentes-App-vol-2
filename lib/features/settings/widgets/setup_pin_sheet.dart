@@ -20,6 +20,7 @@ import 'action_tile.dart';
 import 'switch_tile.dart';
 import 'change_pin_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class SetupPinSheet extends StatefulWidget {
   final Color color;
@@ -71,7 +72,7 @@ class SetupPinSheetState extends State<SetupPinSheet> {
     }
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           widget.enableOnResume

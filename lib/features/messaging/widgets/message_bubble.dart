@@ -20,6 +20,7 @@ import 'e2e_message_text.dart';
 import 'schedule_message_actions.dart';
 import 'swap_message_actions.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class MessageBubble extends StatefulWidget {
   final Message message;
@@ -340,7 +341,7 @@ class MessageBubbleState extends State<MessageBubble> {
         silent: true,
       );
       if (!mounted) return;
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(
             approve
@@ -351,7 +352,7 @@ class MessageBubbleState extends State<MessageBubble> {
       );
     } catch (_) {
       if (!mounted) return;
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się zapisać odpowiedzi na grafik.')),
           backgroundColor: AppTheme.errorColor,
@@ -388,7 +389,7 @@ class MessageBubbleState extends State<MessageBubble> {
         silent: true,
       );
       if (!mounted) return;
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(
             approve
@@ -399,7 +400,7 @@ class MessageBubbleState extends State<MessageBubble> {
       );
     } catch (_) {
       if (!mounted) return;
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się zapisać odpowiedzi na wyjątek.')),
           backgroundColor: AppTheme.errorColor,
@@ -446,7 +447,7 @@ class MessageBubbleState extends State<MessageBubble> {
       }
       final message = error is ApiException && error.message == 'message_not_found'
           ? context.tr('Nie udało się zapisać etykiet — odśwież wiadomości i spróbuj ponownie.') : context.tr('Nie udało się zapisać etykiet.');
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(message)),
           backgroundColor: AppTheme.errorColor,
@@ -486,7 +487,7 @@ class MessageBubbleState extends State<MessageBubble> {
         return;
       }
 
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(
             status == SwapStatus.accepted
@@ -500,7 +501,7 @@ class MessageBubbleState extends State<MessageBubble> {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się zapisać odpowiedzi na wniosek.')),
           backgroundColor: AppTheme.errorColor,
@@ -526,7 +527,7 @@ class MessageBubbleState extends State<MessageBubble> {
     setState(() => _downloadingAttachment = false);
 
     if (payload == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr('Nie udało się pobrać załącznika.'))),
       );
       return;
@@ -546,7 +547,7 @@ class MessageBubbleState extends State<MessageBubble> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(error.toString())),
       );
     }

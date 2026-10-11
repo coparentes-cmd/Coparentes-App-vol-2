@@ -26,6 +26,7 @@ import 'schedule_request_card.dart';
 import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class ExceptionRequestSheet extends StatefulWidget {
   final DateTime day;
@@ -72,7 +73,7 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
           );
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Wniosek o wyjątek wysłany do akceptacji.')),
           backgroundColor: AppTheme.successColor,
@@ -80,7 +81,7 @@ class ExceptionRequestSheetState extends State<ExceptionRequestSheet> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(calendarActionError(error, 'wniosku o wyjątek'))),
           backgroundColor: AppTheme.errorColor,

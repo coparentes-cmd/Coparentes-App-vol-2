@@ -8,6 +8,7 @@ import '../../utils/layout_utils.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class ExportsScreen extends StatefulWidget {
   const ExportsScreen({super.key});
@@ -114,7 +115,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           saved
@@ -272,7 +273,7 @@ class _ExportJobCard extends StatelessWidget {
                         }
 
                         final provider = context.read<ExportsProvider>();
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        ScaffoldMessenger.of(context).showTopSnackBar(
                           SnackBar(
                             content: Text(
                               saved

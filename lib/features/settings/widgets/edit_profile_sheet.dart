@@ -20,6 +20,7 @@ import 'switch_tile.dart';
 import 'setup_pin_sheet.dart';
 import 'change_pin_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class EditProfileSheet extends StatefulWidget {
   final AppUser? user;
@@ -94,7 +95,7 @@ class EditProfileSheetState extends State<EditProfileSheet> {
                       if (!context.mounted) return;
                       setState(() => _submitting = false);
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showTopSnackBar(
                         SnackBar(
                           content: Text(
                             ok ? 'Profil zaktualizowany ✓' : context.tr('Nie udało się zapisać profilu.'),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/repositories/finance_repository.dart';
@@ -92,19 +93,36 @@ class FinanceProvider extends ChangeNotifier {
     return totals;
   }
 
-  Map<String, double> categoryTotalsInRange(DateTime from, DateTime to) {
+  Map<String, double> categoryTotalsInRange(
+    DateTime from,
+    DateTime to, {
+    String? childId,
+  }) {
     final Map<String, double> totals = {};
-    for (final e in expensesInRange(from, to)) {
+    for (final e in expensesInRange(from, to, childId: childId)) {
       totals[e.category] = (totals[e.category] ?? 0) + e.amount;
     }
     return totals;
   }
 
-  List<Expense> expensesInRange(DateTime from, DateTime to) {
+  List<Expense> expensesInRange(
+    DateTime from,
+    DateTime to, {
+    String? childId,
+  }) {
     final start = DateTime(from.year, from.month, from.day);
     final end = DateTime(to.year, to.month, to.day, 23, 59, 59);
     return _expenses
-        .where((e) => !e.date.isBefore(start) && !e.date.isAfter(end))
+        .where((e) {
+          if (e.date.isBefore(start) || e.date.isAfter(end)) {
+            return false;
+          }
+          if (childId == null) {
+            return true;
+          }
+          // Empty childIds = „wszystkie dzieci” on create → include for every child.
+          return e.childIds.isEmpty || e.childIds.contains(childId);
+        })
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
@@ -117,27 +135,38 @@ class FinanceProvider extends ChangeNotifier {
   }
 
   /// Positive = parent B owes parent A.
+  ///
+  /// Saldo = różnica sum zaakceptowanych wydatków, które każdy rodzic
+  /// faktycznie zapłacił (np. Łukasz 1000 − Kinga 300 → Kinga winna 700).
+  /// Aktualizuje się przy każdej zmianie listy zaakceptowanych wydatków.
   double netBalanceParentBOwesParentA({
     required String parentAId,
     required String parentBId,
     DateTime? from,
     DateTime? to,
+    String? childId,
   }) {
-    var balance = 0.0;
+    var paidByA = 0.0;
+    var paidByB = 0.0;
     final source = from != null && to != null
-        ? expensesInRange(from, to)
+        ? expensesInRange(from, to, childId: childId)
             .where((e) => e.status == ExpenseStatus.accepted)
-        : _acceptedForBalance;
+        : _acceptedForBalance.where((e) {
+            if (childId == null) {
+              return true;
+            }
+            return e.childIds.isEmpty || e.childIds.contains(childId);
+          });
 
     for (final expense in source) {
-      final due = expense.amountDue;
       if (expense.paidBy == parentAId) {
-        balance += due;
+        paidByA += expense.amount;
       } else if (expense.paidBy == parentBId) {
-        balance -= due;
+        paidByB += expense.amount;
       }
     }
-    return balance;
+    // A paid more → B owes the difference (positive).
+    return paidByA - paidByB;
   }
 
   ParentNetBalance? netBalanceBetweenParents({
@@ -147,12 +176,14 @@ class FinanceProvider extends ChangeNotifier {
     required String parentBName,
     DateTime? from,
     DateTime? to,
+    String? childId,
   }) {
     final net = netBalanceParentBOwesParentA(
       parentAId: parentAId,
       parentBId: parentBId,
       from: from,
       to: to,
+      childId: childId,
     );
     if (net.abs() < 0.01) {
       return null;
@@ -183,6 +214,7 @@ class FinanceProvider extends ChangeNotifier {
     String currencyCode = 'PLN',
     DateTime? from,
     DateTime? to,
+    String? childId,
   }) {
     final balance = netBalanceBetweenParents(
       parentAId: parentAId,
@@ -191,6 +223,7 @@ class FinanceProvider extends ChangeNotifier {
       parentBName: parentBName,
       from: from,
       to: to,
+      childId: childId,
     );
     if (balance == null) {
       return 'Saldo';
@@ -258,6 +291,16 @@ class FinanceProvider extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  @visibleForTesting
+  void debugReplaceExpenses(List<Expense> items) {
+    _expenses
+      ..clear()
+      ..addAll(items);
+    _loadedFromApi = true;
+    _error = null;
+    notifyListeners();
   }
 
   void initializeSampleData() {

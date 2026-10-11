@@ -20,6 +20,7 @@ import 'widgets/inline_chat_panel.dart';
 import 'widgets/new_thread_sheet.dart';
 import 'widgets/thread_tile.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 export 'thread_screen.dart';
 
@@ -707,7 +708,7 @@ class MessagingScreenState extends State<MessagingScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           context

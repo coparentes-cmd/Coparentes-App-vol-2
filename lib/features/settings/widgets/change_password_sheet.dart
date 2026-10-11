@@ -5,6 +5,7 @@ import '../../../../l10n/app_strings.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../utils/password_normalization.dart';
+import '../../../utils/app_snackbar.dart';
 
 class ChangePasswordSheet extends StatefulWidget {
   final Color color;
@@ -36,7 +37,7 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
       rawConfirm: _confirmController.text,
     );
     if (validated.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr(validated.errorMessage!))),
       );
       return;
@@ -51,7 +52,7 @@ class ChangePasswordSheetState extends State<ChangePasswordSheet> {
     if (!mounted) return;
     setState(() => _submitting = false);
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           ok

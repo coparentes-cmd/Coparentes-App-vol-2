@@ -10,6 +10,7 @@ import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/consent_widgets.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class RegistrationDraft {
   final String name;
@@ -92,7 +93,7 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
     if (!success) {
       setState(() => _submitting = false);
       TextInput.finishAutofillContext(shouldSave: false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             appProvider.authError ??

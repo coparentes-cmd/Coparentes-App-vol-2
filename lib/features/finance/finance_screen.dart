@@ -9,8 +9,10 @@ import '../../../providers/exports_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/receipt_attachment_service.dart';
+import '../../../utils/app_browser_back.dart';
 import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/layout_utils.dart';
+import '../../../utils/tab_history_stack.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/parent_tab_scaffold.dart';
 import 'widgets/status_count_chip.dart';
@@ -22,6 +24,7 @@ import 'widgets/expense_card.dart';
 import 'widgets/dispute_expense_sheet.dart';
 import 'widgets/add_expense_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 enum _ReportPeriod { thisMonth, quarter, year, custom }
 
@@ -44,18 +47,25 @@ class FinanceScreen extends StatefulWidget {
 class FinanceScreenState extends State<FinanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TabHistoryStack _financeTabHistory = TabHistoryStack();
+  int _lastFinanceTab = 0;
+  bool _suppressFinanceTabHistory = false;
   ExpenseStatus? _expenseFilter;
+  bool _expenseThisMonthOnly = false;
   String? _highlightExpenseId;
   final Map<String, GlobalKey> _expenseItemKeys = {};
   _ReportPeriod _reportPeriod = _ReportPeriod.thisMonth;
   _FinanceReportType _reportType = _FinanceReportType.chronological;
   DateTime? _customReportFrom;
   DateTime? _customReportTo;
+  /// `null` = wszystkie dzieci w rodzinie.
+  String? _reportChildId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onFinanceTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final app = context.read<AppProvider>();
@@ -107,6 +117,7 @@ class FinanceScreenState extends State<FinanceScreen>
 
     setState(() {
       _expenseFilter = null;
+      _expenseThisMonthOnly = false;
       _highlightExpenseId = expenseId;
     });
 
@@ -148,8 +159,53 @@ class FinanceScreenState extends State<FinanceScreen>
 
   @override
   void dispose() {
+    _tabController.removeListener(_onFinanceTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onFinanceTabChanged() {
+    if (_tabController.indexIsChanging) {
+      return;
+    }
+    final index = _tabController.index;
+    if (index == _lastFinanceTab) {
+      return;
+    }
+    if (!_suppressFinanceTabHistory) {
+      _financeTabHistory.push(_lastFinanceTab);
+      markBrowserHistoryForward();
+    }
+    _lastFinanceTab = index;
+    _suppressFinanceTabHistory = false;
+  }
+
+  /// Handles in-tab back (filters / Saldo→Wydatki→Raporty). Returns true when consumed.
+  bool handleBack() {
+    if (_expenseThisMonthOnly || _expenseFilter != null) {
+      setState(() {
+        _expenseThisMonthOnly = false;
+        _expenseFilter = null;
+      });
+      return true;
+    }
+
+    final previous = _financeTabHistory.pop();
+    if (previous != null) {
+      _suppressFinanceTabHistory = true;
+      _lastFinanceTab = previous;
+      _tabController.animateTo(previous);
+      return true;
+    }
+
+    if (_tabController.index != 0) {
+      _suppressFinanceTabHistory = true;
+      _lastFinanceTab = 0;
+      _tabController.animateTo(0);
+      return true;
+    }
+
+    return false;
   }
 
   @override
@@ -510,6 +566,7 @@ class FinanceScreenState extends State<FinanceScreen>
                   color: AppTheme.primaryTeal,
                   icon: Icons.calendar_month,
                   currencyCode: currencyCode,
+                  onTap: _openThisMonthExpenses,
                 ),
               ),
               SizedBox(width: 12),
@@ -616,7 +673,7 @@ class FinanceScreenState extends State<FinanceScreen>
     FinanceProvider finance,
     bool isReadOnly,
   ) {
-    final filtered = finance.filteredExpenses(_expenseFilter);
+    final filtered = _visibleExpenses(finance);
     final app = context.watch<AppProvider>();
     final user = app.currentUser;
     final members = app.currentWorkspace?.members ?? [];
@@ -647,6 +704,23 @@ class FinanceScreenState extends State<FinanceScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(
+                      context.tr('Ten miesiąc'),
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    selected: _expenseThisMonthOnly,
+                    onSelected: (selected) {
+                      setState(() => _expenseThisMonthOnly = selected);
+                    },
+                    selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.15),
+                    checkmarkColor: AppTheme.primaryTeal,
+                    padding: EdgeInsets.zero,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
                 ...filters.map(
                   (filter) => Padding(
                     padding: const EdgeInsets.only(right: 6),
@@ -674,9 +748,9 @@ class FinanceScreenState extends State<FinanceScreen>
           child: filtered.isEmpty
               ? EmptyState(
                   icon: Icons.receipt_long,
-                  title: _expenseFilter == null
+                  title: _expenseFilter == null && !_expenseThisMonthOnly
                       ? context.tr('Brak wydatków') : context.tr('Brak wydatków w tym filtrze'),
-                  subtitle: _expenseFilter == null
+                  subtitle: _expenseFilter == null && !_expenseThisMonthOnly
                       ? context.tr('Dodaj pierwszy wydatek ręcznie lub z paragonu') : context.tr('Spróbuj innego filtra statusu'),
                 )
               : ListView.builder(
@@ -706,7 +780,7 @@ class FinanceScreenState extends State<FinanceScreen>
                             ExpenseStatus.accepted,
                           );
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(context).showTopSnackBar(
                               SnackBar(
                                 content: Text(context.tr('Wydatek zaakceptowany. Saldo zostało zaktualizowane.'),
                                 ),
@@ -716,7 +790,7 @@ class FinanceScreenState extends State<FinanceScreen>
                           }
                         } catch (error) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(context).showTopSnackBar(
                               SnackBar(
                                 content: Text(context.tr(
                                   _financeStatusErrorMessage(
@@ -738,7 +812,7 @@ class FinanceScreenState extends State<FinanceScreen>
                             ExpenseStatus.settled,
                           );
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(context).showTopSnackBar(
                               SnackBar(
                                 content: Text(context.tr('Oznaczono jako rozliczone poza aplikacją.'),
                                 ),
@@ -748,7 +822,7 @@ class FinanceScreenState extends State<FinanceScreen>
                           }
                         } catch (error) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(context).showTopSnackBar(
                               SnackBar(
                                 content: Text(context.tr(
                                   _financeStatusErrorMessage(
@@ -776,9 +850,14 @@ class FinanceScreenState extends State<FinanceScreen>
     final app = context.watch<AppProvider>();
     final exports = context.watch<ExportsProvider>();
     final (parentA, parentB) = _resolveParents(app);
+    final children = app.currentWorkspace?.children ?? const <ChildProfile>[];
     final currencyCode = app.currencyCode;
     final (from, to) = _reportDateRange();
-    final rangeExpenses = finance.expensesInRange(from, to);
+    final rangeExpenses = finance.expensesInRange(
+      from,
+      to,
+      childId: _reportChildId,
+    );
 
     Widget reportContent;
     switch (_reportType) {
@@ -812,7 +891,11 @@ class FinanceScreenState extends State<FinanceScreen>
               );
         break;
       case _FinanceReportType.statistical:
-        final totals = finance.categoryTotalsInRange(from, to);
+        final totals = finance.categoryTotalsInRange(
+          from,
+          to,
+          childId: _reportChildId,
+        );
         reportContent = totals.isEmpty
             ? Text(context.tr('Brak danych statystycznych w tym okresie.'),
                 style: TextStyle(color: AppTheme.textSecondary),
@@ -847,6 +930,7 @@ class FinanceScreenState extends State<FinanceScreen>
                 currencyCode: currencyCode,
                 from: from,
                 to: to,
+                childId: _reportChildId,
               )
             : 'Saldo niedostępne';
         reportContent = Column(
@@ -966,6 +1050,37 @@ class FinanceScreenState extends State<FinanceScreen>
               ),
             ],
           ),
+          if (children.isNotEmpty) ...[
+            SizedBox(height: 20),
+            Text(
+              context.tr('Dzieci'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                PeriodChip(
+                  label: context.tr('Wszystkie dzieci'),
+                  selected: _reportChildId == null,
+                  onSelected: () => setState(() => _reportChildId = null),
+                ),
+                ...children.map(
+                  (child) => PeriodChip(
+                    label: child.name.split(' ').first,
+                    selected: _reportChildId == child.id,
+                    onSelected: () =>
+                        setState(() => _reportChildId = child.id),
+                  ),
+                ),
+              ],
+            ),
+          ],
           SizedBox(height: 20),
           Container(
             width: double.infinity,
@@ -1035,7 +1150,7 @@ class FinanceScreenState extends State<FinanceScreen>
                               return;
                             }
                             final provider = context.read<ExportsProvider>();
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(context).showTopSnackBar(
                               SnackBar(
                                 content: Text(
                                   saved
@@ -1077,7 +1192,7 @@ class FinanceScreenState extends State<FinanceScreen>
           : false;
       if (!context.mounted) return;
       final provider = context.read<ExportsProvider>();
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             saved
@@ -1094,9 +1209,31 @@ class FinanceScreenState extends State<FinanceScreen>
     }
   }
 
+  List<Expense> _visibleExpenses(FinanceProvider finance) {
+    var list = finance.filteredExpenses(_expenseFilter);
+    if (_expenseThisMonthOnly) {
+      final now = DateTime.now();
+      list = list
+          .where(
+            (e) => e.date.year == now.year && e.date.month == now.month,
+          )
+          .toList();
+    }
+    return list;
+  }
+
   void _openExpensesFiltered(ExpenseStatus? status) {
     setState(() {
       _expenseFilter = status;
+      _expenseThisMonthOnly = false;
+      _tabController.index = 1;
+    });
+  }
+
+  void _openThisMonthExpenses() {
+    setState(() {
+      _expenseFilter = null;
+      _expenseThisMonthOnly = true;
       _tabController.index = 1;
     });
   }
@@ -1148,7 +1285,7 @@ class FinanceScreenState extends State<FinanceScreen>
           : false;
       if (!context.mounted) return;
       final provider = context.read<ExportsProvider>();
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             saved
@@ -1162,7 +1299,7 @@ class FinanceScreenState extends State<FinanceScreen>
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się wygenerować eksportu.')),
           backgroundColor: AppTheme.errorColor,

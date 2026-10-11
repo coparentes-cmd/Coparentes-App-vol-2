@@ -27,6 +27,7 @@ import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class SelectedDayCard extends StatelessWidget {
   final DateTime day;
@@ -311,7 +312,7 @@ class SelectedDayCard extends StatelessWidget {
       return;
     }
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się usunąć zdarzenia.')),
         ),

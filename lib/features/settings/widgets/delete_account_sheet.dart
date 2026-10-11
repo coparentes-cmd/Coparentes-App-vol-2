@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 import '../../../../utils/password_normalization.dart';
 
 /// Password confirmation step for account soft-delete.
@@ -64,7 +65,7 @@ class DeleteAccountSheetState extends State<DeleteAccountSheet> {
       navigator.pop();
     }
     ap.logout();
-    messenger.showSnackBar(
+    messenger.showTopSnackBar(
       SnackBar(
         content: Text(doneMessage),
         backgroundColor: AppTheme.successColor,

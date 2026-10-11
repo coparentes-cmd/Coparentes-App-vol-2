@@ -1,11 +1,9 @@
-import 'dart:async';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
 typedef BrowserBackHandler = bool Function();
 
 final List<BrowserBackHandler> _handlers = <BrowserBackHandler>[];
-StreamSubscription<html.PopStateEvent>? _subscription;
 bool _installed = false;
 
 void installAppBrowserBackHandling() {
@@ -14,17 +12,20 @@ void installAppBrowserBackHandling() {
   }
   _installed = true;
 
-  html.window.history.pushState(
-    <String, dynamic>{'coparentes': 'root'},
-    '',
-    html.window.location.href,
-  );
+  _pushSentinel('root');
 
-  _subscription = html.window.onPopState.listen((_) {
+  html.window.onPopState.listen((_) {
+    var handled = false;
     for (final handler in _handlers.reversed) {
       if (handler()) {
-        return;
+        handled = true;
+        break;
       }
+    }
+    // Re-seed a history entry after a successful in-app back so the next
+    // browser ← still stays inside the app instead of leaving the site.
+    if (handled) {
+      _pushSentinel('layer');
     }
   });
 }
@@ -40,8 +41,12 @@ void unregisterBrowserBackHandler(BrowserBackHandler handler) {
 }
 
 void markBrowserHistoryForward() {
+  _pushSentinel('layer');
+}
+
+void _pushSentinel(String kind) {
   html.window.history.pushState(
-    <String, dynamic>{'coparentes': 'layer'},
+    <String, dynamic>{'coparentes': kind},
     '',
     html.window.location.href,
   );

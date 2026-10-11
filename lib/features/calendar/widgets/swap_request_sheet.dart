@@ -26,6 +26,7 @@ import 'exception_request_card.dart';
 import 'day_action_buttons.dart';
 import 'exception_request_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class SwapRequestSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -96,7 +97,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
       if (!mounted) return;
       widget.onSubmitted?.call();
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Wniosek wysłany. Drugi rodzic zobaczy go w wiadomościach → Zmiana grafiku.'),
           ),
@@ -105,7 +106,7 @@ class SwapRequestSheetState extends State<SwapRequestSheet> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(calendarActionError(error, 'zmiany opieki'))),
           backgroundColor: AppTheme.errorColor,

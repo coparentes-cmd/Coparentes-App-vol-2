@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../l10n/app_strings.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/app_snackbar.dart';
 
 /// Dismissible sheet: show a freshly generated E2E recovery code (Settings / R3).
 class RecoveryCodeSheet extends StatelessWidget {
@@ -18,7 +19,7 @@ class RecoveryCodeSheet extends StatelessWidget {
   Future<void> _copy(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: code));
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(content: Text(context.tr('Kod skopiowany do schowka'))),
     );
   }

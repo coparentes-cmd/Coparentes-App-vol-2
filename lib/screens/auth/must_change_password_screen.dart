@@ -5,6 +5,7 @@ import '../../l10n/app_strings.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/password_normalization.dart';
+import '../../utils/app_snackbar.dart';
 
 /// Full-screen, non-dismissible gate after login with a temporary password.
 class MustChangePasswordScreen extends StatefulWidget {
@@ -33,7 +34,7 @@ class _MustChangePasswordScreenState extends State<MustChangePasswordScreen> {
       rawConfirm: _confirmController.text,
     );
     if (validated.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr(validated.errorMessage!))),
       );
       return;
@@ -48,7 +49,7 @@ class _MustChangePasswordScreenState extends State<MustChangePasswordScreen> {
     setState(() => _submitting = false);
 
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             ap.authError ?? context.tr('Nie udało się zmienić hasła.'),

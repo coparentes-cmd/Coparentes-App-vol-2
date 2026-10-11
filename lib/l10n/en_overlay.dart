@@ -64,6 +64,7 @@ const enOverlay = <String, String>{
   'Wtorek': 'Tuesday',
   'Wygląd': 'Appearance',
   'Dziecko': 'Child',
+  'Dzieci': 'Children',
   'Dzisiaj': 'Today',
   'Eksport': 'Export',
   'English': 'English',
@@ -772,6 +773,7 @@ const enOverlay = <String, String>{
   'Północ (00:00) będzie wyświetlana jako wydarzenie całodniowe':
       'Midnight (00:00) will be shown as an all-day event',
   'Godzina przekazania': 'Handover time',
+  'Wybierz godzinę': 'Choose time',
   'Miejsce przekazania': 'Handover place',
   'E-mail': 'Email',
   'E-mail partnera': 'Partner’s email',

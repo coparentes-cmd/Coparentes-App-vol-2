@@ -11,6 +11,7 @@ import '../../../services/e2e_crypto_service.dart';
 import '../../../services/e2e_session_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/password_normalization.dart';
+import '../../../utils/app_snackbar.dart';
 
 /// Bottom sheet: ask for login password to unlock messages after process restart.
 ///
@@ -342,7 +343,7 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
     }
 
     final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(
+    messenger?.showTopSnackBar(
       SnackBar(
         content: Text(context.tr('Historia czatu odzyskana!')),
         backgroundColor: AppTheme.successColor,
@@ -456,7 +457,7 @@ class _E2eUnlockSheetState extends State<_E2eUnlockSheet> {
     }
 
     final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(
+    messenger?.showTopSnackBar(
       SnackBar(
         content: Text(
           context.tr(

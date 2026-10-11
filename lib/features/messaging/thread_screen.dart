@@ -19,6 +19,7 @@ import '../../../widgets/message_send_countdown_bar.dart';
 import 'widgets/e2e_chat_gate.dart';
 import 'widgets/thread_messages_list.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class ThreadScreen extends StatefulWidget {
   final String threadId;
@@ -53,7 +54,7 @@ class ThreadScreenState extends State<ThreadScreen> {
 
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.length >= maxMessageAttachmentsPerMessage) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Możesz dodać maksymalnie 3 załączniki.')),
         ),
@@ -71,7 +72,7 @@ class ThreadScreenState extends State<ThreadScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(error.toString())),
       );
     }
@@ -387,7 +388,7 @@ class ThreadScreenState extends State<ThreadScreen> {
     setState(() => _sending = false);
     if (sent == null) {
       final err = context.read<MessagingProvider>().error;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(err ?? context.tr('Nie udało się wysłać wiadomości.')),
           backgroundColor: AppTheme.errorColor,
@@ -465,7 +466,7 @@ class ThreadScreenState extends State<ThreadScreen> {
               }
 
               final provider = context.read<ExportsProvider>();
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.of(context).showTopSnackBar(
                 SnackBar(
                   content: Text(
                     saved

@@ -49,4 +49,46 @@ void main() {
       UserRole.parentB,
     );
   });
+
+  test('alternating weeks flip on Monday even when start is mid-week', () {
+    // Start Wednesday 12 Aug 2026 → calendar week Mon 10–Sun 16 is week A.
+    final schedule = CustodySchedule(
+      id: 't',
+      patternType: CustodySchedulePattern.weekAlternating,
+      startDate: DateTime.utc(2026, 8, 12),
+      endDate: DateTime.utc(2026, 8, 24),
+      weekA: const CustodyWeekPattern({}),
+      weekB: const CustodyWeekPattern({}),
+      status: CustodyScheduleStatus.active,
+      proposedById: 'a',
+      createdAt: DateTime.now(),
+    );
+
+    expect(DateTime.utc(2026, 8, 12).weekday, DateTime.wednesday);
+    expect(
+      custodianForScheduleDate(schedule, DateTime.utc(2026, 8, 12)),
+      UserRole.parentA,
+    );
+    expect(
+      custodianForScheduleDate(schedule, DateTime.utc(2026, 8, 16)),
+      UserRole.parentA,
+      reason: 'Sunday still same Mon–Sun week as start',
+    );
+    expect(
+      custodianForScheduleDate(schedule, DateTime.utc(2026, 8, 17)),
+      UserRole.parentB,
+      reason: 'Next Monday starts the other parent week',
+    );
+  });
+
+  test('mondayOfCalendarWeek anchors Sunday to previous Monday', () {
+    expect(
+      mondayOfCalendarWeek(DateTime.utc(2026, 8, 16)),
+      DateTime.utc(2026, 8, 10),
+    );
+    expect(
+      mondayOfCalendarWeek(DateTime.utc(2026, 8, 10)),
+      DateTime.utc(2026, 8, 10),
+    );
+  });
 }

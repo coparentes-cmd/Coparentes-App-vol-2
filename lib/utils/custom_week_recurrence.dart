@@ -1,4 +1,5 @@
 import '../models/models.dart';
+import 'custody_schedule_utils.dart';
 
 const customWeekIntervalMetaKey = '_weekInterval';
 
@@ -50,7 +51,7 @@ DateTime endDateFromCustomOccurrences({
   var matched = 0;
   var cursor = start;
   for (var i = 0; i < 3700 && matched < occurrenceCount; i++) {
-    final weekIndex = cursor.difference(start).inDays ~/ 7;
+    final weekIndex = calendarWeekIndexSince(start, cursor);
     final onCycle = weekIndex % interval == 0;
     if (onCycle && weekdays.contains(cursor.weekday)) {
       matched++;

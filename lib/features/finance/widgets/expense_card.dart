@@ -20,6 +20,7 @@ import 'split_overview_card.dart';
 import 'dispute_expense_sheet.dart';
 import 'add_expense_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class ExpenseCard extends StatefulWidget {
   final Expense expense;
@@ -95,7 +96,7 @@ class ExpenseCardState extends State<ExpenseCard> {
     final data = await context.read<FinanceProvider>().getReceipt(expenseId);
     if (!context.mounted) return;
     if (data == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się pobrać paragonu.')),
           backgroundColor: AppTheme.errorColor,
@@ -106,7 +107,7 @@ class ExpenseCardState extends State<ExpenseCard> {
 
     final contentBase64 = data['contentBase64'] as String?;
     if (contentBase64 == null || contentBase64.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Brak zapisanego paragonu.')),
           backgroundColor: AppTheme.warningColor,

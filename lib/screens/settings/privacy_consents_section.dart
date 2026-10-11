@@ -6,6 +6,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/consent_widgets.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class PrivacyConsentsSection extends StatefulWidget {
   final Color roleColor;
@@ -66,7 +67,7 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
     }
 
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             appProvider.authError ?? context.tr('Nie udało się zaktualizować zgody.'),
@@ -117,7 +118,7 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
     setState(() => _bulkBusy = false);
 
     if (firstError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(firstError),
           backgroundColor: AppTheme.errorColor,

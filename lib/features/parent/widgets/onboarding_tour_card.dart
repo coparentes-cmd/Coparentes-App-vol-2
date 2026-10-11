@@ -7,6 +7,7 @@ import '../../../l10n/app_strings.dart';
 import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/app_browser_back.dart';
 import '../../settings/settings_screen.dart';
 import '../../settings/widgets/email_invite_sheet.dart';
 import '../../settings/widgets/parent_invite_actions_sheet.dart';
@@ -179,6 +180,7 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
         );
         return;
       }
+      markBrowserHistoryForward();
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => const SettingsScreen(

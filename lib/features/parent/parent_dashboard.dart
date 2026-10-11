@@ -11,6 +11,7 @@ import '../../../utils/app_browser_back.dart';
 import '../../../utils/demo_time.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../utils/messaging_helpers.dart';
+import '../../../utils/tab_history_stack.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/finance/finance_screen.dart';
@@ -28,7 +29,7 @@ class ParentDashboard extends StatefulWidget {
 
 class _ParentDashboardState extends State<ParentDashboard> {
   int _selectedIndex = 0;
-  int _previousTabIndex = 0;
+  final TabHistoryStack _tabHistory = TabHistoryStack();
   DateTime _calendarFocusDay = DemoTime.now();
   int _calendarFocusRequestId = 0;
   String? _pendingOpenThreadId;
@@ -41,12 +42,11 @@ class _ParentDashboardState extends State<ParentDashboard> {
   final GlobalKey<FinanceScreenState> _financeScreenKey = GlobalKey();
 
   void _navigateToTab(int index) {
-    if (index != _selectedIndex) {
-      _previousTabIndex = _selectedIndex;
-      if (index != 0) {
-        markBrowserHistoryForward();
-      }
+    if (index == _selectedIndex) {
+      return;
     }
+    _tabHistory.push(_selectedIndex);
+    markBrowserHistoryForward();
     setState(() => _selectedIndex = index);
     if (index == 1) {
       context.read<OfflineSyncProvider>().pollMessagingNow();
@@ -57,46 +57,31 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   void _openCalendarOnDay(DateTime day) {
-    markBrowserHistoryForward();
-    setState(() {
-      _calendarFocusDay = DateTime(day.year, day.month, day.day);
-      _calendarFocusRequestId += 1;
-      _selectedIndex = 2;
-    });
+    _calendarFocusDay = DateTime(day.year, day.month, day.day);
+    _calendarFocusRequestId += 1;
+    _navigateToTab(2);
   }
 
   void _openChatThread(String threadId) {
-    _previousTabIndex = _selectedIndex;
-    markBrowserHistoryForward();
-    setState(() {
-      _pendingOpenThreadId = threadId;
-      _openThreadRequestId += 1;
-      _pendingOpenCategory = null;
-      _selectedIndex = 1;
-    });
+    _pendingOpenThreadId = threadId;
+    _openThreadRequestId += 1;
+    _pendingOpenCategory = null;
+    _navigateToTab(1);
     context.read<OfflineSyncProvider>().pollMessagingNow();
   }
 
   void _openChatCategory(String category) {
-    _previousTabIndex = _selectedIndex;
-    markBrowserHistoryForward();
-    setState(() {
-      _pendingOpenCategory = category;
-      _openCategoryRequestId += 1;
-      _pendingOpenThreadId = null;
-      _selectedIndex = 1;
-    });
+    _pendingOpenCategory = category;
+    _openCategoryRequestId += 1;
+    _pendingOpenThreadId = null;
+    _navigateToTab(1);
     context.read<OfflineSyncProvider>().pollMessagingNow();
   }
 
   void _openFinanceExpense(String expenseId) {
-    _previousTabIndex = _selectedIndex;
-    markBrowserHistoryForward();
-    setState(() {
-      _pendingOpenExpenseId = expenseId;
-      _openExpenseRequestId += 1;
-      _selectedIndex = 3;
-    });
+    _pendingOpenExpenseId = expenseId;
+    _openExpenseRequestId += 1;
+    _navigateToTab(3);
     _refreshFinanceNow();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -107,8 +92,9 @@ class _ParentDashboardState extends State<ParentDashboard> {
   }
 
   void _returnFromChatThread() {
+    final previous = _tabHistory.pop() ?? 0;
     setState(() {
-      _selectedIndex = _previousTabIndex;
+      _selectedIndex = previous;
       _pendingOpenThreadId = null;
       _pendingOpenCategory = null;
     });
@@ -127,8 +113,20 @@ class _ParentDashboardState extends State<ParentDashboard> {
       }
     }
 
+    if (_selectedIndex == 3) {
+      if (_financeScreenKey.currentState?.handleBack() ?? false) {
+        return true;
+      }
+    }
+
+    final previous = _tabHistory.pop();
+    if (previous != null) {
+      setState(() => _selectedIndex = previous);
+      return true;
+    }
+
     if (_selectedIndex != 0) {
-      setState(() => _selectedIndex = _previousTabIndex);
+      setState(() => _selectedIndex = 0);
       return true;
     }
 
@@ -137,7 +135,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
   bool _onBrowserBack() => _handleDashboardBack();
 
-  bool get _canExitApp => _selectedIndex == 0;
+  bool get _canExitApp => _selectedIndex == 0 && _tabHistory.isEmpty;
 
   @override
   void initState() {

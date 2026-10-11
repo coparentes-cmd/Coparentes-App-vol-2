@@ -6,6 +6,7 @@ import '../../../../l10n/app_strings.dart';
 import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
+import '../../../../utils/app_browser_back.dart';
 import '../../../../utils/calendar_date_utils.dart';
 import '../../../../utils/demo_time.dart';
 import '../../../../utils/layout_utils.dart';
@@ -383,6 +384,7 @@ class _DashboardHomeState extends State<DashboardHome> {
   }
 
   void _openSettings(BuildContext context) {
+    markBrowserHistoryForward();
     Navigator.push(
       context,
       MaterialPageRoute(

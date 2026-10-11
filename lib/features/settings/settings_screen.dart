@@ -24,6 +24,7 @@ import 'widgets/switch_tile.dart';
 import 'widgets/ios_settings_accordion.dart';
 import '../../../widgets/language_flag.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 const _showPreLaunchPlaceholderSections = false;
 
@@ -546,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               await ap.toggleHighConflictMode();
                               if (!context.mounted) return;
                               if (ap.authError != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(context).showTopSnackBar(
                                   SnackBar(
                                     content: Text(
                                       ap.authError ??
@@ -1034,7 +1035,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           success
@@ -1141,7 +1142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           success
@@ -1172,7 +1173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           success
@@ -1227,7 +1228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await ap.resetChildPassword(childUserId);
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           ok
@@ -1339,7 +1340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              ScaffoldMessenger.of(context).showTopSnackBar(
                 SnackBar(
                   content: Text(
                       'Subskrypcja zostanie anulowana 15 maja 2025'),

@@ -19,6 +19,7 @@ import 'widgets/schedule_setup_banner.dart';
 import 'widgets/pending_schedule_banner.dart';
 import 'widgets/day_action_buttons.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? focusDay;
@@ -420,7 +421,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final accepted = await showCustodyScheduleWizard(context);
     if (accepted == true && context.mounted) {
       await _refreshSwapMessaging(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Grafik wysłany do akceptacji. Drugi rodzic zobaczy go w banerze kalendarza i w czacie.'),
           ),
@@ -458,7 +459,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         widget.onScheduleRejected?.call();
       }
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             approve
@@ -469,7 +470,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(calendarActionError(error, 'odpowiedzi na grafik'))),
           backgroundColor: AppTheme.errorColor,

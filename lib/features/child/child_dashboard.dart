@@ -11,6 +11,7 @@ import '../../../theme/app_theme.dart';
 import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/demo_time.dart';
 import '../../../utils/app_browser_back.dart';
+import '../../../utils/tab_history_stack.dart';
 import '../../../config/messaging_categories.dart';
 import '../../../l10n/locale_policy.dart';
 import '../../screens/calendar/calendar_screen.dart';
@@ -30,7 +31,7 @@ class ChildDashboard extends StatefulWidget {
 
 class _ChildDashboardState extends State<ChildDashboard> {
   int _selectedIndex = 0;
-  int _previousTabIndex = 0;
+  final TabHistoryStack _tabHistory = TabHistoryStack();
   final GlobalKey<MessagingScreenState> _messagingKey = GlobalKey();
   int _mood = 3;
   final List<ChildTodoList> _lists = [];
@@ -80,8 +81,14 @@ class _ChildDashboardState extends State<ChildDashboard> {
       }
     }
 
+    final previous = _tabHistory.pop();
+    if (previous != null) {
+      setState(() => _selectedIndex = previous);
+      return true;
+    }
+
     if (_selectedIndex != 0) {
-      setState(() => _selectedIndex = _previousTabIndex);
+      setState(() => _selectedIndex = 0);
       return true;
     }
 
@@ -91,12 +98,11 @@ class _ChildDashboardState extends State<ChildDashboard> {
   bool _onBrowserBack() => _handleDashboardBack();
 
   void _navigateToTab(int index) {
-    if (index != _selectedIndex) {
-      _previousTabIndex = _selectedIndex;
-      if (index != 0) {
-        markBrowserHistoryForward();
-      }
+    if (index == _selectedIndex) {
+      return;
     }
+    _tabHistory.push(_selectedIndex);
+    markBrowserHistoryForward();
     setState(() => _selectedIndex = index);
   }
 
@@ -106,7 +112,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
     final firstName = user?.name.split(' ').first ?? 'Zosiu';
 
     return PopScope(
-      canPop: _selectedIndex == 0,
+      canPop: _selectedIndex == 0 && _tabHistory.isEmpty,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _handleDashboardBack();

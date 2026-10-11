@@ -7,6 +7,7 @@ import '../../services/e2e_crypto_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/password_normalization.dart';
 import 'widgets/recovery_code_sheet.dart';
+import '../../utils/app_snackbar.dart';
 
 /// Shared Settings / onboarding-tour flow: unlock if needed, generate code,
 /// show [RecoveryCodeSheet]. Returns true when a code sheet was shown and closed.
@@ -30,7 +31,7 @@ Future<bool> runGenerateRecoveryCodeFlow(
 
   switch (outcome.result) {
     case GenerateRecoveryCodeResult.needsUnlock:
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             context.tr('Odblokuj szyfrowanie czatu, żeby wygenerować kod.'),
@@ -39,7 +40,7 @@ Future<bool> runGenerateRecoveryCodeFlow(
       );
       return false;
     case GenerateRecoveryCodeResult.error:
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             ap.authError ??
@@ -52,7 +53,7 @@ Future<bool> runGenerateRecoveryCodeFlow(
     case GenerateRecoveryCodeResult.success:
       final code = outcome.code;
       if (code == null || code.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(
             content: Text(
               context.tr('Nie udało się wygenerować kodu odzyskiwania.'),

@@ -20,6 +20,7 @@ import 'split_overview_card.dart';
 import 'expense_card.dart';
 import 'dispute_expense_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class AddExpenseSheet extends StatefulWidget {
   final bool initialOcrMode;
@@ -107,7 +108,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
 
     final app = context.read<AppProvider>();
     if (app.isDemoMode) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         const SnackBar(
           content: Text(
             'OCR paragonu wymaga konta produkcyjnego (nie trybu demo).',
@@ -154,7 +155,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
       final confidenceLabel = parsed.confidence == 'medium'
           ? context.tr('Rozpoznano dane z paragonu. Sprawdź przed zapisem.') : context.tr('Rozpoznanie niepewne — uzupełnij brakujące pola ręcznie.');
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(confidenceLabel),
           backgroundColor: AppTheme.successColor,
@@ -163,7 +164,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isParsingReceipt = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(_receiptParseErrorMessage(error))),
           backgroundColor: AppTheme.errorColor,
@@ -493,7 +494,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
     final amount = double.tryParse(_amountController.text.replaceAll(',', '.'));
 
     if (title.isEmpty || amount == null || amount <= 0) {
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Uzupełnij poprawnie opis i kwotę wydatku.')),
           backgroundColor: AppTheme.warningColor,
@@ -503,7 +504,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
     }
 
     if (amount > 1000000) {
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(
             context.tr('Kwota nie może przekroczyć 1 000 000.'),
@@ -539,7 +540,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
       );
     } catch (_) {
       if (!mounted) return;
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się zapisać wydatku.')),
           backgroundColor: AppTheme.errorColor,
@@ -550,7 +551,7 @@ class AddExpenseSheetState extends State<AddExpenseSheet> {
 
     if (!mounted) return;
     Navigator.pop(context);
-    messenger.showSnackBar(
+    messenger.showTopSnackBar(
       SnackBar(
         content: Text(
           _pendingReceipt != null

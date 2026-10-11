@@ -20,6 +20,7 @@ import 'split_overview_card.dart';
 import 'expense_card.dart';
 import 'add_expense_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class DisputeExpenseSheet extends StatefulWidget {
   final Expense expense;
@@ -43,7 +44,7 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
   Future<void> _submit() async {
     final reason = _noteController.text.trim();
     if (reason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Podaj powód sporu.')),
           backgroundColor: AppTheme.warningColor,
@@ -61,7 +62,7 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
       );
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(
             content: Text(context.tr('Wydatek oznaczony jako sporny. Drugi rodzic zobaczy zmianę automatycznie.'),
             ),
@@ -71,7 +72,7 @@ class DisputeExpenseSheetState extends State<DisputeExpenseSheet> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(
             content: Text(context.tr(
               error is ApiException &&

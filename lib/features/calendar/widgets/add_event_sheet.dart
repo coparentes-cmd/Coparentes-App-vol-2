@@ -10,6 +10,7 @@ import '../../../../widgets/common_widgets.dart';
 
 import '../calendar_helpers.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class AddEventSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -146,7 +147,7 @@ class AddEventSheetState extends State<AddEventSheet> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Podaj tytuł zdarzenia.')),
           backgroundColor: AppTheme.errorColor,
@@ -211,7 +212,7 @@ class AddEventSheetState extends State<AddEventSheet> {
       }
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(
             _isEditing
@@ -222,7 +223,7 @@ class AddEventSheetState extends State<AddEventSheet> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(calendarActionError(error, 'zdarzenia'))),
           backgroundColor: AppTheme.errorColor,

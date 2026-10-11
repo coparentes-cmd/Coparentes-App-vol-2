@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/file_download.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 const _allCategoriesFilter = 'All';
 
@@ -281,7 +282,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           context.tr(
@@ -295,21 +296,21 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
   Future<void> _openDocument(BuildContext context, FamilyDocument document) async {
     if (document.fileUrl != null && document.fileUrl!.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text('Link: ${document.fileUrl}')),
       );
       return;
     }
 
     if (!document.hasFile) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr('Brak pliku do tego dokumentu.'))),
       );
       return;
     }
 
     final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
+    messenger.showTopSnackBar(
       SnackBar(content: Text(context.tr('Pobieram dokument…'))),
     );
 
@@ -320,7 +321,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
 
     if (payload == null) {
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Nie udało się pobrać dokumentu.')),
           backgroundColor: AppTheme.errorColor,
@@ -331,7 +332,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     final contentBase64 = payload['contentBase64'] as String?;
     if (contentBase64 == null || contentBase64.isEmpty) {
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Brak danych pliku.')),
           backgroundColor: AppTheme.errorColor,
@@ -354,7 +355,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       if (!context.mounted) {
         return;
       }
-      messenger.showSnackBar(
+      messenger.showTopSnackBar(
         SnackBar(content: Text(error.toString())),
       );
     }
@@ -421,7 +422,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(error.toString())),
       );
     } finally {
@@ -433,7 +434,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
 
   Future<void> _save() async {
     if (_pendingFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr('Najpierw dodaj zdjęcie lub plik.'))),
       );
       return;
@@ -441,7 +442,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
 
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(context.tr('Podaj tytuł dokumentu.'))),
       );
       return;
@@ -464,7 +465,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
     setState(() => _isSaving = false);
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(
           created == null

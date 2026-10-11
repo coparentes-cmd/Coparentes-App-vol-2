@@ -6,6 +6,7 @@ import '../../../providers/app_provider.dart';
 import '../../../providers/messaging_provider.dart';
 import '../../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class NewThreadSheet extends StatefulWidget {
   const NewThreadSheet({super.key});
@@ -107,7 +108,7 @@ class NewThreadSheetState extends State<NewThreadSheet> {
       return;
     }
     if (messagingCategoryChannels.contains(subject)) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr('Ten temat jest zarezerwowany dla kanału systemowego.'),
           ),
@@ -140,7 +141,7 @@ class NewThreadSheetState extends State<NewThreadSheet> {
     if (thread == null) {
       final detail = messaging.error ??
           'Nie udało się utworzyć wątku.';
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(
           content: Text(context.tr(detail)),
           backgroundColor: AppTheme.errorColor,

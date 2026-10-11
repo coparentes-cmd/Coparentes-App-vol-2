@@ -12,6 +12,7 @@ import '../utils/custom_week_recurrence.dart';
 import 'booking_style_calendar_picker.dart';
 import 'mini_calendar_date_sheet.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 enum _CustomEndRule { never, onDate, afterOccurrences }
 
@@ -76,6 +77,47 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
 
   String _formatDate(DateTime date) =>
       '${date.day}.${date.month}.${date.year}';
+
+  TimeOfDay _parseHandoverTime() {
+    final raw = _handoverTimeController.text.trim();
+    final parts = raw.split(':');
+    if (parts.length >= 2) {
+      final hour = int.tryParse(parts[0].trim());
+      final minute = int.tryParse(parts[1].trim());
+      if (hour != null &&
+          minute != null &&
+          hour >= 0 &&
+          hour <= 23 &&
+          minute >= 0 &&
+          minute <= 59) {
+        return TimeOfDay(hour: hour, minute: minute);
+      }
+    }
+    return const TimeOfDay(hour: 17, minute: 0);
+  }
+
+  Future<void> _pickHandoverTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _parseHandoverTime(),
+      initialEntryMode: TimePickerEntryMode.dial,
+      helpText: context.tr('Godzina przekazania'),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    final hour = picked.hour.toString().padLeft(2, '0');
+    final minute = picked.minute.toString().padLeft(2, '0');
+    setState(() {
+      _handoverTimeController.text = '$hour:$minute';
+    });
+  }
 
   void _selectPattern(CustodySchedulePattern pattern) {
     final creatorRole =
@@ -218,7 +260,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         return false;
       }
       if (_usesTemplateDateRange) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(
             content: Text(context.tr('Data końca musi być taka sama lub późniejsza niż data startu.'),
             ),
@@ -228,7 +270,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       } else if (_usesCustomRecurrence) {
         final message = _customWeekdays.isEmpty
             ? context.tr('Wybierz co najmniej jeden dzień tygodnia.') : context.tr('Sprawdź datę końca grafiku.');
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(
             content: Text(context.tr(message)),
             backgroundColor: AppTheme.errorColor,
@@ -428,7 +470,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
         SnackBar(content: Text(_scheduleErrorMessage(error))),
       );
     } finally {
@@ -532,11 +574,18 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         ),
         SizedBox(height: 8),
         TextField(
+          readOnly: true,
+          controller: _handoverTimeController,
+          onTap: _pickHandoverTime,
           decoration: InputDecoration(
             labelText: context.tr('Godzina przekazania'),
             hintText: '17:00',
+            suffixIcon: IconButton(
+              tooltip: context.tr('Wybierz godzinę'),
+              icon: const Icon(Icons.schedule),
+              onPressed: _pickHandoverTime,
+            ),
           ),
-          controller: _handoverTimeController,
         ),
         SizedBox(height: 12),
         TextField(

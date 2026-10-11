@@ -9,6 +9,7 @@ import '../../../../models/models.dart';
 import '../../../../providers/app_provider.dart';
 import '../../../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 class EmailInviteSheet extends StatefulWidget {
   final Color color;
@@ -96,7 +97,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
     if (code.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: code));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text('Kod zaproszenia skopiowany: $code'),
         backgroundColor: widget.color,
@@ -166,7 +167,7 @@ class EmailInviteSheetState extends State<EmailInviteSheet> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(
         content: Text(context.tr(message)),
         backgroundColor:

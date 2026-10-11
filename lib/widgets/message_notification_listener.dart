@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/app_snackbar.dart';
 
 class MessageNotificationListener extends StatefulWidget {
   final Widget child;
@@ -36,7 +37,7 @@ class _MessageNotificationListenerState extends State<MessageNotificationListene
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
           SnackBar(
             content: Row(
               children: [

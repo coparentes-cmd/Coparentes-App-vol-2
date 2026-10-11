@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/utils/app_snackbar.dart';
 
 enum ParentInviteAction { copy, sendEmail }
 
@@ -122,7 +123,7 @@ Future<void> copyParentInviteCode(
 }) async {
   await Clipboard.setData(ClipboardData(text: inviteCode));
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
+  ScaffoldMessenger.of(context).showTopSnackBar(
     SnackBar(
       content: Text('Kod zaproszenia skopiowany: $inviteCode'),
       backgroundColor: color,
