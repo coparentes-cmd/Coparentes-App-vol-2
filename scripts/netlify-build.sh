@@ -68,6 +68,18 @@ if [ -f docs/instrukcja-nowa-rodzina.pptx ]; then
 fi
 
 PUBLIC_URL="${COPARENTES_PUBLIC_URL:-https://getcoparentes.app}"
+# Netlify UI sometimes stores helper text instead of a bare URL.
+if [[ ! "$PUBLIC_URL" =~ ^https?:// ]]; then
+  extracted="$(printf '%s' "$PUBLIC_URL" | grep -oE 'https?://[^[:space:]←→]+' | head -1 || true)"
+  if [ -n "$extracted" ]; then
+    echo "WARN: COPARENTES_PUBLIC_URL looked like helper text; using extracted URL: $extracted"
+    PUBLIC_URL="$extracted"
+  else
+    echo "WARN: COPARENTES_PUBLIC_URL invalid ($PUBLIC_URL); falling back to https://getcoparentes.app"
+    PUBLIC_URL="https://getcoparentes.app"
+  fi
+fi
+PUBLIC_URL="${PUBLIC_URL%/}"
 
 flutter build web \
   --release \

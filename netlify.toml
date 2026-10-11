@@ -31,6 +31,17 @@
   to = "/downloads/:splat"
   status = 200
 
+# Dokumenty prawne — serwuj HTML, nie SPA shell
+[[redirects]]
+  from = "/regulamin.html"
+  to = "/regulamin.html"
+  status = 200
+
+[[redirects]]
+  from = "/polityka-prywatnosci.html"
+  to = "/polityka-prywatnosci.html"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

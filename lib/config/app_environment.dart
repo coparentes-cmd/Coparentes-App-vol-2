@@ -6,13 +6,54 @@ class AppEnvironment {
   /// Priority:
   /// 1. `--dart-define=COPARENTES_PUBLIC_URL=...` (Netlify / CI)
   /// 2. Production default → custom domain
+  ///
+  /// Tolerates a misconfigured dart-define that embeds the real URL inside
+  /// helper text (e.g. Netlify UI "Same value for all → https://…").
   static String get publicSiteUrl {
     const configured = String.fromEnvironment('COPARENTES_PUBLIC_URL');
-    if (configured.isNotEmpty) {
-      return configured.replaceAll(RegExp(r'/+$'), '');
+    return resolvePublicSiteUrl(configured);
+  }
+
+  /// Visible for tests.
+  static String resolvePublicSiteUrl(String configured) {
+    const fallback = 'https://getcoparentes.app';
+    final trimmed = configured.trim();
+    if (trimmed.isEmpty) {
+      return fallback;
     }
 
-    return 'https://getcoparentes.app';
+    final direct = _asHttpUrl(trimmed);
+    if (direct != null) {
+      return direct;
+    }
+
+    final embedded = RegExp(r'https?://[^\s<>"]+').firstMatch(trimmed);
+    if (embedded != null) {
+      final extracted = _asHttpUrl(embedded.group(0)!);
+      if (extracted != null) {
+        return extracted;
+      }
+    }
+
+    return fallback;
+  }
+
+  static String? _asHttpUrl(String value) {
+    final cleaned = value
+        .trim()
+        .replaceAll(RegExp(r'/+$'), '')
+        .replaceAll(RegExp(r'[,.;:]+$'), '');
+    final uri = Uri.tryParse(cleaned);
+    if (uri == null) {
+      return null;
+    }
+    if (uri.scheme != 'https' && uri.scheme != 'http') {
+      return null;
+    }
+    if (uri.host.isEmpty) {
+      return null;
+    }
+    return cleaned;
   }
 
   /// API base URL (must end with `/api`).
