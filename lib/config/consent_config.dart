@@ -125,10 +125,11 @@ class ConsentConfig {
           'z aplikacji w celu jej ulepszania. Dane nie są powiązane z Twoim kontem.',
       expandBlocks: [
         ConsentExpandBlock.text(
-          'Korzystamy z anonimowej analityki produktowej (np. PostHog w trybie '
-          'prywatności). Zbieramy wyłącznie: wyświetlenia ekranów i zdarzenia '
-          'interfejsu — bez danych osobowych i bez treści wiadomości. '
-          'Wyłączenie możliwe w Ustawieniach → Prywatność.',
+          'Korzystamy z Google Analytics 4 (GA4) w trybie z zgodą. Zbieramy '
+          'wyłącznie wyświetlenia ekranów i zdarzenia interfejsu — bez adresu '
+          'e-mail, bez treści wiadomości i bez identyfikatorów dzieci. '
+          'Skrypt ładuje się dopiero po tej zgodzie. Wyłączenie możliwe w '
+          'Ustawieniach → Prywatność.',
         ),
       ],
     ),

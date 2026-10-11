@@ -56,6 +56,17 @@ class AppEnvironment {
     return cleaned;
   }
 
+  /// GA4 Measurement ID for the app property (empty disables analytics).
+  ///
+  /// Override: `--dart-define=COPARENTES_GA_MEASUREMENT_ID=G-XXXX`
+  static String get gaMeasurementId {
+    const configured = String.fromEnvironment(
+      'COPARENTES_GA_MEASUREMENT_ID',
+      defaultValue: 'G-YL9C69F0ZL',
+    );
+    return configured.trim();
+  }
+
   /// API base URL (must end with `/api`).
   ///
   /// Priority:

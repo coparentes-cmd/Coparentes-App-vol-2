@@ -81,11 +81,14 @@ if [[ ! "$PUBLIC_URL" =~ ^https?:// ]]; then
 fi
 PUBLIC_URL="${PUBLIC_URL%/}"
 
+GA_MEASUREMENT_ID="${COPARENTES_GA_MEASUREMENT_ID:-G-YL9C69F0ZL}"
+
 flutter build web \
   --release \
   --no-wasm-dry-run \
   --dart-define=COPARENTES_API_BASE_URL="$API_BASE_URL" \
-  --dart-define=COPARENTES_PUBLIC_URL="$PUBLIC_URL"
+  --dart-define=COPARENTES_PUBLIC_URL="$PUBLIC_URL" \
+  --dart-define=COPARENTES_GA_MEASUREMENT_ID="$GA_MEASUREMENT_ID"
 
 if [ ! -f build/web/index.html ]; then
   echo "ERROR: Flutter web build failed - build/web/index.html not found."

@@ -31,6 +31,8 @@ import 'widgets/message_notification_listener.dart';
 import 'widgets/offline_status_banner.dart';
 import 'data/local/locale_store.dart';
 import 'services/e2e_session_service.dart';
+import 'services/analytics/analytics_navigator_observer.dart';
+import 'services/analytics/analytics_service.dart';
 import 'utils/app_browser_back.dart';
 import 'utils/reset_password_url.dart';
 
@@ -216,6 +218,9 @@ class CoparentesApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            navigatorObservers: [
+              AnalyticsNavigatorObserver(),
+            ],
             theme: AppTheme.buildLight(ap.colorScheme.primary),
             darkTheme: AppTheme.buildDark(ap.colorScheme.primary),
             builder: (context, child) {
@@ -331,6 +336,7 @@ class _AppGateState extends State<_AppGate> {
     final user = appProvider.currentUser;
     if (user == null) {
       _hydratedUserId = null;
+      AnalyticsService.instance.logScreen('auth');
       return const RoleSelectionScreen();
     }
 
@@ -338,6 +344,9 @@ class _AppGateState extends State<_AppGate> {
       _hydrateSession(user.id);
     }
 
+    AnalyticsService.instance.logScreen(
+      user.role == UserRole.child ? 'home_child' : 'home_parent',
+    );
     return resolveAuthenticatedHome(user);
   }
 
@@ -390,6 +399,9 @@ class _AppGateState extends State<_AppGate> {
         final appProvider = context.read<AppProvider>();
         final role = appProvider.currentUser?.role;
         final isChild = role == UserRole.child;
+
+        // Sync GA4 with ANALYTICS consent (no-op for child / denied).
+        await appProvider.loadUserConsents();
 
         if (isChild) {
           await messagingProvider.loadThreads(

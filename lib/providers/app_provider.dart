@@ -18,6 +18,7 @@ import '../data/repositories/auth_repository.dart';
 import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../models/models.dart';
+import '../services/analytics/analytics_service.dart';
 import '../services/e2e_crypto_service.dart';
 import '../services/e2e_key_storage_service.dart';
 import '../services/e2e_session_service.dart';
@@ -160,6 +161,7 @@ class AppProvider extends ChangeNotifier {
     _isDemoMode = enabled;
     if (enabled) {
       DemoTime.activate();
+      unawaited(AnalyticsService.instance.disable());
     } else {
       DemoTime.deactivate();
     }
@@ -290,6 +292,7 @@ class AppProvider extends ChangeNotifier {
           await _authRepository.logout();
         } else {
           _applySession(session);
+          unawaited(_refreshAnalyticsFromServer());
         }
       }
     } finally {
@@ -324,6 +327,7 @@ class AppProvider extends ChangeNotifier {
       _applySession(session);
       _retainLoginPasswordIfMustChange(password);
       notifyListeners();
+      unawaited(_refreshAnalyticsFromServer(logLogin: true));
       return true;
     } catch (error) {
       _pendingE2ePassword = null;
@@ -366,6 +370,7 @@ class AppProvider extends ChangeNotifier {
         _pendingLoginPassword = null;
       }
       notifyListeners();
+      unawaited(_refreshAnalyticsFromServer(logLogin: true));
       return true;
     } catch (error) {
       if (error is ApiException && error.message == 'invalid_otp') {
@@ -437,6 +442,7 @@ class AppProvider extends ChangeNotifier {
       // Tour starts at invite-parent (legacy step 1 = E2E recovery retired).
       await setOnboardingTourStep(2);
       await loadUserConsents();
+      AnalyticsService.instance.logEvent('sign_up');
       notifyListeners();
       return true;
     } catch (error) {
@@ -489,6 +495,7 @@ class AppProvider extends ChangeNotifier {
   Future<bool> loadUserConsents() async {
     if (_currentUser == null || _isDemoMode) {
       _userConsents = null;
+      await AnalyticsService.instance.disable();
       notifyListeners();
       return false;
     }
@@ -496,6 +503,7 @@ class AppProvider extends ChangeNotifier {
     try {
       _authError = null;
       _userConsents = await _consentRepository.fetchConsents();
+      await _syncAnalyticsConsent();
       notifyListeners();
       return true;
     } catch (_) {
@@ -528,6 +536,9 @@ class AppProvider extends ChangeNotifier {
         current.add(updated);
       }
       _userConsents = current;
+      if (type == ConsentType.analytics) {
+        await _syncAnalyticsConsent();
+      }
       notifyListeners();
       return true;
     } catch (error) {
@@ -537,6 +548,34 @@ class AppProvider extends ChangeNotifier {
       );
       notifyListeners();
       return false;
+    }
+  }
+
+  bool get hasAnalyticsConsent {
+    final consents = _userConsents;
+    if (consents == null) {
+      return false;
+    }
+    for (final record in consents) {
+      if (record.type == ConsentType.analytics) {
+        return record.granted;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _syncAnalyticsConsent() async {
+    await AnalyticsService.instance.syncFromUserState(
+      analyticsConsentGranted: hasAnalyticsConsent,
+      role: _currentUser?.role,
+      isDemoMode: _isDemoMode,
+    );
+  }
+
+  Future<void> _refreshAnalyticsFromServer({bool logLogin = false}) async {
+    final ok = await loadUserConsents();
+    if (ok && logLogin) {
+      AnalyticsService.instance.logEvent('login');
     }
   }
 
@@ -1370,6 +1409,7 @@ class AppProvider extends ChangeNotifier {
   void logout() {
     _currentUser = null;
     _currentWorkspace = null;
+    _userConsents = null;
     _authError = null;
     _pendingE2ePassword = null;
     _pendingLoginPassword = null;
@@ -1378,6 +1418,7 @@ class AppProvider extends ChangeNotifier {
     _requirePinOnResume = false;
     _hasPinSet = false;
     _isPinLocked = false;
+    unawaited(AnalyticsService.instance.disable());
     unawaited(_e2eSession?.clearAll());
     onE2eSessionChanged?.call();
     unawaited(_authRepository.logout());
