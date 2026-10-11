@@ -23,6 +23,7 @@ class PrivacyConsentsSection extends StatefulWidget {
 
 class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
   bool _loading = true;
+  bool _bulkBusy = false;
   String? _error;
 
   @override
@@ -53,6 +54,10 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
   }
 
   Future<void> _toggleConsent(ConsentType type, bool granted) async {
+    if (_bulkBusy) {
+      return;
+    }
+
     final appProvider = context.read<AppProvider>();
     final ok = await appProvider.updateUserConsent(type: type, granted: granted);
 
@@ -71,6 +76,53 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
       );
     } else {
       setState(() {});
+    }
+  }
+
+  Future<void> _toggleSelectAll(bool selectAll) async {
+    if (_bulkBusy) {
+      return;
+    }
+
+    final appProvider = context.read<AppProvider>();
+    final consents = appProvider.userConsents;
+    if (consents == null || consents.isEmpty) {
+      return;
+    }
+
+    final targets = consents
+        .where((c) => !c.required && c.granted != selectAll)
+        .toList();
+    if (targets.isEmpty) {
+      return;
+    }
+
+    setState(() => _bulkBusy = true);
+
+    String? firstError;
+    for (final record in targets) {
+      final ok = await appProvider.updateUserConsent(
+        type: record.type,
+        granted: selectAll,
+      );
+      if (!ok && firstError == null) {
+        firstError = appProvider.authError;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _bulkBusy = false);
+
+    if (firstError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(firstError),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
@@ -114,13 +166,54 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
       return const SizedBox.shrink();
     }
 
+    final optional = consents.where((c) => !c.required).toList();
+    final allOptionalGranted =
+        optional.isNotEmpty && optional.every((c) => c.granted);
+
     return Column(
       children: [
+        if (optional.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+            child: Row(
+              children: [
+                Switch(
+                  value: allOptionalGranted,
+                  onChanged: _bulkBusy ? null : _toggleSelectAll,
+                  activeThumbColor: AppTheme.primaryTeal,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    context.tr('Zaznacz wszystkie'),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: widget.isDark
+                          ? Colors.white
+                          : AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+                if (_bulkBusy)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+          ),
+          Divider(
+            color: widget.isDark ? Colors.white12 : AppTheme.dividerColor,
+            height: 1,
+          ),
+        ],
         for (var i = 0; i < consents.length; i++) ...[
           _ConsentSettingsRow(
             record: consents[i],
             isDark: widget.isDark,
-            onChanged: consents[i].required
+            onChanged: consents[i].required || _bulkBusy
                 ? null
                 : (value) => _toggleConsent(consents[i].type, value),
           ),

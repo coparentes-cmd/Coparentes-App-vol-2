@@ -331,6 +331,7 @@ const enOverlay = <String, String>{
   'Podaj powód sporu.': 'Enter a reason for the dispute.',
   'Powtórz nowe hasło': 'Repeat new password',
   'Prywatność i zgody': 'Privacy and consents',
+  'Zaznacz wszystkie': 'Select all',
   'Wyślij zaproszenie': 'Send invitation',
   'Zaufane urządzenia': 'Trusted devices',
   '39,99 PLN / miesiąc': '39.99 PLN / month',
