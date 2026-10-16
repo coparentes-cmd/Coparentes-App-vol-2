@@ -50,7 +50,10 @@ class NewThreadSheetState extends State<NewThreadSheet> {
             ),
           ),
           SizedBox(height: 8),
-          Text('Wątek pojawi się w zakładce $allTabDisplayLabel. Możesz oznaczać wiadomości prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
+          Text(
+            context.tr(
+              'Wątek pojawi się w zakładce Wszystkie. Możesz oznaczać wiadomości prywatnymi etykietami (np. szkoła, zdrowie, finanse).',
+            ),
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.textSecondary,
@@ -62,7 +65,7 @@ class NewThreadSheetState extends State<NewThreadSheet> {
             enabled: !_creating,
             decoration: InputDecoration(
               labelText: context.tr('Temat wątku'),
-              hintText: 'np. Angielski – zmiana terminu',
+              hintText: context.tr('np. Angielski – zmiana terminu'),
             ),
             onSubmitted: (_) => _createThread(),
           ),
@@ -70,7 +73,9 @@ class NewThreadSheetState extends State<NewThreadSheet> {
             SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _selectedChildId ?? children.first.id,
-              decoration: InputDecoration(labelText: 'Dotyczy dziecka'),
+              decoration: InputDecoration(
+                labelText: context.tr('Dotyczy dziecka'),
+              ),
               items: children
                   .map(
                     (child) => DropdownMenuItem(

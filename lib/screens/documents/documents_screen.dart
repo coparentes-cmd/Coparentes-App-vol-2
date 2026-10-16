@@ -133,7 +133,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Sejf rodzinny',
+                    context.tr('Sejf rodzinny'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

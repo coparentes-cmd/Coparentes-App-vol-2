@@ -324,7 +324,7 @@ class MessagingScreenState extends State<MessagingScreen> {
 
     final twoPane = useTwoPaneLayout(context);
     // Category chats (Z dziećmi / Zmiana grafiku) stay full-width — the
-    // master–detail split is only for Bez kategorii / Nieprzeczytane thread lists.
+    // master–detail split is only for Wszystkie / Nieprzeczytane thread lists.
     final categoryTabFullWidth = _listTab == _ChatListTab.family ||
         _listTab == _ChatListTab.schedule;
     if (twoPane && !categoryTabFullWidth) {

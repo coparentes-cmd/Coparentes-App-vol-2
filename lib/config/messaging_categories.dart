@@ -13,7 +13,7 @@ const String scheduleCategoryChannel = 'Zmiana grafiku';
 /// Channel id / API value — keep stable for backend compatibility.
 const String allTabLabel = 'Wszystkie';
 /// UI label for [allTabLabel].
-const String allTabDisplayLabel = 'Bez kategorii';
+const String allTabDisplayLabel = 'Wszystkie';
 
 /// Visible label for messaging category chips and titles.
 String messagingCategoryLabel(String category) {

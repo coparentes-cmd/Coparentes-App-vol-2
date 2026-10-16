@@ -515,9 +515,9 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
         if (_showsDateSection) ...[
           SizedBox(height: 16),
           if (_usesTemplateDateRange) ...[
-            const Text(
-              'Daty',
-              style: TextStyle(fontWeight: FontWeight.w600),
+            Text(
+              context.tr('Daty'),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 8),
             DecoratedBox(
@@ -569,9 +569,9 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
             ),
         ],
         SizedBox(height: 20),
-        const Text(
-          'Przekazanie dziecka',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          context.tr('Przekazanie dziecka'),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         SizedBox(height: 8),
         TextField(
@@ -607,9 +607,9 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Powtarzanie niestandardowe',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          context.tr('Powtarzanie niestandardowe'),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         SizedBox(height: 8),
         DecoratedBox(

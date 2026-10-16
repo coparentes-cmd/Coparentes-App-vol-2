@@ -52,7 +52,7 @@ class GeneralInboxTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        allTabDisplayLabel,
+                        context.tr(allTabDisplayLabel),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
