@@ -67,6 +67,17 @@ class AppEnvironment {
     return configured.trim();
   }
 
+  /// Microsoft Clarity project id (empty disables Clarity).
+  ///
+  /// Override: `--dart-define=COPARENTES_CLARITY_PROJECT_ID=xxxxx`
+  static String get clarityProjectId {
+    const configured = String.fromEnvironment(
+      'COPARENTES_CLARITY_PROJECT_ID',
+      defaultValue: 'yyktc3x67w',
+    );
+    return configured.trim();
+  }
+
   /// API base URL (must end with `/api`).
   ///
   /// Priority:

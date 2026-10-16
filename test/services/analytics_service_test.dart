@@ -1,5 +1,6 @@
 import 'package:coparentes/models/models.dart';
 import 'package:coparentes/services/analytics/analytics_service.dart';
+import 'package:coparentes/services/analytics/clarity_bridge_stub.dart';
 import 'package:coparentes/services/analytics/ga_bridge_stub.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,12 +42,38 @@ class _RecordingBridge extends GaBridge {
   }
 }
 
+class _RecordingClarity extends ClarityBridge {
+  int loadCount = 0;
+  int stopCount = 0;
+  String? lastProjectId;
+  bool loaded = false;
+
+  @override
+  bool get isLoaded => loaded;
+
+  @override
+  Future<void> ensureLoaded(String projectId) async {
+    loadCount += 1;
+    lastProjectId = projectId;
+    loaded = true;
+  }
+
+  @override
+  void stop() {
+    stopCount += 1;
+    loaded = false;
+  }
+}
+
 void main() {
   test('stays disabled without analytics consent', () async {
     final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
     final analytics = AnalyticsService(
       bridge: bridge,
+      clarityBridge: clarity,
       measurementId: 'G-TEST',
+      clarityProjectId: 'claritytest1',
       isWeb: true,
     );
 
@@ -57,6 +84,7 @@ void main() {
     );
 
     expect(analytics.isEnabled, isFalse);
+    expect(clarity.loadCount, 0);
     analytics.logEvent('login');
     analytics.logScreen('home');
     expect(bridge.events, isEmpty);
@@ -65,9 +93,12 @@ void main() {
 
   test('disables for child role even with consent', () async {
     final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
     final analytics = AnalyticsService(
       bridge: bridge,
+      clarityBridge: clarity,
       measurementId: 'G-TEST',
+      clarityProjectId: 'claritytest1',
       isWeb: true,
     );
 
@@ -79,13 +110,17 @@ void main() {
 
     expect(analytics.isEnabled, isFalse);
     expect(bridge.loadCount, 0);
+    expect(clarity.loadCount, 0);
   });
 
   test('disables in demo mode', () async {
     final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
     final analytics = AnalyticsService(
       bridge: bridge,
+      clarityBridge: clarity,
       measurementId: 'G-TEST',
+      clarityProjectId: 'claritytest1',
       isWeb: true,
     );
 
@@ -96,13 +131,17 @@ void main() {
     );
 
     expect(analytics.isEnabled, isFalse);
+    expect(clarity.loadCount, 0);
   });
 
   test('enables for parent with consent and logs screens/events', () async {
     final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
     final analytics = AnalyticsService(
       bridge: bridge,
+      clarityBridge: clarity,
       measurementId: 'G-TEST',
+      clarityProjectId: 'claritytest1',
       isWeb: true,
     );
 
@@ -116,6 +155,8 @@ void main() {
     expect(bridge.lastConsent, isTrue);
     expect(bridge.configCount, 1);
     expect(bridge.events, contains('consent_analytics_granted'));
+    expect(clarity.loadCount, 1);
+    expect(clarity.lastProjectId, 'claritytest1');
 
     analytics.logScreen('home_parent');
     analytics.logScreen('home_parent'); // dedupe
@@ -132,11 +173,14 @@ void main() {
     expect(loginParams['method'], 'password');
   });
 
-  test('disable revokes analytics consent', () async {
+  test('disable revokes analytics consent and stops Clarity', () async {
     final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
     final analytics = AnalyticsService(
       bridge: bridge,
+      clarityBridge: clarity,
       measurementId: 'G-TEST',
+      clarityProjectId: 'claritytest1',
       isWeb: true,
     );
 
@@ -149,7 +193,31 @@ void main() {
 
     expect(analytics.isEnabled, isFalse);
     expect(bridge.lastConsent, isFalse);
+    expect(clarity.stopCount, 1);
     analytics.logEvent('login');
     expect(bridge.events.where((e) => e == 'login'), isEmpty);
+  });
+
+  test('Clarity alone can enable when GA id is empty', () async {
+    final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
+    final analytics = AnalyticsService(
+      bridge: bridge,
+      clarityBridge: clarity,
+      measurementId: '',
+      clarityProjectId: 'yyktc3x67w',
+      isWeb: true,
+    );
+
+    await analytics.syncFromUserState(
+      analyticsConsentGranted: true,
+      role: UserRole.parentA,
+      isDemoMode: false,
+    );
+
+    expect(analytics.isEnabled, isTrue);
+    expect(bridge.loadCount, 0);
+    expect(clarity.loadCount, 1);
+    expect(clarity.lastProjectId, 'yyktc3x67w');
   });
 }
