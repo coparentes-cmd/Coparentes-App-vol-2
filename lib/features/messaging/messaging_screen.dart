@@ -517,7 +517,16 @@ class MessagingScreenState extends State<MessagingScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: _buildHeaderSearchField(context)),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.5,
+                        alignment: Alignment.centerLeft,
+                        child: _buildHeaderSearchField(context),
+                      ),
+                    ),
+                  ),
                   if (!isReadOnly) ...[
                     const SizedBox(width: 8),
                     _buildNewThreadButton(context),

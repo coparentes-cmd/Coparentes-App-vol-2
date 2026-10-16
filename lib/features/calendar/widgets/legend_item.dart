@@ -8,6 +8,8 @@ class LegendItem extends StatelessWidget {
   final IconData? icon;
   final bool dot;
   final Color? labelColor;
+  final double fontSize;
+  final double markerSize;
 
   const LegendItem({
     super.key,
@@ -16,28 +18,31 @@ class LegendItem extends StatelessWidget {
     this.icon,
     this.dot = false,
     this.labelColor,
+    this.fontSize = 13,
+    this.markerSize = 16,
   });
 
   @override
   Widget build(BuildContext context) {
+    final marker = markerSize;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (dot)
           Container(
-            width: 8,
-            height: 8,
+            width: marker * 0.5,
+            height: marker * 0.5,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
           )
         else if (icon != null)
-          Icon(icon, size: 14, color: color)
+          Icon(icon, size: marker * 0.875, color: color)
         else
           Container(
-            width: 16,
-            height: 16,
+            width: marker,
+            height: marker,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.3),
               shape: BoxShape.circle,
@@ -48,8 +53,8 @@ class LegendItem extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
             color: labelColor ?? AppTheme.textSecondary,
           ),
         ),

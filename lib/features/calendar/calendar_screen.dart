@@ -141,7 +141,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         : <Widget>[
             _CalendarHeaderIconButton(
               tooltip: context.tr('Grafik opieki'),
-              icon: Icons.settings,
+              // Closest Material match to hand+heart plaque (custody schedule).
+              icon: Icons.volunteer_activism,
               backgroundColor: AppTheme.primaryTeal,
               onPressed: () => _openScheduleWizard(context),
             ),
@@ -180,12 +181,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   color: AppTheme.parentAColor,
                   label: context.tr('U Mamy'),
                   labelColor: Colors.white,
+                  fontSize: 15,
+                  markerSize: 18,
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 24),
                 LegendItem(
                   color: AppTheme.parentBColor,
                   label: context.tr('U Taty'),
                   labelColor: Colors.white,
+                  fontSize: 15,
+                  markerSize: 18,
                 ),
               ],
             ),
