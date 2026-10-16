@@ -130,24 +130,68 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _ => AppTheme.primaryTeal,
     };
 
+    // Match Finanse navy height: title row + second row (tabs there / legend here).
+    final titleRowHeight = parentTabResolvedHeaderHeight(
+      context,
+      ParentTabScaffold.toolbarHeight,
+    );
+    final legendRowHeight = parentTabResolvedTabBarHeight(context);
+    final actions = isChild || isReadOnly
+        ? null
+        : <Widget>[
+            _CalendarHeaderIconButton(
+              tooltip: context.tr('Grafik opieki'),
+              icon: Icons.settings,
+              backgroundColor: AppTheme.primaryTeal,
+              onPressed: () => _openScheduleWizard(context),
+            ),
+            _CalendarHeaderIconButton(
+              tooltip: context.tr('Nowe zdarzenie'),
+              icon: Icons.add,
+              backgroundColor: AppTheme.purpleColor,
+              onPressed: () => _addEvent(context),
+            ),
+          ];
+
     return ParentTabScaffold(
-      title: context.tr('Kalendarz opieki'),
-      actions: isChild || isReadOnly
-          ? null
-          : [
-              _CalendarHeaderIconButton(
-                tooltip: context.tr('Grafik opieki'),
-                icon: Icons.settings,
-                backgroundColor: AppTheme.primaryTeal,
-                onPressed: () => _openScheduleWizard(context),
-              ),
-              _CalendarHeaderIconButton(
-                tooltip: context.tr('Nowe zdarzenie'),
-                icon: Icons.add,
-                backgroundColor: AppTheme.purpleColor,
-                onPressed: () => _addEvent(context),
-              ),
-            ],
+      headerHeight: titleRowHeight + legendRowHeight,
+      header: Column(
+        children: [
+          SizedBox(
+            height: titleRowHeight,
+            child: AppBar(
+              primary: false,
+              automaticallyImplyLeading: false,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              toolbarHeight: titleRowHeight,
+              title: Text(context.tr('Kalendarz opieki')),
+              actions: actions,
+            ),
+          ),
+          SizedBox(
+            height: legendRowHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                LegendItem(
+                  color: AppTheme.parentAColor,
+                  label: context.tr('U Mamy'),
+                  labelColor: Colors.white,
+                ),
+                const SizedBox(width: 20),
+                LegendItem(
+                  color: AppTheme.parentBColor,
+                  label: context.tr('U Taty'),
+                  labelColor: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       body: _buildCalendarTab(
         context,
         calendar,
@@ -227,23 +271,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   isReadOnly,
                   openDaySheet: true,
                 ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              LegendItem(
-                color: AppTheme.parentAColor,
-                label: context.tr('U Mamy'),
-              ),
-              SizedBox(width: 20),
-              LegendItem(
-                color: AppTheme.parentBColor,
-                label: context.tr('U Taty'),
-              ),
-            ],
-          ),
         ),
       ],
     );

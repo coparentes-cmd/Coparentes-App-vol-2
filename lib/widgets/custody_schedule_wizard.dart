@@ -183,6 +183,7 @@ class _CustodyScheduleWizardState extends State<CustodyScheduleWizard> {
       initialMonth: initial,
       rangeStart: initial,
       rangeEnd: initial,
+      requireCompleteRange: false,
     );
     if (result?.rangeStart == null || !mounted) {
       return;

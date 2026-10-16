@@ -7,6 +7,7 @@ import '../../providers/documents_provider.dart';
 import '../../services/document_attachment_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/file_download.dart';
+import '../../utils/layout_utils.dart';
 import '../../widgets/parent_tab_scaffold.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
@@ -75,19 +76,48 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             .where((document) => document.category == _selectedCategory)
             .toList();
 
+    // Match Finanse / Kalendarz navy height (title row + second row).
+    final titleRowHeight = parentTabResolvedHeaderHeight(
+      context,
+      ParentTabScaffold.toolbarHeight,
+    );
+    final secondRowHeight = parentTabResolvedTabBarHeight(context);
+
     return ParentTabScaffold(
-      title: context.tr('Dokumenty'),
-      actions: [
-        ParentHeaderActionButton(
-          label: context.tr('Dodaj dokument'),
-          icon: Icons.add,
-          backgroundColor: AppTheme.purpleColor,
-          prominent: true,
-          onPressed: documentsProvider.isLoading
-              ? null
-              : () => _showUploadSheet(context, workspace, viewerUserId),
-        ),
-      ],
+      headerHeight: titleRowHeight + secondRowHeight,
+      header: Column(
+        children: [
+          SizedBox(
+            height: titleRowHeight,
+            child: AppBar(
+              primary: false,
+              automaticallyImplyLeading: false,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              toolbarHeight: titleRowHeight,
+              title: Text(context.tr('Dokumenty')),
+              actions: [
+                ParentHeaderActionButton(
+                  label: context.tr('Dodaj dokument'),
+                  icon: Icons.add,
+                  backgroundColor: AppTheme.purpleColor,
+                  prominent: true,
+                  onPressed: documentsProvider.isLoading
+                      ? null
+                      : () => _showUploadSheet(
+                            context,
+                            workspace,
+                            viewerUserId,
+                          ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: secondRowHeight),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () => documentsProvider.load(viewerUserId: viewerUserId),
         child: ListView(

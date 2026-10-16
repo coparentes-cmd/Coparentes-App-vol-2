@@ -86,6 +86,9 @@ Future<MiniCalendarResult?> showMiniCalendarSheet({
   DateTime? rangeEnd,
   Set<String> selectedDates = const {},
   Color? Function(DateTime day)? colorForDay,
+  /// When true (default), range mode requires start and end before confirm.
+  /// Set false for single-day pickers that only need one tap.
+  bool requireCompleteRange = true,
 }) {
   return showModalBottomSheet<MiniCalendarResult>(
     context: context,
@@ -106,9 +109,30 @@ Future<MiniCalendarResult?> showMiniCalendarSheet({
         rangeEnd: rangeEnd,
         selectedDates: selectedDates,
         colorForDay: colorForDay,
+        requireCompleteRange: requireCompleteRange,
       );
     },
   );
+}
+
+/// Pure range-tap transition used by the mini calendar (and unit tests).
+({DateTime? start, DateTime? end}) bookingApplyRangeTap({
+  required DateTime? rangeStart,
+  required DateTime? rangeEnd,
+  required DateTime day,
+}) {
+  final normalized = bookingNormalizeDate(day);
+  final start =
+      rangeStart == null ? null : bookingNormalizeDate(rangeStart);
+  final end = rangeEnd == null ? null : bookingNormalizeDate(rangeEnd);
+
+  if (start == null || end != null) {
+    return (start: normalized, end: null);
+  }
+  if (normalized.isBefore(start)) {
+    return (start: normalized, end: start);
+  }
+  return (start: start, end: normalized);
 }
 
 class _MiniCalendarSheet extends StatefulWidget {
@@ -121,6 +145,7 @@ class _MiniCalendarSheet extends StatefulWidget {
   final DateTime? rangeEnd;
   final Set<String> selectedDates;
   final Color? Function(DateTime day)? colorForDay;
+  final bool requireCompleteRange;
 
   const _MiniCalendarSheet({
     required this.mode,
@@ -132,6 +157,7 @@ class _MiniCalendarSheet extends StatefulWidget {
     required this.rangeEnd,
     required this.selectedDates,
     this.colorForDay,
+    this.requireCompleteRange = true,
   });
 
   @override
@@ -174,22 +200,20 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
   }
 
   void _handleDayTap(DateTime day) {
-    final normalized = bookingNormalizeDate(day);
     if (widget.mode == BookingCalendarMode.range) {
+      final next = bookingApplyRangeTap(
+        rangeStart: _rangeStart,
+        rangeEnd: _rangeEnd,
+        day: day,
+      );
       setState(() {
-        if (_rangeStart == null || _rangeEnd != null) {
-          _rangeStart = normalized;
-          _rangeEnd = null;
-        } else if (normalized.isBefore(_rangeStart!)) {
-          _rangeEnd = _rangeStart;
-          _rangeStart = normalized;
-        } else {
-          _rangeEnd = normalized;
-        }
+        _rangeStart = next.start;
+        _rangeEnd = next.end;
       });
       return;
     }
 
+    final normalized = bookingNormalizeDate(day);
     final key = bookingDateKey(normalized);
     setState(() {
       if (_selectedDates.contains(key)) {
@@ -202,7 +226,9 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
 
   bool _canConfirm() {
     if (widget.mode == BookingCalendarMode.range) {
-      // Start alone is enough (end defaults to start on confirm).
+      if (widget.requireCompleteRange) {
+        return _rangeStart != null && _rangeEnd != null;
+      }
       return _rangeStart != null;
     }
     return _selectedDates.isNotEmpty;
@@ -213,7 +239,9 @@ class _MiniCalendarSheetState extends State<_MiniCalendarSheet> {
       return;
     }
     final start = _rangeStart;
-    final end = _rangeEnd ?? _rangeStart;
+    final end = widget.requireCompleteRange
+        ? _rangeEnd
+        : (_rangeEnd ?? _rangeStart);
     Navigator.pop(
       context,
       MiniCalendarResult(

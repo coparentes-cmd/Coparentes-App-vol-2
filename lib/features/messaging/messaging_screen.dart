@@ -13,6 +13,7 @@ import '../../utils/layout_utils.dart';
 import '../../utils/message_tag_search.dart';
 import '../../utils/messaging_helpers.dart';
 import '../../widgets/app_content_shell.dart';
+import '../../widgets/parent_tab_scaffold.dart';
 import 'messaging_navigation.dart';
 import 'thread_screen.dart';
 import 'widgets/e2e_message_text.dart';
@@ -218,17 +219,66 @@ class MessagingScreenState extends State<MessagingScreen> {
 
   /// Handles in-tab back navigation. Returns true when consumed.
   bool handleBack() {
-    if (_hasInternalBackState) {
+    if (_conversationThreadId != null || _conversationCategory != null) {
       _closeConversation();
+      return true;
+    }
+    if (_isCategoryFilterTab) {
+      setState(() => _listTab = _ChatListTab.all);
       return true;
     }
     return false;
   }
 
+  bool get _isCategoryFilterTab =>
+      _listTab == _ChatListTab.family || _listTab == _ChatListTab.schedule;
+
   bool get _hasInternalBackState =>
-      _conversationThreadId != null || _conversationCategory != null;
+      _conversationThreadId != null ||
+      _conversationCategory != null ||
+      _isCategoryFilterTab;
 
   bool get hasInternalNavigation => _hasInternalBackState;
+
+  Widget _buildConversationBackHeader({
+    required BuildContext context,
+    required String title,
+    required VoidCallback onBack,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, size: 22),
+                color: AppTheme.textPrimary,
+                tooltip: context.tr('Wróć'),
+                onPressed: onBack,
+              ),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -295,28 +345,24 @@ class MessagingScreenState extends State<MessagingScreen> {
       final isReadOnly = user?.role == UserRole.observer;
       return Scaffold(
         backgroundColor: AppTheme.surfaceColor,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          foregroundColor: AppTheme.textPrimary,
-          elevation: 0.5,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: _closeConversation,
-          ),
-          title: Text(context.tr(messagingCategoryLabel(_conversationCategory!))),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: context.tr('Odśwież wiadomości'),
-              onPressed: () => _loadThreads(context),
+        body: Column(
+          children: [
+            _buildConversationBackHeader(
+              context: context,
+              title: context.tr(
+                messagingCategoryLabel(_conversationCategory!),
+              ),
+              onBack: _closeConversation,
+            ),
+            Expanded(
+              child: InlineCategoryChatPanel(
+                key: ValueKey(_conversationCategory),
+                category: _conversationCategory,
+                allowPrivateTags:
+                    _conversationAllowsPrivateTags && !isReadOnly,
+              ),
             ),
           ],
-        ),
-        body: InlineCategoryChatPanel(
-          key: ValueKey(_conversationCategory),
-          category: _conversationCategory,
-          allowPrivateTags:
-              _conversationAllowsPrivateTags && !isReadOnly,
         ),
       );
     }
@@ -329,8 +375,9 @@ class MessagingScreenState extends State<MessagingScreen> {
     MessagingProvider messaging,
     AppUser? user,
   ) {
-    return _buildMessagingChrome(
+    return _buildChatListScaffold(
       context: context,
+      messaging: messaging,
       user: user,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -343,7 +390,7 @@ class MessagingScreenState extends State<MessagingScreen> {
                   right: BorderSide(color: AppTheme.dividerColor),
                 ),
               ),
-              child: _buildListColumn(context, messaging, user),
+              child: _buildListBody(context, messaging, user),
             ),
           ),
           Expanded(child: _buildDetailPane(context, user)),
@@ -367,35 +414,12 @@ class MessagingScreenState extends State<MessagingScreen> {
     if (_conversationCategory != null) {
       return Column(
         children: [
-          Material(
-            color: Colors.white,
-            elevation: 0.5,
-            child: SizedBox(
-              height: kToolbarHeight,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: context.tr('Zamknij'),
-                    onPressed: _closeConversation,
-                  ),
-                  Expanded(
-                    child: Text(
-                      context.tr(messagingCategoryLabel(_conversationCategory!)),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: context.tr('Odśwież'),
-                    onPressed: () => _loadThreads(context),
-                  ),
-                ],
-              ),
+          _buildConversationBackHeader(
+            context: context,
+            title: context.tr(
+              messagingCategoryLabel(_conversationCategory!),
             ),
+            onBack: _closeConversation,
           ),
           Expanded(
             child: InlineCategoryChatPanel(
@@ -421,17 +445,23 @@ class MessagingScreenState extends State<MessagingScreen> {
     MessagingProvider messaging,
     AppUser? user,
   ) {
-    return _buildMessagingChrome(
+    if (_isCategoryFilterTab) {
+      return _buildMessagingChrome(
+        context: context,
+        body: _buildCategoryFilterChat(context, messaging, user),
+      );
+    }
+    return _buildChatListScaffold(
       context: context,
+      messaging: messaging,
       user: user,
-      body: _buildListColumn(context, messaging, user),
+      body: _buildListBody(context, messaging, user),
     );
   }
 
-  /// Chat chrome — safe-area padding only (actions live in the list header).
+  /// Minimal chrome when showing a predefined category conversation.
   Widget _buildMessagingChrome({
     required BuildContext context,
-    required AppUser? user,
     required Widget body,
   }) {
     final top = MediaQuery.paddingOf(context).top;
@@ -450,23 +480,138 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
+  /// Navy header matching Finanse: title + compact search + add, categories below.
+  Widget _buildChatListScaffold({
+    required BuildContext context,
+    required MessagingProvider messaging,
+    required AppUser? user,
+    required Widget body,
+  }) {
+    final isReadOnly = user?.role == UserRole.observer;
+    final viewerId = user?.id;
+    final unreadCount = viewerId == null
+        ? 0
+        : countUnreadMessagesForViewer(messaging.threads, viewerId);
+    final titleRowHeight = parentTabResolvedHeaderHeight(
+      context,
+      ParentTabScaffold.toolbarHeight,
+    );
+    final tabRowHeight = parentTabResolvedTabBarHeight(context);
+
+    return ParentTabScaffold(
+      headerHeight: titleRowHeight + tabRowHeight,
+      header: Column(
+        children: [
+          SizedBox(
+            height: titleRowHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Text(
+                    context.tr('Czat'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildHeaderSearchField(context)),
+                  if (!isReadOnly) ...[
+                    const SizedBox(width: 8),
+                    _buildNewThreadButton(context),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            height: tabRowHeight,
+            child: _ChatFilterTabs(
+              selected: _listTab,
+              unreadCount: unreadCount,
+              onDark: true,
+              onSelect: _onChatFilterSelected,
+            ),
+          ),
+        ],
+      ),
+      body: body,
+    );
+  }
+
+  void _onChatFilterSelected(_ChatListTab tab) {
+    if (tab == _ChatListTab.family || tab == _ChatListTab.schedule) {
+      markBrowserHistoryForward();
+    }
+    setState(() {
+      _listTab = tab;
+      _conversationThreadId = null;
+      _conversationCategory = null;
+    });
+  }
+
+  Widget _buildHeaderSearchField(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+        decoration: InputDecoration(
+          hintText: context.tr('Szukaj'),
+          hintStyle: const TextStyle(fontSize: 13, color: AppTheme.textHint),
+          prefixIcon: const Icon(Icons.search, size: 18, color: AppTheme.textHint),
+          prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 34),
+          suffixIcon: _searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.clear, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 34),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                ),
+          filled: true,
+          fillColor: Colors.white,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNewThreadButton(BuildContext context) {
     return Tooltip(
       message: context.tr('Nowy wątek'),
       child: Material(
-        color: AppTheme.brandHeaderBlue,
+        color: AppTheme.purpleColor,
         shape: const CircleBorder(),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: () => _newThread(context),
           child: const SizedBox(
-            width: 44,
-            height: 44,
+            width: 34,
+            height: 34,
             child: Icon(
               Icons.add,
               color: Colors.white,
-              size: 24,
+              size: 20,
             ),
           ),
         ),
@@ -474,13 +619,53 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
-  Widget _buildListColumn(
+  Widget _buildCategoryFilterChat(
     BuildContext context,
     MessagingProvider messaging,
     AppUser? user,
   ) {
     final isReadOnly = user?.role == UserRole.observer;
-    final viewerId = user?.id;
+    if (_listTab == _ChatListTab.family) {
+      return Column(
+        children: [
+          _buildConversationBackHeader(
+            context: context,
+            title: context.tr(familyCategoryDisplayLabel),
+            onBack: () => handleBack(),
+          ),
+          const Expanded(
+            child: InlineCategoryChatPanel(
+              key: ValueKey(familyCategoryChannel),
+              category: familyCategoryChannel,
+              allowPrivateTags: false,
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        _buildConversationBackHeader(
+          context: context,
+          title: context.tr(scheduleCategoryChannel),
+          onBack: () => handleBack(),
+        ),
+        Expanded(
+          child: InlineCategoryChatPanel(
+            key: const ValueKey(scheduleCategoryChannel),
+            category: scheduleCategoryChannel,
+            allowPrivateTags: !isReadOnly,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListBody(
+    BuildContext context,
+    MessagingProvider messaging,
+    AppUser? user,
+  ) {
     final searchQuery = parseMessageSearchQuery(_searchController.text);
     final searchedThreads = messaging.threads
         .where(
@@ -494,101 +679,23 @@ class MessagingScreenState extends State<MessagingScreen> {
       ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
 
     final allThreads = searchedThreads.where(isAllTabThread).toList();
-    final unreadCount = viewerId == null
-        ? 0
-        : countUnreadMessagesForViewer(messaging.threads, viewerId);
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: context.tr('Szukaj'),
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: const BorderSide(color: AppTheme.dividerColor),
-                    ),
-                  ),
-                ),
-              ),
-              if (!isReadOnly) ...[
-                const SizedBox(width: 8),
-                _buildNewThreadButton(context),
-              ],
-            ],
-          ),
-        ),
-        _ChatFilterTabs(
-          selected: _listTab,
-          unreadCount: unreadCount,
-          onSelect: (tab) {
-            setState(() {
-              _listTab = tab;
-              // Always show the selected filter list (close open chat).
-              _conversationThreadId = null;
-              _conversationCategory = null;
-            });
-          },
-        ),
-        Expanded(
-          child: switch (_listTab) {
-            _ChatListTab.family => InlineCategoryChatPanel(
-                key: const ValueKey(familyCategoryChannel),
-                category: familyCategoryChannel,
-                allowPrivateTags: false,
-              ),
-            _ChatListTab.schedule => InlineCategoryChatPanel(
-                key: const ValueKey(scheduleCategoryChannel),
-                category: scheduleCategoryChannel,
-                allowPrivateTags: !isReadOnly,
-              ),
-            _ChatListTab.unread => _buildUnreadMessagesList(
-                context,
-                messaging,
-                user,
-                messaging.threads,
-                searchQuery: searchQuery,
-              ),
-            _ChatListTab.all => _buildThreadsScroll(
-                context,
-                messaging,
-                user,
-                allThreads,
-                emptyLabel: context.tr('Brak wątków'),
-              ),
-          },
-        ),
-      ],
+    if (_listTab == _ChatListTab.unread) {
+      return _buildUnreadMessagesList(
+        context,
+        messaging,
+        user,
+        messaging.threads,
+        searchQuery: searchQuery,
+      );
+    }
+
+    return _buildThreadsScroll(
+      context,
+      messaging,
+      user,
+      allThreads,
+      emptyLabel: context.tr('Brak wątków'),
     );
   }
 
@@ -727,11 +834,13 @@ class _ChatFilterTabs extends StatelessWidget {
   final _ChatListTab selected;
   final int unreadCount;
   final ValueChanged<_ChatListTab> onSelect;
+  final bool onDark;
 
   const _ChatFilterTabs({
     required this.selected,
     required this.unreadCount,
     required this.onSelect,
+    this.onDark = false,
   });
 
   @override
@@ -748,49 +857,46 @@ class _ChatFilterTabs extends StatelessWidget {
       (_ChatListTab.schedule, context.tr(scheduleCategoryChannel)),
     ];
 
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: items.map((item) {
-          final tab = item.$1;
-          final label = item.$2;
-          final isSelected = selected == tab;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: InkWell(
-              onTap: () => onSelect(tab),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isSelected
-                          ? AppTheme.brandHeaderBlue
-                          : Colors.transparent,
-                      width: 2.5,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? AppTheme.brandHeaderBlue
-                        : AppTheme.textSecondary,
+    // Match Finanse TabBar: white label + white underline on navy.
+    final selectedColor = onDark ? Colors.white : AppTheme.brandHeaderBlue;
+    final unselectedColor =
+        onDark ? Colors.white70 : AppTheme.textSecondary;
+
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      children: items.map((item) {
+        final tab = item.$1;
+        final label = item.$2;
+        final isSelected = selected == tab;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: InkWell(
+            onTap: () => onSelect(tab),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isSelected ? selectedColor : Colors.transparent,
+                    width: 2.5,
                   ),
                 ),
               ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? selectedColor : unselectedColor,
+                ),
+              ),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
