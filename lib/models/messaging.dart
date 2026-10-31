@@ -14,6 +14,21 @@ class MessageUserTag {
   });
 }
 
+/// Shared emoji reaction on a message (visible to thread participants).
+class MessageReaction {
+  final String messageId;
+  final String threadId;
+  final String userId;
+  final String emoji;
+
+  const MessageReaction({
+    required this.messageId,
+    required this.threadId,
+    required this.userId,
+    required this.emoji,
+  });
+}
+
 class MessageThread {
   final String id;
   final String subject;

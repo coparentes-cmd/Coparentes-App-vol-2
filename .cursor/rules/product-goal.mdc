@@ -1,21 +1,31 @@
 ---
-description: Główny cel produktu Coparentes — niezawodność przez uproszczenie
+description: Cel produktu Coparentes — mobile z działającym webem
 alwaysApply: true
 ---
 
 # Cel produktu Coparentes
 
-**Główny cel:** stworzyć **niezawodnie działającą** aplikację Coparentes.
+**Aktualny cel:** na podstawie działającej aplikacji **webowej** zbudować aplikację **mobilną** Coparentes (iOS / Android).
 
-## Jak do tego dojść (priorytet)
+## Najważniejsza zasada (bez wyjątków)
 
-1. **Uprościć szyfrowanie (E2E)** — mniej ścieżek awarii, jaśniejszy flow unlock / kluczy / odzyskiwania.
-2. **Uprościć logowanie / auth** — rejestracja, sesja, 2FA/OTP, dołączanie rodzica/dziecka: mniej tarć, przewidywalne błędy.
-3. **Eliminować bugi** — najpierw stabilność i poprawki, potem nowe funkcje.
+**Nie psuć i nie wyłączać działającej aplikacji webowej** podczas prac nad mobile.
+
+- Produkcja web (Netlify / `coparentes.app`) ma pozostać sprawna.
+- Zmiany wspólne (Flutter shared, backend, auth, E2E) oceniaj pod kątem regresji **web**.
+- Jeśli coś grozi webem — najpierw osobna ścieżka / feature flag / platform check, nie „zepsuj web, żeby mobile działało”.
+- Commit / push / deploy wpływający na web — tylko świadomie; nie łącz ryzykownych zmian mobile z hotfixami web bez potrzeby.
+
+## Priorytet przy decyzjach
+
+1. **Web działa** — stabilność i brak regresji web > tempo mobile.
+2. **Współdzielony kod** — preferuj `kIsWeb` / platform channels / conditional imports zamiast łamania web flow.
+3. **Upraszczać auth / E2E** — mniej ścieżek awarii, ale bez wyłączania tego, co już działa na web.
+4. **Eliminować bugi** — stabilność przed nowymi funkcjami mobile-only.
 
 ## Przy decyzjach
 
-- Preferuj prostsze rozwiązanie, które działa zawsze, zamiast złożonego „idealnego”.
+- Preferuj prostsze rozwiązanie, które nie psuje web.
 - Nie dokładaj złożoności E2E/auth bez konieczności.
-- Przed nową funkcją: czy nie pogarsza niezawodności logowania lub szyfrowania?
-- Auth / E2E: zawsze weryfikuj **oba** repo (Flutter + backend) — reguły dual-repo.
+- Auth / E2E / API: zawsze weryfikuj **oba** repo (Flutter + backend) — reguły dual-repo.
+- Przed zmianą wspólną: czy web nadal loguje, otwiera sesję, ładuje PWA?

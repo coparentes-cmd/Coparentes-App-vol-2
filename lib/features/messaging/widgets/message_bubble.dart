@@ -14,6 +14,7 @@ import '../../../utils/file_download.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../utils/swap_message_utils.dart';
+import '../../../widgets/message_reaction_widgets.dart';
 import '../../../widgets/message_status_indicator.dart';
 import '../../../widgets/message_tag_widgets.dart';
 import 'e2e_message_text.dart';
@@ -56,10 +57,11 @@ class MessageBubbleState extends State<MessageBubble> {
   Widget build(BuildContext context) {
     final maxBubbleWidth = chatBubbleMaxWidthFor(context);
     final calendar = context.watch<CalendarProvider>();
-    final workspace = context.watch<AppProvider>().currentWorkspace;
+    final app = context.watch<AppProvider>();
+    final workspace = app.currentWorkspace;
     final senderRole = senderRoleForMessage(widget.message, workspace);
     final bubbleStyle = messageBubbleStyleForRole(senderRole);
-    final viewerUserId = context.read<AppProvider>().currentUser?.id;
+    final viewerUserId = app.currentUser?.id;
     final swap = isSwapScheduleThread(widget.threadCategory)
         ? findPendingSwapForMessage(
             messageContent: widget.message.content,
@@ -96,11 +98,14 @@ class MessageBubbleState extends State<MessageBubble> {
           exception: exception,
           viewerUserId: viewerUserId,
         );
+    final messaging = context.watch<MessagingProvider>();
     final messageTags = widget.allowPrivateTags
-        ? context.watch<MessagingProvider>().tagsForMessage(widget.message.id)
+        ? messaging.tagsForMessage(widget.message.id)
         : const <String>{};
-    final isReadOnly =
-        context.watch<AppProvider>().currentUser?.role == UserRole.observer;
+    final reactions = messaging.reactionsForMessage(widget.message.id);
+    final isReadOnly = app.currentUser?.role == UserRole.observer;
+    final reactAsUserId = (!isReadOnly) ? viewerUserId : null;
+    final canReact = reactAsUserId != null;
 
     return Padding(
       padding: EdgeInsets.only(top: widget.group.topSpacing),
@@ -124,8 +129,12 @@ class MessageBubbleState extends State<MessageBubble> {
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxBubbleWidth),
             child: GestureDetector(
-              onLongPress: widget.allowPrivateTags && !isReadOnly
-                  ? () => _editMessageTags(context, messageTags)
+              onLongPressStart: canReact
+                  ? (details) => _showReactionPicker(
+                        context,
+                        details.globalPosition,
+                        viewerUserId: reactAsUserId,
+                      )
                   : null,
               child: IntrinsicWidth(
                 child: Container(
@@ -251,6 +260,21 @@ class MessageBubbleState extends State<MessageBubble> {
           ),
             ),
           ),
+          if (reactions.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            MessageReactionChips(
+              reactions: reactions,
+              viewerUserId: viewerUserId,
+              alignEnd: widget.isMe,
+              onEmojiTap: canReact
+                  ? (emoji) => _toggleReaction(
+                        context,
+                        emoji: emoji,
+                        viewerUserId: reactAsUserId,
+                      )
+                  : null,
+            ),
+          ],
           if (widget.allowPrivateTags && messageTags.isNotEmpty) ...[
             const SizedBox(height: 4),
             Padding(
@@ -410,6 +434,64 @@ class MessageBubbleState extends State<MessageBubble> {
       if (mounted) {
         setState(() => _respondingToException = false);
       }
+    }
+  }
+
+  Future<void> _showReactionPicker(
+    BuildContext context,
+    Offset globalPosition, {
+    required String viewerUserId,
+  }) async {
+    final messaging = context.read<MessagingProvider>();
+    final selected = messaging.myReactionEmoji(
+      messageId: widget.message.id,
+      userId: viewerUserId,
+    );
+    final emoji = await showMessageReactionPicker(
+      context: context,
+      globalPosition: globalPosition,
+      selectedEmoji: selected,
+    );
+    if (!mounted || emoji == null) {
+      return;
+    }
+    await _toggleReaction(
+      context,
+      emoji: emoji,
+      viewerUserId: viewerUserId,
+    );
+  }
+
+  Future<void> _toggleReaction(
+    BuildContext context, {
+    required String emoji,
+    required String viewerUserId,
+  }) async {
+    final app = context.read<AppProvider>();
+    try {
+      await context.read<MessagingProvider>().setMessageReaction(
+            messageId: widget.message.id,
+            threadId: widget.threadId,
+            userId: viewerUserId,
+            emoji: emoji,
+            localOnly: app.isDemoMode,
+          );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      final message = error is ApiException &&
+              error.message == 'reactions_unavailable'
+          ? context.tr(
+              'Reakcje nie są jeszcze dostępne na serwerze. Spróbuj później.',
+            )
+          : context.tr('Nie udało się zapisać reakcji.');
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
     }
   }
 
