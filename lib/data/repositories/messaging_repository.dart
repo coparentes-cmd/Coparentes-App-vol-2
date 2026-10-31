@@ -10,10 +10,12 @@ import 'messaging_remote.dart';
 class MessagingLoadResult {
   final List<MessageThread> threads;
   final Map<String, Set<String>> tagsByMessageId;
+  final Map<String, List<MessageReaction>> reactionsByMessageId;
 
   const MessagingLoadResult({
     required this.threads,
     required this.tagsByMessageId,
+    this.reactionsByMessageId = const {},
   });
 }
 
@@ -41,6 +43,7 @@ class MessagingRepository {
       return MessagingLoadResult(
         threads: result.threads,
         tagsByMessageId: result.tags,
+        reactionsByMessageId: result.reactions,
       );
     } catch (error) {
       if (!_remote.isNetworkError(error)) {
@@ -51,10 +54,21 @@ class MessagingRepository {
         return MessagingLoadResult(
           threads: cached,
           tagsByMessageId: _cache.getCachedMessageTags(),
+          reactionsByMessageId: const {},
         );
       }
       rethrow;
     }
+  }
+
+  Future<List<MessageReaction>> setMessageReaction({
+    required String messageId,
+    String? emoji,
+  }) async {
+    return _remote.updateMessageReaction(
+      messageId: messageId,
+      emoji: emoji,
+    );
   }
 
   Future<Map<String, Set<String>>> setMessageTags({

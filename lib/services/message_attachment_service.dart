@@ -95,6 +95,9 @@ class MessageAttachmentPicker {
         return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       case 'txt':
         return 'text/plain';
+      case 'md':
+      case 'markdown':
+        return 'text/markdown';
       default:
         return 'application/octet-stream';
     }

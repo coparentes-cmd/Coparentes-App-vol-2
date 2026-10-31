@@ -10,8 +10,12 @@ class MessagingRemote {
 
   bool isNetworkError(Object error) => _apiClient.isNetworkError(error);
 
-  Future<({List<MessageThread> threads, Map<String, Set<String>> tags})>
-      fetchThreads() async {
+  Future<
+      ({
+        List<MessageThread> threads,
+        Map<String, Set<String>> tags,
+        Map<String, List<MessageReaction>> reactions,
+      })> fetchThreads() async {
     final payload = await _apiClient.getJson('/threads');
     final threads = (payload['threads'] as List<dynamic>)
         .map(
@@ -25,7 +29,12 @@ class MessagingRemote {
         payload['messageTags'] as List<dynamic>? ?? const [],
       ),
     );
-    return (threads: threads, tags: tags);
+    final reactions = messageReactionsToMap(
+      messageReactionsFromJsonList(
+        payload['messageReactions'] as List<dynamic>? ?? const [],
+      ),
+    );
+    return (threads: threads, tags: tags, reactions: reactions);
   }
 
   Future<Map<String, Set<String>>> updateMessageTags({
@@ -40,6 +49,19 @@ class MessagingRemote {
       messageTagsFromJsonList(
         payload['messageTags'] as List<dynamic>? ?? const [],
       ),
+    );
+  }
+
+  Future<List<MessageReaction>> updateMessageReaction({
+    required String messageId,
+    String? emoji,
+  }) async {
+    final payload = await _apiClient.putJson(
+      '/threads/messages/$messageId/reaction',
+      {'emoji': emoji},
+    );
+    return messageReactionsFromJsonList(
+      payload['messageReactions'] as List<dynamic>? ?? const [],
     );
   }
 

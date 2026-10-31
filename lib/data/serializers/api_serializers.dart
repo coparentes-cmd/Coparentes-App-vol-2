@@ -343,6 +343,35 @@ List<MessageUserTag> messageTagsFromJsonList(List<dynamic> raw) {
       .toList();
 }
 
+MessageReaction messageReactionFromJson(Map<String, dynamic> json) {
+  return MessageReaction(
+    messageId: json['messageId'] as String,
+    threadId: json['threadId'] as String,
+    userId: json['userId'] as String,
+    emoji: json['emoji'] as String,
+  );
+}
+
+List<MessageReaction> messageReactionsFromJsonList(List<dynamic> raw) {
+  return raw
+      .map(
+        (item) => messageReactionFromJson(
+          Map<String, dynamic>.from(item as Map),
+        ),
+      )
+      .toList();
+}
+
+Map<String, List<MessageReaction>> messageReactionsToMap(
+  List<MessageReaction> reactions,
+) {
+  final result = <String, List<MessageReaction>>{};
+  for (final item in reactions) {
+    result.putIfAbsent(item.messageId, () => <MessageReaction>[]).add(item);
+  }
+  return result;
+}
+
 ExportJob exportJobFromJson(Map<String, dynamic> json) {
   return ExportJob(
     id: json['id'] as String,

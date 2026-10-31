@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../config/message_reactions.dart';
 import '../config/message_tags.dart';
 import '../config/messaging_categories.dart';
 import '../data/api/app_api_client.dart';
@@ -21,13 +22,13 @@ class MessagingProvider extends ChangeNotifier {
 
   final List<MessageThread> _threads = [];
   final Map<String, Set<String>> _tagsByMessageId = {};
+  final Map<String, List<MessageReaction>> _reactionsByMessageId = {};
   bool _isLoading = false;
   String? _error;
   bool _snapshotSeeded = false;
   final Map<String, Set<String>> _knownMessageIds = {};
   String? _pendingNewMessageAlert;
   DateTime? _suppressRemoteLoadUntil;
-
   /// No-op: client E2E decrypt caches are retired.
   void clearDecryptCaches() {
     notifyListeners();
@@ -39,6 +40,8 @@ class MessagingProvider extends ChangeNotifier {
 
   List<MessageThread> get threads => _threads;
   Map<String, Set<String>> get tagsByMessageId => _tagsByMessageId;
+  Map<String, List<MessageReaction>> get reactionsByMessageId =>
+      _reactionsByMessageId;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get pendingNewMessageAlert => _pendingNewMessageAlert;
@@ -50,10 +53,118 @@ class MessagingProvider extends ChangeNotifier {
   Set<String> tagsForMessage(String messageId) =>
       _tagsByMessageId[messageId] ?? const {};
 
+  List<MessageReaction> reactionsForMessage(String messageId) =>
+      List<MessageReaction>.unmodifiable(
+        _reactionsByMessageId[messageId] ?? const [],
+      );
+
+  String? myReactionEmoji({
+    required String messageId,
+    required String? userId,
+  }) {
+    if (userId == null || userId.isEmpty) {
+      return null;
+    }
+    for (final reaction in reactionsForMessage(messageId)) {
+      if (reaction.userId == userId) {
+        return reaction.emoji;
+      }
+    }
+    return null;
+  }
+
   Set<String> get allUserTags => {
         for (final tags in _tagsByMessageId.values) ...tags,
       };
 
+  Future<void> setMessageReaction({
+    required String messageId,
+    required String threadId,
+    required String userId,
+    String? emoji,
+    bool localOnly = false,
+  }) async {
+    final trimmed = emoji?.trim();
+    final next = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    if (next != null && !isAllowedMessageReaction(next)) {
+      throw ArgumentError('invalid_reaction');
+    }
+
+    final currentMine = myReactionEmoji(messageId: messageId, userId: userId);
+    // WhatsApp toggle: same emoji again clears.
+    final effective = (next != null && next == currentMine) ? null : next;
+
+    suppressRemoteLoad();
+    _applyLocalReaction(
+      messageId: messageId,
+      threadId: threadId,
+      userId: userId,
+      emoji: effective,
+    );
+    notifyListeners();
+
+    if (localOnly) {
+      return;
+    }
+
+    try {
+      final updated = await _repository.setMessageReaction(
+        messageId: messageId,
+        emoji: effective,
+      );
+      _mergeThreadReactions(updated, threadId: threadId);
+      notifyListeners();
+    } catch (error) {
+      await loadThreads(silent: true);
+      rethrow;
+    }
+  }
+
+  void _applyLocalReaction({
+    required String messageId,
+    required String threadId,
+    required String userId,
+    String? emoji,
+  }) {
+    final existing = List<MessageReaction>.from(
+      _reactionsByMessageId[messageId] ?? const [],
+    )..removeWhere((reaction) => reaction.userId == userId);
+    if (emoji != null) {
+      existing.add(
+        MessageReaction(
+          messageId: messageId,
+          threadId: threadId,
+          userId: userId,
+          emoji: emoji,
+        ),
+      );
+    }
+    if (existing.isEmpty) {
+      _reactionsByMessageId.remove(messageId);
+    } else {
+      _reactionsByMessageId[messageId] = existing;
+    }
+  }
+
+  void _mergeThreadReactions(
+    List<MessageReaction> threadReactions, {
+    required String threadId,
+  }) {
+    final keysToClear = _reactionsByMessageId.entries
+        .where(
+          (entry) => entry.value.any((reaction) => reaction.threadId == threadId),
+        )
+        .map((entry) => entry.key)
+        .toList();
+    for (final key in keysToClear) {
+      _reactionsByMessageId.remove(key);
+    }
+    for (final reaction in threadReactions) {
+      _reactionsByMessageId
+          .putIfAbsent(reaction.messageId, () => <MessageReaction>[])
+          .add(reaction);
+    }
+  }
   List<MessageThread> get allTabThreads {
     final items = _threads.where(isAllTabThread).toList()
       ..sort((a, b) => b.lastActivity.compareTo(a.lastActivity));
@@ -158,6 +269,9 @@ class MessagingProvider extends ChangeNotifier {
       _tagsByMessageId
         ..clear()
         ..addAll(result.tagsByMessageId);
+      _reactionsByMessageId
+        ..clear()
+        ..addAll(result.reactionsByMessageId);
     } catch (error) {
       if (!silent) {
         _error = 'Nie udało się pobrać wiadomości.';
@@ -675,6 +789,10 @@ class MessagingProvider extends ChangeNotifier {
           return 'Wiadomość jest pusta.';
         case 'invalid_request':
           return 'Nieprawidłowe dane wiadomości. Odśwież ekran i spróbuj ponownie.';
+        case 'attachment_too_large':
+          return 'Załącznik jest za duży (max 256 KB).';
+        case 'invalid_attachment':
+          return 'Nie udało się wysłać załącznika. Sprawdź plik i spróbuj ponownie.';
         default:
           break;
       }

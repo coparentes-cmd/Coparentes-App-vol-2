@@ -492,6 +492,9 @@ const enOverlay = <String, String>{
   'Nie udało się dodać dokumentu.': 'Failed to add document.',
   'Nie udało się pobrać paragonu.': 'Could not download the receipt.',
   'Nie udało się zapisać etykiet.': 'Failed to save labels.',
+  'Nie udało się zapisać reakcji.': 'Failed to save reaction.',
+  'Reakcje nie są jeszcze dostępne na serwerze. Spróbuj później.':
+      'Reactions are not available on the server yet. Try again later.',
   'Nie udało się zapisać profilu.': 'Failed to save user profile.',
   'Nie udało się zapisać wydatku.': 'Could not save the expense.',
   'Nieprawidłowy kod zaproszenia.': 'Wrong invite code.',
