@@ -81,9 +81,10 @@ class AppEnvironment {
   /// API base URL (must end with `/api`).
   ///
   /// Priority:
-  /// 1. `--dart-define=COPARENTES_API_BASE_URL=...` (Netlify / CI)
+  /// 1. `--dart-define=COPARENTES_API_BASE_URL=...` (Netlify / CI / mobile)
   /// 2. Web release → same-origin `/api` (Netlify proxy)
-  /// 3. Debug builds → local backend
+  /// 3. Web debug → local backend
+  /// 4. Mobile (debug + release) → `$publicSiteUrl/api` (prod), unless dart-define
   static String get apiBaseUrl {
     const configured = String.fromEnvironment('COPARENTES_API_BASE_URL');
     if (configured.isNotEmpty) {
@@ -95,7 +96,8 @@ class AppEnvironment {
       return configured;
     }
 
-    if (kDebugMode) {
+    // Web local dev only — keep Netlify/web debug workflow unchanged.
+    if (kIsWeb && kDebugMode) {
       return 'http://localhost:3000/api';
     }
 
@@ -103,6 +105,7 @@ class AppEnvironment {
       return '/api';
     }
 
+    // iOS/Android: hit public API (simulator/device cannot use Netlify `/api`).
     return '$publicSiteUrl/api';
   }
 }

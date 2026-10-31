@@ -1,0 +1,48 @@
+---
+description: iOS/Flutter toolchain — Xcode 27 Device Hub, nie kręć się wokół Simulator.app
+alwaysApply: true
+---
+
+# iOS toolchain (Xcode 27+) — bez pętli
+
+## Sukces = Flutter widzi iPhone’a
+
+Przy setupie / debugu iOS **najpierw**:
+
+```bash
+flutter devices
+```
+
+Jeśli jest urządzenie `ios` (simulator) — **toolchain działa**. Nie szukaj dalej „Simulator.app”.
+
+## Xcode 27: nie ma Simulator.app
+
+Apple **usunął** `Simulator.app`. Zastąpił go **Device Hub**:
+
+- Menu: `Xcode → Open Developer Tool → Device Hub`
+- Terminal: `open -a "Device Hub"` lub  
+  `open "$(xcode-select -p)/../Applications/DeviceHub.app"`
+- Runtime nadal: `xcodebuild -downloadPlatform iOS`, `xcrun simctl list runtimes`
+
+Komunikat Fluttera / CLI o braku  
+`/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app`  
+to **znany, mylący warning** przy Xcode 27 — **nie** oznacza, że trzeba doinstalowywać starego Simulatora.
+
+## Zakaz pętli
+
+- Nie powtarzaj 3+ razy wariantów `open -a Simulator` / ścieżek `Simulator.app`.
+- Nie myl: **runtime** ≠ **urządzenie simctl** ≠ **okno Device Hub**.
+- Po 2 nieudanych próbach starej ścieżki: sprawdź `xcodebuild -version` i czy tool nie zmienił nazwy (Device Hub).
+
+## Priorytet na Coparentes
+
+- Na razie **iOS first**; Android Studio może być czerwone w `flutter doctor` — nie blokuj F1.
+- Nie psuj web podczas setupu mobile (patrz `product-goal`).
+
+## iCloud Desktop psuje codesign
+
+Projekt na **iCloud Desktop** powoduje:
+`Failed to codesign … resource fork, Finder information, or similar detritus not allowed`.
+
+**Praca mobile:** `~/development/Coparentes-App-vol-2-main` (poza Desktop).
+Nie buduj iOS z kopii na `~/Desktop/...`.
