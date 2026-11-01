@@ -21,10 +21,10 @@ class MessageSendCountdownBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final total = totalSeconds <= 0 ? 5 : totalSeconds;
     final progress = (secondsRemaining / total).clamp(0.0, 1.0);
 
+    // Match [MessageComposeBar]: Scaffold owns keyboard insets — no double pad.
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -32,12 +32,7 @@ class MessageSendCountdownBar extends StatelessWidget {
           top: BorderSide(color: AppTheme.dividerColor, width: 0.5),
         ),
       ),
-      padding: EdgeInsets.fromLTRB(
-        12,
-        10,
-        12,
-        bottomInset > 0 ? bottomInset + 8 : 10,
-      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,

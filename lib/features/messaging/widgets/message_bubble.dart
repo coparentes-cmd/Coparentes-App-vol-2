@@ -106,6 +106,12 @@ class MessageBubbleState extends State<MessageBubble> {
     final isReadOnly = app.currentUser?.role == UserRole.observer;
     final reactAsUserId = (!isReadOnly) ? viewerUserId : null;
     final canReact = reactAsUserId != null;
+    final myReaction = canReact
+        ? messaging.myReactionEmoji(
+            messageId: widget.message.id,
+            userId: reactAsUserId,
+          )
+        : null;
 
     return Padding(
       padding: EdgeInsets.only(top: widget.group.topSpacing),
@@ -126,139 +132,174 @@ class MessageBubbleState extends State<MessageBubble> {
                 ),
               ),
             ),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-            child: GestureDetector(
-              onLongPressStart: canReact
-                  ? (details) => _showReactionPicker(
-                        context,
-                        details.globalPosition,
-                        viewerUserId: reactAsUserId,
-                      )
-                  : null,
-              child: IntrinsicWidth(
-                child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
-              decoration: BoxDecoration(
-                color: bubbleStyle.backgroundColor,
-                border: Border.all(color: bubbleStyle.borderColor),
-                borderRadius: imessageBubbleRadius(
-                  isMe: widget.isMe,
-                  isFirstInGroup: widget.group.isFirstInGroup,
-                  isLastInGroup: widget.group.isLastInGroup,
+          // WhatsApp-style: smiley sits beside the bubble (outer/center side).
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (canReact && widget.isMe) ...[
+                _buildReactionFaceButton(
+                  context,
+                  viewerUserId: reactAsUserId,
+                  myReaction: myReaction,
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.message.content.isNotEmpty ||
-                      widget.message.needsDecryption)
-                    E2eMessageText(
-                      message: widget.message,
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.35,
-                        color: bubbleStyle.textColor,
-                      ),
-                    ),
-                  if (widget.message.attachments.isNotEmpty) ...[
-                    if (widget.message.content.isNotEmpty)
-                      const SizedBox(height: 8),
-                    ...widget.message.attachments.map(
-                      (att) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: InkWell(
-                          onTap: _downloadingAttachment
-                              ? null
-                              : () => _downloadAttachment(att),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: bubbleStyle.attachmentBackground,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _downloadingAttachment
-                                      ? Icons.hourglass_top
-                                      : Icons.attach_file,
-                                  size: 14,
-                                  color: bubbleStyle.attachmentForeground,
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: bubbleStyle.attachmentForeground,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                const SizedBox(width: 6),
+              ],
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                child: GestureDetector(
+                  // Mobile: long-press. Desktop web: right-click.
+                  onLongPressStart: canReact
+                      ? (details) => _showReactionPicker(
+                            context,
+                            details.globalPosition,
+                            viewerUserId: reactAsUserId,
+                          )
+                      : null,
+                  onSecondaryTapDown: canReact
+                      ? (details) => _showReactionPicker(
+                            context,
+                            details.globalPosition,
+                            viewerUserId: reactAsUserId,
+                          )
+                      : null,
+                  child: IntrinsicWidth(
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+                      decoration: BoxDecoration(
+                        color: bubbleStyle.backgroundColor,
+                        border: Border.all(color: bubbleStyle.borderColor),
+                        borderRadius: imessageBubbleRadius(
+                          isMe: widget.isMe,
+                          isFirstInGroup: widget.group.isFirstInGroup,
+                          isLastInGroup: widget.group.isLastInGroup,
                         ),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 2),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (widget.allowPrivateTags && !isReadOnly)
-                        Tooltip(
-                          message: 'Etykiety',
-                          child: InkWell(
-                            onTap: () =>
-                                _editMessageTags(context, messageTags),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.all(2),
-                              child: Icon(
-                                messageTags.isEmpty
-                                    ? Icons.label_outline
-                                    : Icons.label,
-                                size: 14,
-                                color: messageTags.isEmpty
-                                    ? bubbleStyle.secondaryTextColor
-                                    : messageTagColor(
-                                        messageTags.first,
-                                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (widget.message.content.isNotEmpty ||
+                              widget.message.needsDecryption)
+                            E2eMessageText(
+                              message: widget.message,
+                              style: TextStyle(
+                                fontSize: 16,
+                                height: 1.35,
+                                color: bubbleStyle.textColor,
                               ),
                             ),
+                          if (widget.message.attachments.isNotEmpty) ...[
+                            if (widget.message.content.isNotEmpty)
+                              const SizedBox(height: 8),
+                            ...widget.message.attachments.map(
+                              (att) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: InkWell(
+                                  onTap: _downloadingAttachment
+                                      ? null
+                                      : () => _downloadAttachment(att),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: bubbleStyle.attachmentBackground,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _downloadingAttachment
+                                              ? Icons.hourglass_top
+                                              : Icons.attach_file,
+                                          size: 14,
+                                          color:
+                                              bubbleStyle.attachmentForeground,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            '${att.name} (${formatAttachmentSize(att.sizeBytes)})',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: bubbleStyle
+                                                  .attachmentForeground,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (widget.allowPrivateTags && !isReadOnly)
+                                Tooltip(
+                                  message: 'Etykiety',
+                                  child: InkWell(
+                                    onTap: () => _editMessageTags(
+                                      context,
+                                      messageTags,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2),
+                                      child: Icon(
+                                        messageTags.isEmpty
+                                            ? Icons.label_outline
+                                            : Icons.label,
+                                        size: 14,
+                                        color: messageTags.isEmpty
+                                            ? bubbleStyle.secondaryTextColor
+                                            : messageTagColor(
+                                                messageTags.first,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (widget.allowPrivateTags && !isReadOnly)
+                                const SizedBox(width: 4),
+                              Tooltip(
+                                message: widget.isMe
+                                    ? messageReceiptLabel(
+                                        widget.message,
+                                        isMe: true,
+                                      )
+                                    : _formatTime(widget.message.sentAt),
+                                child: MessageReceiptFooter(
+                                  message: widget.message,
+                                  isMe: widget.isMe,
+                                  sentAt: widget.message.sentAt,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      if (widget.allowPrivateTags && !isReadOnly)
-                        const SizedBox(width: 4),
-                      Tooltip(
-                        message: widget.isMe
-                            ? messageReceiptLabel(
-                                widget.message,
-                                isMe: true,
-                              )
-                            : _formatTime(widget.message.sentAt),
-                        child: MessageReceiptFooter(
-                          message: widget.message,
-                          isMe: widget.isMe,
-                          sentAt: widget.message.sentAt,
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-            ),
+              if (canReact && !widget.isMe) ...[
+                const SizedBox(width: 6),
+                _buildReactionFaceButton(
+                  context,
+                  viewerUserId: reactAsUserId,
+                  myReaction: myReaction,
+                ),
+              ],
+            ],
           ),
           if (reactions.isNotEmpty) ...[
             const SizedBox(height: 2),
@@ -435,6 +476,65 @@ class MessageBubbleState extends State<MessageBubble> {
         setState(() => _respondingToException = false);
       }
     }
+  }
+
+  /// WhatsApp-like circular smiley beside the bubble.
+  Widget _buildReactionFaceButton(
+    BuildContext context, {
+    required String viewerUserId,
+    required String? myReaction,
+  }) {
+    return Tooltip(
+      message: context.tr('Reakcja'),
+      child: Builder(
+        builder: (buttonContext) {
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                final box = buttonContext.findRenderObject() as RenderBox?;
+                final origin = box?.localToGlobal(
+                      Offset((box.size.width) / 2, 0),
+                    ) ??
+                    Offset.zero;
+                _showReactionPicker(
+                  context,
+                  origin,
+                  viewerUserId: viewerUserId,
+                );
+              },
+              customBorder: const CircleBorder(),
+              child: Ink(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF2A2F3A)
+                      : const Color(0xFFF0F2F5),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF3D4450)
+                        : const Color(0xFFE4E6EB),
+                  ),
+                ),
+                child: Center(
+                  child: myReaction != null
+                      ? Text(myReaction, style: const TextStyle(fontSize: 14))
+                      : Icon(
+                          Icons.sentiment_satisfied_alt_outlined,
+                          size: 18,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFB0B3B8)
+                              : const Color(0xFF667781),
+                        ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _showReactionPicker(

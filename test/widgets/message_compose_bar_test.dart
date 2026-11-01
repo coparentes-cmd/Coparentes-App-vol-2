@@ -31,6 +31,23 @@ void main() {
     );
   }
 
+  testWidgets('send button stays on-screen on narrow phone width', (tester) async {
+    final controller = TextEditingController(text: 'hej');
+    addTearDown(controller.dispose);
+
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpBar(tester, controller: controller);
+    await tester.pumpAndSettle();
+
+    final send = find.byIcon(Icons.arrow_upward_rounded);
+    expect(send, findsOneWidget);
+    final box = tester.getRect(send);
+    expect(box.right, lessThanOrEqualTo(320.0 + 0.5));
+    expect(box.left, greaterThan(0));
+  });
+
   testWidgets('emoji button toggles picker without crashing', (tester) async {
     final controller = TextEditingController();
     addTearDown(controller.dispose);

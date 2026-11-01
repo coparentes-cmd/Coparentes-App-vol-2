@@ -155,10 +155,10 @@ class _MessageComposeBarState extends State<MessageComposeBar>
 
   @override
   Widget build(BuildContext context) {
-    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
-    final double bottomPad = (!_emojiShowing && keyboardInset > 0)
-        ? keyboardInset + 8
-        : 10;
+    // Scaffold already shrinks for the keyboard — do NOT re-add viewInsets
+    // (that left a large empty gap and pushed the send button off-screen on
+    // mobile Safari). Home-indicator is handled by the parent tab bar.
+    const bottomPad = 10.0;
 
     return Container(
       decoration: const BoxDecoration(
@@ -167,7 +167,7 @@ class _MessageComposeBarState extends State<MessageComposeBar>
           top: BorderSide(color: AppTheme.dividerColor, width: 0.5),
         ),
       ),
-      padding: EdgeInsets.fromLTRB(8, 8, 8, bottomPad),
+      padding: const EdgeInsets.fromLTRB(6, 8, 6, bottomPad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -186,25 +186,23 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                           '${attachment.name} (${formatAttachmentSize(attachment.sizeBytes)})',
                           overflow: TextOverflow.ellipsis,
                         ),
-                        onDeleted: () => widget.onRemoveAttachment(attachment.id),
+                        onDeleted: () =>
+                            widget.onRemoveAttachment(attachment.id),
                       ),
                     )
                     .toList(),
               ),
             ),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.add_circle_outline,
-                  size: 28,
-                  color: widget.pendingAttachments.length >=
-                          maxMessageAttachmentsPerMessage
-                      ? AppTheme.textHint
-                      : AppTheme.textSecondary,
-                ),
+              _ComposeIconButton(
                 tooltip: context.tr('Dodaj załącznik'),
+                icon: Icons.add_circle_outline,
+                color: widget.pendingAttachments.length >=
+                        maxMessageAttachmentsPerMessage
+                    ? AppTheme.textHint
+                    : AppTheme.textSecondary,
                 onPressed: widget.pendingAttachments.length >=
                         maxMessageAttachmentsPerMessage
                     ? null
@@ -237,12 +235,15 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                           color: AppTheme.textPrimary,
                         ),
                         decoration: InputDecoration(
-                          hintText: _showCyclingPlaceholder ? null : 'Wiadomość',
-                          hintStyle: const TextStyle(color: AppTheme.textHint),
+                          hintText:
+                              _showCyclingPlaceholder ? null : 'Wiadomość',
+                          hintStyle:
+                              const TextStyle(color: AppTheme.textHint),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.fromLTRB(16, 10, 40, 10),
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(14, 10, 40, 10),
                           isDense: true,
                         ),
                         onChanged: widget.onChanged,
@@ -251,7 +252,8 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                         Positioned.fill(
                           child: IgnorePointer(
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 10, 40, 10),
+                              padding:
+                                  const EdgeInsets.fromLTRB(14, 10, 40, 10),
                               child: Align(
                                 alignment: Alignment.topLeft,
                                 child: FadeTransition(
@@ -272,21 +274,18 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                           ),
                         ),
                       Positioned(
-                        right: 2,
+                        right: 0,
                         bottom: 0,
                         top: 0,
-                        child: IconButton(
-                          visualDensity: VisualDensity.compact,
+                        child: _ComposeIconButton(
                           tooltip: context.tr('Emoji'),
-                          icon: Icon(
-                            _emojiShowing
-                                ? Icons.keyboard_outlined
-                                : Icons.emoji_emotions_outlined,
-                            size: 22,
-                            color: _emojiShowing
-                                ? AppTheme.primaryTeal
-                                : AppTheme.textSecondary,
-                          ),
+                          icon: _emojiShowing
+                              ? Icons.keyboard_outlined
+                              : Icons.emoji_emotions_outlined,
+                          color: _emojiShowing
+                              ? AppTheme.primaryTeal
+                              : AppTheme.textSecondary,
+                          iconSize: 22,
                           onPressed: _toggleEmojiPicker,
                         ),
                       ),
@@ -296,34 +295,37 @@ class _MessageComposeBarState extends State<MessageComposeBar>
               ),
               const SizedBox(width: 6),
               if (widget.sending)
-                const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
+                const SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Padding(
+                    padding: EdgeInsets.all(6),
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
-              else if (_canSend)
+              else
+                // Always reserve the send control so it cannot "escape" the row.
                 Material(
-                  color: AppTheme.primaryTeal,
+                  color: _canSend
+                      ? AppTheme.primaryTeal
+                      : const Color(0xFFD1D5DB),
                   shape: const CircleBorder(),
                   child: InkWell(
                     customBorder: const CircleBorder(),
-                    onTap: widget.onSend,
-                    child: const SizedBox(
-                      width: 34,
-                      height: 34,
+                    onTap: _canSend ? widget.onSend : null,
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
                       child: Icon(
                         Icons.arrow_upward_rounded,
-                        color: Colors.white,
+                        color: _canSend
+                            ? Colors.white
+                            : const Color(0xFF9CA3AF),
                         size: 20,
                       ),
                     ),
                   ),
-                )
-              else
-                const SizedBox(width: 34, height: 34),
+                ),
             ],
           ),
           if (_emojiShowing)
@@ -332,7 +334,6 @@ class _MessageComposeBarState extends State<MessageComposeBar>
               child: EmojiPicker(
                 textEditingController: widget.controller,
                 onBackspacePressed: () {
-                  // Controller already updates selection; refresh send state.
                   setState(() {});
                 },
                 config: Config(
@@ -342,7 +343,8 @@ class _MessageComposeBarState extends State<MessageComposeBar>
                   emojiViewConfig: EmojiViewConfig(
                     backgroundColor: const Color(0xFFF7F7F9),
                     emojiSizeMax: 28 *
-                        (foundation.defaultTargetPlatform == TargetPlatform.iOS
+                        (foundation.defaultTargetPlatform ==
+                                TargetPlatform.iOS
                             ? 1.20
                             : 1.0),
                   ),
@@ -370,6 +372,36 @@ class _MessageComposeBarState extends State<MessageComposeBar>
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Compact tap target that does not inflate past ~36px (default IconButton is 48).
+class _ComposeIconButton extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onPressed;
+  final double iconSize;
+
+  const _ComposeIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+    this.iconSize = 26,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: iconSize, color: color),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+      visualDensity: VisualDensity.compact,
+      splashRadius: 20,
     );
   }
 }

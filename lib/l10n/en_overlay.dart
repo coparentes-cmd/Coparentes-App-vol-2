@@ -91,6 +91,7 @@ const enOverlay = <String, String>{
   'Czwartek': 'Thursday',
   'Eksporty': 'Exports',
   'Etykiety': 'Labels',
+  'Reakcja': 'React',
   'Filtruj:': 'Filter:',
   'Jedzenie': 'Food',
   'Medyczne': 'Medical',
