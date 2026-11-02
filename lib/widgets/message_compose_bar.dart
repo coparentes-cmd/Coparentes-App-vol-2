@@ -39,6 +39,7 @@ class MessageComposeBar extends StatefulWidget {
 class _MessageComposeBarState extends State<MessageComposeBar>
     with SingleTickerProviderStateMixin {
   static const double _emojiPickerHeight = 256;
+  static const double _sideBtn = 32;
 
   final FocusNode _focusNode = FocusNode();
   int _hintIndex = 0;
@@ -155,178 +156,208 @@ class _MessageComposeBarState extends State<MessageComposeBar>
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold already shrinks for the keyboard — do NOT re-add viewInsets
-    // (that left a large empty gap and pushed the send button off-screen on
-    // mobile Safari). Home-indicator is handled by the parent tab bar.
-    const bottomPad = 10.0;
+    // Scaffold owns keyboard insets. Side safe-area keeps the send control
+    // inside the visible phone width (iOS Safari notch / home indicator).
+    final safe = MediaQuery.paddingOf(context);
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: AppTheme.dividerColor, width: 0.5),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, bottomPad),
+    return ColoredBox(
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.pendingAttachments.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: widget.pendingAttachments
-                    .map(
-                      (attachment) => InputChip(
-                        avatar: const Icon(Icons.attach_file, size: 16),
-                        label: Text(
-                          '${attachment.name} (${formatAttachmentSize(attachment.sizeBytes)})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onDeleted: () =>
-                            widget.onRemoveAttachment(attachment.id),
-                      ),
-                    )
-                    .toList(),
-              ),
+          const Divider(height: 0.5, thickness: 0.5, color: AppTheme.dividerColor),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              8 + safe.left,
+              8,
+              8 + safe.right,
+              10,
             ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _ComposeIconButton(
-                tooltip: context.tr('Dodaj załącznik'),
-                icon: Icons.add_circle_outline,
-                color: widget.pendingAttachments.length >=
-                        maxMessageAttachmentsPerMessage
-                    ? AppTheme.textHint
-                    : AppTheme.textSecondary,
-                onPressed: widget.pendingAttachments.length >=
-                        maxMessageAttachmentsPerMessage
-                    ? null
-                    : widget.onPickAttachment,
-              ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFEFF4),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFFE0E0E5)),
-                  ),
-                  child: Stack(
-                    children: [
-                      TextField(
-                        controller: widget.controller,
-                        focusNode: _focusNode,
-                        maxLines: 5,
-                        minLines: _showCyclingPlaceholder ? 2 : 1,
-                        textAlignVertical: TextAlignVertical.top,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) {
-                          if (_canSend) {
-                            widget.onSend?.call();
-                          }
-                        },
-                        style: const TextStyle(
-                          fontSize: 16,
-                          height: 1.35,
-                          color: AppTheme.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText:
-                              _showCyclingPlaceholder ? null : 'Wiadomość',
-                          hintStyle:
-                              const TextStyle(color: AppTheme.textHint),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.fromLTRB(14, 10, 40, 10),
-                          isDense: true,
-                        ),
-                        onChanged: widget.onChanged,
-                      ),
-                      if (_showCyclingPlaceholder)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(14, 10, 40, 10),
-                              child: Align(
-                                alignment: Alignment.topLeft,
-                                child: FadeTransition(
-                                  opacity: _fadeAnim,
-                                  child: Text(
-                                    _currentPlaceholder,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      height: 1.3,
-                                      color: AppTheme.textHint,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.pendingAttachments.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.pendingAttachments
+                          .map(
+                            (attachment) => InputChip(
+                              avatar: const Icon(Icons.attach_file, size: 16),
+                              label: Text(
+                                '${attachment.name} (${formatAttachmentSize(attachment.sizeBytes)})',
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              onDeleted: () =>
+                                  widget.onRemoveAttachment(attachment.id),
                             ),
-                          ),
-                        ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        top: 0,
-                        child: _ComposeIconButton(
-                          tooltip: context.tr('Emoji'),
-                          icon: _emojiShowing
-                              ? Icons.keyboard_outlined
-                              : Icons.emoji_emotions_outlined,
-                          color: _emojiShowing
-                              ? AppTheme.primaryTeal
-                              : AppTheme.textSecondary,
-                          iconSize: 22,
-                          onPressed: _toggleEmojiPicker,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              if (widget.sending)
-                const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Padding(
-                    padding: EdgeInsets.all(6),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else
-                // Always reserve the send control so it cannot "escape" the row.
-                Material(
-                  color: _canSend
-                      ? AppTheme.primaryTeal
-                      : const Color(0xFFD1D5DB),
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _canSend ? widget.onSend : null,
-                    child: SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: Icon(
-                        Icons.arrow_upward_rounded,
-                        color: _canSend
-                            ? Colors.white
-                            : const Color(0xFF9CA3AF),
-                        size: 20,
-                      ),
+                          )
+                          .toList(),
                     ),
                   ),
+                // Single full-width row: [+] [ pill with field + emoji + send ]
+                // Send lives INSIDE the pill so it cannot clip off-screen.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _ComposeTapIcon(
+                      tooltip: context.tr('Dodaj załącznik'),
+                      icon: Icons.add_circle_outline,
+                      color: widget.pendingAttachments.length >=
+                              maxMessageAttachmentsPerMessage
+                          ? AppTheme.textHint
+                          : AppTheme.textSecondary,
+                      onPressed: widget.pendingAttachments.length >=
+                              maxMessageAttachmentsPerMessage
+                          ? null
+                          : widget.onPickAttachment,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFEFF4),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFE0E0E5)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Stack(
+                                  children: [
+                                    TextField(
+                                      controller: widget.controller,
+                                      focusNode: _focusNode,
+                                      maxLines: 5,
+                                      minLines:
+                                          _showCyclingPlaceholder ? 2 : 1,
+                                      textAlignVertical: TextAlignVertical.top,
+                                      textInputAction: TextInputAction.send,
+                                      onSubmitted: (_) {
+                                        if (_canSend) {
+                                          widget.onSend?.call();
+                                        }
+                                      },
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        height: 1.35,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: _showCyclingPlaceholder
+                                            ? null
+                                            : 'Wiadomość',
+                                        hintStyle: const TextStyle(
+                                          color: AppTheme.textHint,
+                                        ),
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        contentPadding:
+                                            const EdgeInsets.fromLTRB(
+                                          10,
+                                          8,
+                                          4,
+                                          8,
+                                        ),
+                                        isDense: true,
+                                      ),
+                                      onChanged: widget.onChanged,
+                                    ),
+                                    if (_showCyclingPlaceholder)
+                                      Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              10,
+                                              8,
+                                              4,
+                                              8,
+                                            ),
+                                            child: Align(
+                                              alignment: Alignment.topLeft,
+                                              child: FadeTransition(
+                                                opacity: _fadeAnim,
+                                                child: Text(
+                                                  _currentPlaceholder,
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    height: 1.3,
+                                                    color: AppTheme.textHint,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              _ComposeTapIcon(
+                                tooltip: context.tr('Emoji'),
+                                icon: _emojiShowing
+                                    ? Icons.keyboard_outlined
+                                    : Icons.emoji_emotions_outlined,
+                                color: _emojiShowing
+                                    ? AppTheme.primaryTeal
+                                    : AppTheme.textSecondary,
+                                iconSize: 22,
+                                onPressed: _toggleEmojiPicker,
+                              ),
+                              const SizedBox(width: 2),
+                              if (widget.sending)
+                                const SizedBox(
+                                  width: _sideBtn,
+                                  height: _sideBtn,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              else
+                                Material(
+                                  color: _canSend
+                                      ? AppTheme.primaryTeal
+                                      : const Color(0xFFD1D5DB),
+                                  shape: const CircleBorder(),
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: _canSend ? widget.onSend : null,
+                                    child: SizedBox(
+                                      width: _sideBtn,
+                                      height: _sideBtn,
+                                      child: Icon(
+                                        Icons.arrow_upward_rounded,
+                                        color: _canSend
+                                            ? Colors.white
+                                            : const Color(0xFF9CA3AF),
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+              ],
+            ),
           ),
           if (_emojiShowing)
             SizedBox(
@@ -376,32 +407,35 @@ class _MessageComposeBarState extends State<MessageComposeBar>
   }
 }
 
-/// Compact tap target that does not inflate past ~36px (default IconButton is 48).
-class _ComposeIconButton extends StatelessWidget {
+/// Fixed 32×32 tap target — avoids IconButton's default 48px min size on web.
+class _ComposeTapIcon extends StatelessWidget {
   final String tooltip;
   final IconData icon;
   final Color color;
   final VoidCallback? onPressed;
   final double iconSize;
 
-  const _ComposeIconButton({
+  const _ComposeTapIcon({
     required this.tooltip,
     required this.icon,
     required this.color,
     required this.onPressed,
-    this.iconSize = 26,
+    this.iconSize = 24,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: iconSize, color: color),
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-      visualDensity: VisualDensity.compact,
-      splashRadius: 20,
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: _MessageComposeBarState._sideBtn,
+        height: _MessageComposeBarState._sideBtn,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          child: Icon(icon, size: iconSize, color: color),
+        ),
+      ),
     );
   }
 }

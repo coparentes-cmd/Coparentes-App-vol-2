@@ -55,7 +55,6 @@ class MessageBubbleState extends State<MessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final maxBubbleWidth = chatBubbleMaxWidthFor(context);
     final calendar = context.watch<CalendarProvider>();
     final app = context.watch<AppProvider>();
     final workspace = app.currentWorkspace;
@@ -112,6 +111,9 @@ class MessageBubbleState extends State<MessageBubble> {
             userId: reactAsUserId,
           )
         : null;
+    // Leave room for the 🙂 control beside the bubble so the row never
+    // overflows the phone width.
+    final maxBubbleWidth = chatBubbleMaxWidthFor(context) - (canReact ? 40 : 0);
 
     return Padding(
       padding: EdgeInsets.only(top: widget.group.topSpacing),
@@ -479,11 +481,14 @@ class MessageBubbleState extends State<MessageBubble> {
   }
 
   /// WhatsApp-like circular smiley beside the bubble.
+  /// Uses a Unicode face (not Material Icons) — outlined icons were blank on
+  /// Flutter web release after icon tree-shaking.
   Widget _buildReactionFaceButton(
     BuildContext context, {
     required String viewerUserId,
     required String? myReaction,
   }) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: context.tr('Reakcja'),
       child: Builder(
@@ -504,30 +509,32 @@ class MessageBubbleState extends State<MessageBubble> {
                 );
               },
               customBorder: const CircleBorder(),
-              child: Ink(
-                width: 28,
-                height: 28,
+              child: Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFF2A2F3A)
-                      : const Color(0xFFF0F2F5),
+                  color: dark ? const Color(0xFF2A2F3A) : Colors.white,
                   border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark
+                    color: dark
                         ? const Color(0xFF3D4450)
-                        : const Color(0xFFE4E6EB),
+                        : const Color(0xFFCED4DA),
                   ),
+                  boxShadow: dark
+                      ? null
+                      : const [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
                 ),
-                child: Center(
-                  child: myReaction != null
-                      ? Text(myReaction, style: const TextStyle(fontSize: 14))
-                      : Icon(
-                          Icons.sentiment_satisfied_alt_outlined,
-                          size: 18,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFFB0B3B8)
-                              : const Color(0xFF667781),
-                        ),
+                child: Text(
+                  myReaction ?? '🙂',
+                  style: const TextStyle(fontSize: 16, height: 1.1),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
