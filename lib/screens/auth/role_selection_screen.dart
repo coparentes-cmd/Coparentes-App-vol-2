@@ -1754,9 +1754,6 @@ class _LoginMarketingBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final showDots = width >= 860;
-
     return DecoratedBox(
       decoration: const BoxDecoration(gradient: _loginGradient),
       child: Stack(
@@ -1787,12 +1784,6 @@ class _LoginMarketingBackdrop extends StatelessWidget {
               color: Color(0xB30A3F80),
             ),
           ),
-          if (showDots)
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(painter: _LoginDotPatternPainter()),
-              ),
-            ),
           child,
         ],
       ),
@@ -1821,34 +1812,6 @@ class _LoginOrb extends StatelessWidget {
       ),
     );
   }
-}
-
-class _LoginDotPatternPainter extends CustomPainter {
-  const _LoginDotPatternPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    const step = 22.0;
-    for (double y = 0; y < size.height; y += step) {
-      for (double x = 0; x < size.width; x += step) {
-        final t = x / size.width;
-        double edge;
-        if (t < 0.45) {
-          edge = 1 - (t / 0.45);
-        } else if (t > 0.70) {
-          edge = (t - 0.70) / 0.30;
-        } else {
-          continue;
-        }
-        paint.color = Colors.white.withValues(alpha: 0.14 * edge.clamp(0.0, 1.0));
-        canvas.drawCircle(Offset(x, y), 1, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LoginPrimaryButton extends StatefulWidget {
