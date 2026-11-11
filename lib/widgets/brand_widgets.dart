@@ -119,11 +119,17 @@ class BrandCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Color? color;
+  final double? borderRadius;
+  final List<BoxShadow>? boxShadow;
+  final Border? border;
   const BrandCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(24),
     this.color,
+    this.borderRadius,
+    this.boxShadow,
+    this.border,
   });
 
   @override
@@ -132,9 +138,9 @@ class BrandCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: color ?? Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dividerColor),
-        boxShadow: AppTheme.softShadow,
+        borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusLg),
+        border: border ?? Border.all(color: AppTheme.dividerColor),
+        boxShadow: boxShadow ?? AppTheme.softShadow,
       ),
       child: child,
     );

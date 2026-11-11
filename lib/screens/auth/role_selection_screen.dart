@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,19 +7,49 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_environment.dart';
-import '../../config/legal_config.dart';
 import '../../data/api/app_api_client.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
+import '../../providers/offline_sync_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/layout_utils.dart';
 import '../../utils/password_normalization.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/language_flag.dart';
 import 'consent_registration_screen.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
+
+/// Brand login gradient from wzor-logowanie.html (marketing shell only).
+const _loginGradient = LinearGradient(
+  begin: Alignment(-0.85, -1),
+  end: Alignment(0.95, 1),
+  colors: [
+    Color(0xFF0B4F94),
+    Color(0xFF106DBC),
+    Color(0xFF00769C),
+    Color(0xFF009570),
+  ],
+  stops: [0.0, 0.30, 0.62, 1.0],
+);
+
+const _loginFormShadow = [
+  BoxShadow(
+    color: Color(0x47001932),
+    blurRadius: 80,
+    offset: Offset(0, 30),
+  ),
+  BoxShadow(
+    color: Color(0x14001932),
+    blurRadius: 6,
+    offset: Offset(0, 2),
+  ),
+];
+
+const _demoOrange = Color(0xFFF96245);
+const _demoOrangeHover = Color(0xFFEE5537);
+const _loginGreen = Color(0xFF0FC494);
+const _tabBlue = Color(0xFF1276D6);
 
 enum _AuthMode { login, register, join, joinChild }
 
@@ -133,46 +164,47 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final authError = appProvider.authError;
 
     return Scaffold(
-      body: BrandBackdrop(
+      backgroundColor: const Color(0xFF0B4F94),
+      body: _LoginMarketingBackdrop(
         child: SafeArea(
-          child: Stack(
-            children: [
-              Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: LayoutTokens.authMarketingMax,
-              ),
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final narrow =
-                        constraints.maxWidth < LayoutTokens.authTwoColumnMin;
-                    return Wrap(
-                      spacing: 22,
-                      runSpacing: 22,
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: narrow ? constraints.maxWidth : 420,
-                          child: _BrandIntroCard(
-                            demoPickerOpen: _demoPickerOpen,
-                            onDemoHorseTap: _submitting
-                                ? null
-                                : () => setState(
-                                      () => _demoPickerOpen = !_demoPickerOpen,
-                                    ),
-                            onDemoRoleSelected: _submitting
-                                ? null
-                                : _enterDemoRole,
-                          ),
+          child: LayoutBuilder(
+            builder: (context, viewport) {
+              // wzor HTML: max-width 860 → 1 kolumna. U Ciebie okno ~1024 —
+              // dwie kolumny OK, ale poniżej 900 px stack.
+              final narrow = viewport.maxWidth < 900;
+              final short = viewport.maxHeight < 820;
+              final sidePad = narrow ? 16.0 : 24.0;
+              final offlineBanner =
+                  context.watch<OfflineSyncProvider>().showBanner;
+              // Banner offline jest overlay — zostaw miejsce pod logo.
+              final topPad = (offlineBanner ? 56.0 : 0.0) +
+                  (narrow ? 24.0 : (short ? 20.0 : 40.0));
+              final bottomPad = 32.0;
+              // wzor .page: 560 + 36 + 690 ≈ 1286
+              final contentWidth =
+                  (viewport.maxWidth - sidePad * 2).clamp(0.0, 1286.0);
+              final intro = _BrandIntroCard(
+                compact: narrow,
+                short: short,
+                demoPickerOpen: _demoPickerOpen,
+                onDemoHorseTap: _submitting
+                    ? null
+                    : () => setState(
+                          () => _demoPickerOpen = !_demoPickerOpen,
                         ),
-                        SizedBox(
-                          width: narrow ? constraints.maxWidth : 520,
-                          child: BrandCard(
-                            padding: const EdgeInsets.all(26),
+                onDemoRoleSelected: _submitting ? null : _enterDemoRole,
+              );
+              final form = BrandCard(
+                            // wzor .auth: padding 40px 44px 36px
+                            padding: EdgeInsets.fromLTRB(
+                              narrow ? 18 : 44,
+                              narrow ? 22 : 40,
+                              narrow ? 18 : 44,
+                              narrow ? 22 : 36,
+                            ),
+                            borderRadius: 30,
+                            border: Border.all(color: Colors.transparent),
+                            boxShadow: _loginFormShadow,
                             child: CallbackShortcuts(
                               bindings: {
                                 const SingleActivator(LogicalKeyboardKey.enter):
@@ -183,6 +215,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               },
                               child: Focus(
                                 child: Column(
+                                  mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _ModeSelector(
@@ -205,7 +238,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                     if (_mode == _AuthMode.login ||
                                         _mode == _AuthMode.join ||
                                         _mode == _AuthMode.joinChild) ...[
-                                      const SizedBox(height: 14),
+                                      const SizedBox(height: 22),
                                       Row(
                                         children: [
                                           Expanded(
@@ -223,7 +256,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                               }),
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 16),
                                           Expanded(
                                             child: _RoleChoiceChip(
                                               label: context.tr('Dziecko'),
@@ -241,26 +274,31 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         ],
                                       ),
                                     ],
-                                    const SizedBox(height: 22),
+                                    const SizedBox(height: 28),
                                     if (_backendReachable == false) ...[
                                       Container(
                                         width: double.infinity,
-                                        padding: const EdgeInsets.all(14),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: AppTheme.warningColor
                                               .withValues(alpha: 0.12),
                                           borderRadius:
-                                              BorderRadius.circular(18),
+                                              BorderRadius.circular(14),
                                           border: Border.all(
                                             color: AppTheme.warningColor
                                                 .withValues(alpha: 0.35),
                                           ),
                                         ),
-                                        child: Text('Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
+                                        child: Text(
+                                          'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
                                           style: const TextStyle(
                                             color: AppTheme.warningColor,
-                                            fontSize: 12,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w600,
+                                            height: 1.35,
                                           ),
                                         ),
                                       ),
@@ -292,120 +330,155 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(height: 20),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed:
-                                            _submitting ? null : _submit,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              AppTheme.primaryTeal,
-                                          foregroundColor: Colors.white,
-                                          elevation: 0,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 16,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                        child: _submitting
-                                            ? Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const SizedBox(
-                                                    width: 18,
-                                                    height: 18,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                      strokeWidth: 2,
+                                    const SizedBox(height: 28),
+                                    _LoginPrimaryButton(
+                                      onPressed:
+                                          _submitting ? null : _submit,
+                                      child: _submitting
+                                          ? Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                if (_showSubmittingHint) ...[
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    context.tr(
+                                                      'To może potrwać chwilę...',
+                                                    ),
+                                                    style: const TextStyle(
                                                       color: Colors.white,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
-                                                  if (_showSubmittingHint) ...[
-                                                    const SizedBox(height: 8),
-                                                    Text(
-                                                      context.tr(
-                                                        'To może potrwać chwilę...',
-                                                      ),
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ],
                                                 ],
-                                              )
-                                            : Text(
-                                                _buttonLabel(_mode),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 15,
-                                                ),
+                                              ],
+                                            )
+                                          : Text(
+                                              _buttonLabel(_mode),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 24,
                                               ),
-                                      ),
+                                            ),
                                     ),
-                                    SizedBox(height: 14),
-                                    if (_mode != _AuthMode.register)
-                                      Text(
-                                        'Korzystając z aplikacji akceptujesz zasady Coparentes oraz prywatność zgodną ze stroną ${LegalConfig.websiteUrl}.',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall,
-                                      ),
                                   ],
+                                ),
+                              ),
+                            ),
+                          );
+
+                    final showDebugBanner = kDebugMode &&
+                        !const bool.fromEnvironment(
+                          'COPARENTES_HIDE_DEBUG_BANNER',
+                        );
+                    final debugBanner = showDebugBanner
+                        ? Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.yellowColor
+                                  .withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppTheme.yellowColor
+                                    .withValues(alpha: 0.45),
+                              ),
+                            ),
+                            child: Text(
+                              context.tr(
+                                'Lokalny tryb debug jest aktywny. Użyj własnych danych seed skonfigurowanych po stronie backendu deweloperskiego.',
+                              ),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        : null;
+
+                    final pageBody = narrow
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              intro,
+                              const SizedBox(height: 16),
+                              form,
+                              if (debugBanner != null) ...[
+                                const SizedBox(height: 16),
+                                debugBanner,
+                              ],
+                            ],
+                          )
+                        : Row(
+                            // wzor: grid 560 / 690
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(flex: 560, child: intro),
+                              SizedBox(
+                                width: contentWidth < 1100 ? 22 : 36,
+                              ),
+                              Expanded(
+                                flex: 690,
+                                child: Align(
+                                  alignment: Alignment.center,
+                                  child: form,
+                                ),
+                              ),
+                            ],
+                          );
+
+                    final minBodyHeight = (viewport.maxHeight -
+                            topPad -
+                            bottomPad)
+                        .clamp(0.0, double.infinity);
+
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.fromLTRB(
+                              sidePad,
+                              topPad,
+                              sidePad,
+                              bottomPad,
+                            ),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: minBodyHeight,
+                                maxWidth: contentWidth,
+                              ),
+                              child: Center(
+                                child: SizedBox(
+                                  width: contentWidth,
+                                  child: pageBody,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        // Comic / marketing captures: --dart-define=COPARENTES_HIDE_DEBUG_BANNER=true
-                        if (kDebugMode &&
-                            !const bool.fromEnvironment(
-                              'COPARENTES_HIDE_DEBUG_BANNER',
-                            ))
-                          SizedBox(
-                            width: narrow ? constraints.maxWidth : 962,
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.yellowColor
-                                    .withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: AppTheme.yellowColor
-                                      .withValues(alpha: 0.45),
-                                ),
-                              ),
-                              child: Text(context.tr('Lokalny tryb debug jest aktywny. Użyj własnych danych seed skonfigurowanych po stronie backendu deweloperskiego.'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
+                        Positioned(
+                          top: offlineBanner ? 52 : 8,
+                          right: 12,
+                          child: _StartLanguageButton(
+                            languageCode: appProvider.language,
+                            onPick: () =>
+                                _pickLanguage(context, appProvider),
                           ),
+                        ),
                       ],
                     );
-                  },
-                ),
-              ),
-            ),
-          ),
-              Positioned(
-                top: 4,
-                right: 8,
-                child: _StartLanguageButton(
-                  languageCode: appProvider.language,
-                  onPick: () => _pickLanguage(context, appProvider),
-                ),
-              ),
-            ],
+            },
           ),
         ),
       ),
@@ -507,21 +580,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
+            child: _ForgotPasswordLink(
               onPressed: _submitting ? null : _showForgotPasswordDialog,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                context.tr('Nie pamiętam hasła'),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.accentColor,
-                ),
-              ),
+              label: context.tr('Nie pamiętam hasła'),
             ),
           ),
           const SizedBox(height: 4),
@@ -1070,12 +1131,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 }
 
+
 class _BrandIntroCard extends StatelessWidget {
+  final bool compact;
+  final bool short;
   final bool demoPickerOpen;
   final VoidCallback? onDemoHorseTap;
   final Future<void> Function(UserRole role)? onDemoRoleSelected;
 
   const _BrandIntroCard({
+    required this.compact,
+    this.short = false,
     required this.demoPickerOpen,
     required this.onDemoHorseTap,
     required this.onDemoRoleSelected,
@@ -1083,128 +1149,175 @@ class _BrandIntroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.dividerColor),
-        boxShadow: AppTheme.softShadow,
+    final featureGap = short ? 14.0 : 24.0;
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 4 : 8,
+        vertical: compact ? 8 : (short ? 8 : 20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const BrandLogo(width: 220, height: 56),
-          SizedBox(height: 14),
+          Image.asset(
+            'assets/branding/coparentes-logo-white-wordmark.png',
+            width: compact ? 200 : 240,
+            height: compact ? 40 : (short ? 48 : 58),
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (_, __, ___) => const BrandLogo(width: 220, height: 56),
+          ),
+          SizedBox(height: compact ? 14 : (short ? 14 : 26)),
           Text(
             context.tr('Spokojne rodzicielstwo po rozstaniu'),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.92),
+              fontWeight: FontWeight.w500,
+              fontSize: compact ? 18 : (short ? 18 : 21),
+              height: 1.35,
+            ),
+          ),
+          if (!compact) ...[
+            SizedBox(height: short ? 18 : 34),
+            _FeatureBullet(
+              dense: short,
+              icon: Icons.chat_bubble_outline,
+              title: context.tr('Komunikacja'),
+              subtitle: context.tr(
+                'Wiadomości i archiwizacja rozmów w jednym miejscu.',
+              ),
+            ),
+            SizedBox(height: featureGap),
+            _FeatureBullet(
+              dense: short,
+              icon: Icons.calendar_month_outlined,
+              title: context.tr('Organizacja'),
+              subtitle: context.tr(
+                'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
+              ),
+            ),
+            SizedBox(height: featureGap),
+            _FeatureBullet(
+              dense: short,
+              icon: Icons.account_balance_wallet_outlined,
+              title: context.tr('Finanse'),
+              subtitle: context.tr(
+                'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
+              ),
+            ),
+          ],
+          SizedBox(height: compact ? 22 : (short ? 18 : 28)),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(
+              compact ? 18 : 26,
+              compact || short ? 16 : 26,
+              compact ? 18 : 26,
+              compact || short ? 14 : 24,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFFDF8),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFA9EFD8), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x47001932),
+                  blurRadius: 60,
+                  offset: Offset(0, 24),
                 ),
-          ),
-          SizedBox(height: 28),
-          _FeatureBullet(
-            icon: Icons.chat_bubble_outline,
-            title: context.tr('Komunikacja'),
-            subtitle: context.tr(
-              'Wiadomości i archiwizacja rozmów w jednym miejscu.',
+              ],
             ),
-          ),
-          SizedBox(height: 14),
-          _FeatureBullet(
-            icon: Icons.calendar_month_outlined,
-            title: context.tr('Organizacja'),
-            subtitle: context.tr(
-              'Kalendarz opieki, wydarzenia i zamiany terminów bez chaosu.',
-            ),
-          ),
-          SizedBox(height: 14),
-          _FeatureBullet(
-            icon: Icons.account_balance_wallet_outlined,
-            title: context.tr('Finanse'),
-            subtitle: context.tr(
-              'Wydatki, paragony i rozliczenia zaprojektowane pod wspólne rodzicielstwo.',
-            ),
-          ),
-          SizedBox(height: 28),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onDemoHorseTap,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Image.asset(
-                      'assets/branding/demo-horse.png',
-                      width: 36,
-                      height: 29,
-                      filterQuality: FilterQuality.high,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.toys_outlined,
-                        color: AppTheme.primaryTeal,
-                        size: 28,
+                    Container(
+                      width: compact ? 56 : 72,
+                      height: compact ? 56 : 72,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x140A7D5C),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Image.asset(
+                        'assets/branding/demo-horse.png',
+                        width: compact ? 34 : 46,
+                        height: compact ? 27 : 37,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.toys_outlined,
+                          color: AppTheme.primaryTeal,
+                          size: 28,
+                        ),
                       ),
                     ),
-                    SizedBox(width: 12),
+                    SizedBox(width: compact ? 14 : 20),
                     Expanded(
                       child: Text(
                         context.tr(
                           'Tryb demo — sprawdź czy aplikacja Ci pomoże',
                         ),
                         style: TextStyle(
-                          color: AppTheme.primaryTeal,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: compact ? 16 : 18,
+                          height: 1.35,
                         ),
                       ),
                     ),
-                    Icon(
-                      demoPickerOpen
-                          ? Icons.expand_less
-                          : Icons.expand_more,
-                      color: AppTheme.primaryTeal,
-                    ),
                   ],
                 ),
-              ),
+                SizedBox(height: compact ? 16 : 22),
+                _DemoLaunchButton(
+                  label: context.tr('Tryb demo'),
+                  expanded: demoPickerOpen,
+                  onPressed: onDemoHorseTap,
+                ),
+                if (demoPickerOpen) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    context.tr('Wybierz tryb wersji demo'),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  _DemoRoleButton(
+                    label: context.tr('Anna — matka'),
+                    icon: Icons.person_outline,
+                    onTap: onDemoRoleSelected == null
+                        ? null
+                        : () => onDemoRoleSelected!(UserRole.parentA),
+                  ),
+                  const SizedBox(height: 8),
+                  _DemoRoleButton(
+                    label: context.tr('Marek — ojciec'),
+                    icon: Icons.person,
+                    onTap: onDemoRoleSelected == null
+                        ? null
+                        : () => onDemoRoleSelected!(UserRole.parentB),
+                  ),
+                  const SizedBox(height: 8),
+                  _DemoRoleButton(
+                    label: context.tr('Franek — dziecko'),
+                    icon: Icons.child_care,
+                    onTap: onDemoRoleSelected == null
+                        ? null
+                        : () => onDemoRoleSelected!(UserRole.child),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (demoPickerOpen) ...[
-            SizedBox(height: 14),
-            Text(
-              context.tr('Wybierz tryb wersji demo'),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            SizedBox(height: 10),
-            _DemoRoleButton(
-              label: context.tr('Anna — matka'),
-              icon: Icons.person_outline,
-              onTap: onDemoRoleSelected == null
-                  ? null
-                  : () => onDemoRoleSelected!(UserRole.parentA),
-            ),
-            SizedBox(height: 8),
-            _DemoRoleButton(
-              label: context.tr('Marek — ojciec'),
-              icon: Icons.person,
-              onTap: onDemoRoleSelected == null
-                  ? null
-                  : () => onDemoRoleSelected!(UserRole.parentB),
-            ),
-            SizedBox(height: 8),
-            _DemoRoleButton(
-              label: context.tr('Franek — dziecko'),
-              icon: Icons.child_care,
-              onTap: onDemoRoleSelected == null
-                  ? null
-                  : () => onDemoRoleSelected!(UserRole.child),
-            ),
-          ],
         ],
       ),
     );
@@ -1215,34 +1328,54 @@ class _FeatureBullet extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool dense;
   const _FeatureBullet({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.dense = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final tile = dense ? 52.0 : 64.0;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 44,
-          height: 44,
+          width: tile,
+          height: tile,
           decoration: BoxDecoration(
-            color: AppTheme.primaryTeal.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(dense ? 14 : 18),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
           ),
-          child: Icon(icon, color: AppTheme.primaryTeal, size: 22),
+          child: Icon(icon, color: Colors.white, size: dense ? 24 : 28),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: dense ? 14 : 20),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: dense ? 20 : 24,
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: dense ? 15 : 18,
+                  height: 1.45,
+                  letterSpacing: 0.01,
+                ),
+              ),
             ],
           ),
         ),
@@ -1251,11 +1384,18 @@ class _FeatureBullet extends StatelessWidget {
   }
 }
 
-class _ModeSelector extends StatelessWidget {
+class _ModeSelector extends StatefulWidget {
   final _AuthMode mode;
   final ValueChanged<_AuthMode> onChanged;
 
   const _ModeSelector({required this.mode, required this.onChanged});
+
+  @override
+  State<_ModeSelector> createState() => _ModeSelectorState();
+}
+
+class _ModeSelectorState extends State<_ModeSelector> {
+  _AuthMode? _hovered;
 
   @override
   Widget build(BuildContext context) {
@@ -1264,35 +1404,50 @@ class _ModeSelector extends StatelessWidget {
       (_AuthMode.register, context.tr('Rejestracja')),
       (_AuthMode.join, context.tr('Dołączanie')),
     ];
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
+    // wzor .tab: font-size 20px, padding 12px 4px 18px
     return SizedBox(
-      height: 44,
+      height: 58,
       child: Row(
         children: items.map((item) {
-          final selected = mode == item.$1;
+          final selected = widget.mode == item.$1;
+          final hovered = _hovered == item.$1;
           return Expanded(
-            child: InkWell(
-              onTap: () => onChanged(item.$1),
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: selected
-                          ? AppTheme.accentColor
-                          : AppTheme.dividerColor,
-                      width: selected ? 2.5 : 1,
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _hovered = item.$1),
+              onExit: (_) => setState(() => _hovered = null),
+              child: InkWell(
+                onTap: () => widget.onChanged(item.$1),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: reduceMotion ? 0 : 180),
+                  curve: const Cubic(0.2, 0.8, 0.2, 1),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.fromLTRB(4, 12, 4, 14),
+                  decoration: BoxDecoration(
+                    color: hovered && !selected
+                        ? _tabBlue.withValues(alpha: 0.06)
+                        : Colors.transparent,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: selected ? _tabBlue : AppTheme.dividerColor,
+                        width: selected ? 3 : 2,
+                      ),
                     ),
                   ),
-                ),
-                child: Text(
-                  item.$2,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected
-                        ? AppTheme.textPrimary
-                        : AppTheme.textSecondary,
+                  child: Text(
+                    item.$2,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
+                      color: selected
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
+                    ),
                   ),
                 ),
               ),
@@ -1304,7 +1459,7 @@ class _ModeSelector extends StatelessWidget {
   }
 }
 
-class _RoleChoiceChip extends StatelessWidget {
+class _RoleChoiceChip extends StatefulWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -1316,44 +1471,80 @@ class _RoleChoiceChip extends StatelessWidget {
   });
 
   @override
+  State<_RoleChoiceChip> createState() => _RoleChoiceChipState();
+}
+
+class _RoleChoiceChipState extends State<_RoleChoiceChip> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected
-          ? AppTheme.primaryTeal.withValues(alpha: 0.12)
-          : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: selected ? AppTheme.primaryTeal : AppTheme.dividerColor,
-          width: selected ? 1.5 : 1,
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final selected = widget.selected;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: reduceMotion ? 0 : 180),
+        curve: const Cubic(0.2, 0.8, 0.2, 1),
+        // wzor .role label: height 72, radius 18, font 21
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFFD8FCF2)
+              : _hovered
+                  ? const Color(0xFFF6FBF9)
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? _loginGreen : AppTheme.dividerColor,
+            width: selected ? 2.5 : 1.5,
+          ),
+          boxShadow: [
+            if (selected)
+              BoxShadow(
+                color: _loginGreen.withValues(alpha: 0.18),
+                blurRadius: 0,
+                spreadRadius: 4,
+              )
+            else if (_hovered)
+              BoxShadow(
+                color: _loginGreen.withValues(alpha: 0.10),
+                blurRadius: 0,
+                spreadRadius: 4,
+              ),
+          ],
         ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
-                size: 18,
-                color: selected ? AppTheme.primaryTeal : AppTheme.textHint,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              height: 72,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    size: 24,
+                    color: selected ? _loginGreen : AppTheme.textHint,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w500,
+                      color: selected
+                          ? AppTheme.textPrimary
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: selected
-                      ? AppTheme.textPrimary
-                      : AppTheme.textSecondary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1433,38 +1624,62 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // wzor .control input: height 80, radius 26, font 22, padding 0 36
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        textInputAction: textInputAction,
-        autofillHints: autofillHints,
-        onSubmitted: onSubmitted,
-        autocorrect: false,
-        enableSuggestions: false,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          suffixIcon: onToggleObscure == null
-              ? null
-              : IconButton(
-                  tooltip: obscureText ? context.tr('Pokaż hasło') : context.tr('Ukryj hasło'),
-                  onPressed: onToggleObscure,
-                  icon: Icon(
-                    obscureText
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+      padding: const EdgeInsets.only(bottom: 22),
+      child: SizedBox(
+        height: 80,
+        child: TextField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          autofillHints: autofillHints,
+          onSubmitted: onSubmitted,
+          autocorrect: false,
+          enableSuggestions: false,
+          style: const TextStyle(fontSize: 22, height: 1.2),
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            floatingLabelBehavior: FloatingLabelBehavior.never,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 36,
+              vertical: 24,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(26),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(26),
+              borderSide: const BorderSide(color: AppTheme.dividerColor, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(26),
+              borderSide: const BorderSide(color: _loginGreen, width: 1.5),
+            ),
+            suffixIcon: onToggleObscure == null
+                ? null
+                : IconButton(
+                    tooltip: obscureText
+                        ? context.tr('Pokaż hasło')
+                        : context.tr('Ukryj hasło'),
+                    onPressed: onToggleObscure,
+                    icon: Icon(
+                      obscureText
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 30,
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _StartLanguageButton extends StatelessWidget {
+class _StartLanguageButton extends StatefulWidget {
   final String languageCode;
   final VoidCallback onPick;
 
@@ -1474,20 +1689,507 @@ class _StartLanguageButton extends StatelessWidget {
   });
 
   @override
+  State<_StartLanguageButton> createState() => _StartLanguageButtonState();
+}
+
+class _StartLanguageButtonState extends State<_StartLanguageButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.96),
-      elevation: 1,
-      shadowColor: Colors.black26,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onPick,
-        customBorder: const CircleBorder(),
-        child: Tooltip(
-          message: languageCode == 'en' ? 'English' : 'Polski',
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: LanguageFlag(languageCode: languageCode, size: 28),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: reduceMotion ? 0 : 150),
+        curve: const Cubic(0.2, 0.8, 0.2, 1),
+        transform: Matrix4.translationValues(0, _hovered ? -2 : 0, 0),
+        transformAlignment: Alignment.center,
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x33001E3C),
+              blurRadius: _hovered ? 24 : 20,
+              offset: Offset(0, _hovered ? 8 : 6),
+            ),
+            if (_hovered)
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.35),
+                blurRadius: 0,
+                spreadRadius: 5,
+              ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: widget.onPick,
+            customBorder: const CircleBorder(),
+            child: Tooltip(
+              message: widget.languageCode == 'en' ? 'English' : 'Polski',
+              child: Center(
+                child: LanguageFlag(
+                  languageCode: widget.languageCode,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginMarketingBackdrop extends StatelessWidget {
+  final Widget child;
+  const _LoginMarketingBackdrop({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final showDots = width >= 860;
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(gradient: _loginGradient),
+      child: Stack(
+        fit: StackFit.expand,
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned(
+            right: -220,
+            bottom: -240,
+            child: _LoginOrb(
+              size: 660,
+              color: Color(0x8C24D3A5),
+            ),
+          ),
+          const Positioned(
+            left: -140,
+            bottom: -240,
+            child: _LoginOrb(
+              size: 480,
+              color: Color(0xBFE56446),
+            ),
+          ),
+          const Positioned(
+            left: -220,
+            top: -240,
+            child: _LoginOrb(
+              size: 620,
+              color: Color(0xB30A3F80),
+            ),
+          ),
+          if (showDots)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _LoginDotPatternPainter()),
+              ),
+            ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginOrb extends StatelessWidget {
+  final double size;
+  final Color color;
+  const _LoginOrb({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginDotPatternPainter extends CustomPainter {
+  const _LoginDotPatternPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    const step = 22.0;
+    for (double y = 0; y < size.height; y += step) {
+      for (double x = 0; x < size.width; x += step) {
+        final t = x / size.width;
+        double edge;
+        if (t < 0.45) {
+          edge = 1 - (t / 0.45);
+        } else if (t > 0.70) {
+          edge = (t - 0.70) / 0.30;
+        } else {
+          continue;
+        }
+        paint.color = Colors.white.withValues(alpha: 0.14 * edge.clamp(0.0, 1.0));
+        canvas.drawCircle(Offset(x, y), 1, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _LoginPrimaryButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final Widget child;
+  const _LoginPrimaryButton({required this.onPressed, required this.child});
+
+  @override
+  State<_LoginPrimaryButton> createState() => _LoginPrimaryButtonState();
+}
+
+class _LoginPrimaryButtonState extends State<_LoginPrimaryButton>
+    with SingleTickerProviderStateMixin {
+  bool _hovered = false;
+  late final AnimationController _shine;
+
+  @override
+  void initState() {
+    super.initState();
+    _shine = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shine.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final enabled = widget.onPressed != null;
+    return MouseRegion(
+      onEnter: (_) {
+        if (!enabled) return;
+        setState(() => _hovered = true);
+        if (!reduceMotion) {
+          _shine.forward(from: 0);
+        }
+      },
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: reduceMotion ? 0 : 180),
+        curve: const Cubic(0.2, 0.8, 0.2, 1),
+        transform: Matrix4.translationValues(0, _hovered && enabled ? -2 : 0, 0),
+        transformAlignment: Alignment.center,
+        width: double.infinity,
+        // wzor .btn: height 80, radius 20, font 24
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: _hovered && enabled
+              ? [
+                  BoxShadow(
+                    color: _loginGreen.withValues(alpha: 0.22),
+                    blurRadius: 0,
+                    spreadRadius: 5,
+                  ),
+                  BoxShadow(
+                    color: _loginGreen.withValues(alpha: 0.42),
+                    blurRadius: 32,
+                    offset: const Offset(0, 14),
+                  ),
+                ]
+              : const [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 80,
+                child: ElevatedButton(
+                  onPressed: widget.onPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _loginGreen,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor:
+                        _loginGreen.withValues(alpha: 0.55),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ).copyWith(
+                    overlayColor: WidgetStatePropertyAll(
+                      Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: widget.child,
+                ),
+              ),
+              if (!reduceMotion)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _shine,
+                      builder: (context, _) {
+                        if (!_hovered || _shine.value == 0) {
+                          return const SizedBox.shrink();
+                        }
+                        final left = -0.7 + (_shine.value * 1.95);
+                        return Align(
+                          alignment: Alignment(left * 2 - 1, 0),
+                          child: Transform(
+                            transform: Matrix4.skewX(-0.35),
+                            child: Container(
+                              width: MediaQuery.sizeOf(context).width * 0.12,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.white.withValues(alpha: 0.38),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DemoLaunchButton extends StatefulWidget {
+  final String label;
+  final bool expanded;
+  final VoidCallback? onPressed;
+  const _DemoLaunchButton({
+    required this.label,
+    required this.expanded,
+    required this.onPressed,
+  });
+
+  @override
+  State<_DemoLaunchButton> createState() => _DemoLaunchButtonState();
+}
+
+class _DemoLaunchButtonState extends State<_DemoLaunchButton>
+    with SingleTickerProviderStateMixin {
+  bool _hovered = false;
+  bool _pressed = false;
+  late final AnimationController _shine;
+
+  @override
+  void initState() {
+    super.initState();
+    _shine = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+  }
+
+  @override
+  void dispose() {
+    _shine.dispose();
+    super.dispose();
+  }
+
+  Color get _bg {
+    if (_pressed) return const Color(0xFFE04B2E);
+    if (_hovered) return _demoOrangeHover;
+    return _demoOrange;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final enabled = widget.onPressed != null;
+    return MouseRegion(
+      onEnter: (_) {
+        if (!enabled) return;
+        setState(() => _hovered = true);
+        if (!reduceMotion) _shine.forward(from: 0);
+      },
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
+      child: GestureDetector(
+        onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+        onTapUp: enabled
+            ? (_) {
+                setState(() => _pressed = false);
+                widget.onPressed?.call();
+              }
+            : null,
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: reduceMotion ? 0 : 180),
+          curve: const Cubic(0.2, 0.8, 0.2, 1),
+          transform:
+              Matrix4.translationValues(0, _hovered && enabled ? -2 : 0, 0),
+          transformAlignment: Alignment.center,
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: enabled ? _bg : _demoOrange.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: enabled ? _bg : Colors.transparent),
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: _demoOrange.withValues(
+                        alpha: _hovered ? 0.45 : 0.35,
+                      ),
+                      blurRadius: _hovered ? 30 : 24,
+                      offset: Offset(0, _hovered ? 14 : 10),
+                    ),
+                    if (_hovered)
+                      BoxShadow(
+                        color: _demoOrange.withValues(alpha: 0.22),
+                        blurRadius: 0,
+                        spreadRadius: 5,
+                      ),
+                  ]
+                : const [],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Semantics(
+                  button: true,
+                  label: widget.label,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        widget.expanded
+                            ? Icons.expand_less
+                            : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          widget.label,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!reduceMotion)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _shine,
+                        builder: (context, _) {
+                          if (!_hovered || _shine.value == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          final left = -0.7 + (_shine.value * 1.95);
+                          return Align(
+                            alignment: Alignment(left * 2 - 1, 0),
+                            child: Transform(
+                              transform: Matrix4.skewX(-0.35),
+                              child: Container(
+                                width: 80,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.white.withValues(alpha: 0.38),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ForgotPasswordLink extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final String label;
+  const _ForgotPasswordLink({required this.onPressed, required this.label});
+
+  @override
+  State<_ForgotPasswordLink> createState() => _ForgotPasswordLinkState();
+}
+
+class _ForgotPasswordLinkState extends State<_ForgotPasswordLink> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: TextButton(
+        onPressed: widget.onPressed,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          widget.label,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            color: _tabBlue,
+            decoration:
+                _hovered ? TextDecoration.underline : TextDecoration.none,
+            decorationColor: _tabBlue,
+            decorationThickness: 1.5,
           ),
         ),
       ),
