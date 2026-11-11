@@ -5,7 +5,12 @@ import '../../models/models.dart';
 import 'clarity_bridge.dart';
 import 'ga_bridge.dart';
 
-/// Product analytics (GA4 + Clarity). Enabled only after ANALYTICS consent on web.
+/// Product analytics (GA4 + Clarity).
+///
+/// Web gate:
+/// - browser cookie category `analytics` must be granted
+/// - logged-in parents also need account ANALYTICS consent
+/// - child / demo never enable
 class AnalyticsService {
   AnalyticsService({
     GaBridge? bridge,
@@ -31,11 +36,22 @@ class AnalyticsService {
   bool _enabled = false;
   String? _lastScreen;
 
+  bool _cookieAnalyticsGranted = false;
+  bool _accountAnalyticsGranted = false;
+  UserRole? _role;
+  bool _isDemoMode = false;
+
   bool get isEnabled => _enabled;
 
   String get measurementId => _measurementId;
 
   String get clarityProjectId => _clarityProjectId;
+
+  /// Call when cookie banner saves / loads analytics category.
+  Future<void> syncCookieAnalytics(bool granted) async {
+    _cookieAnalyticsGranted = granted;
+    await _recompute();
+  }
 
   /// Call after consents are known (login / settings / registration).
   Future<void> syncFromUserState({
@@ -43,13 +59,24 @@ class AnalyticsService {
     required UserRole? role,
     required bool isDemoMode,
   }) async {
-    final allowedRole = role != null && role != UserRole.child;
-    final hasVendor = _measurementId.isNotEmpty || _clarityProjectId.isNotEmpty;
-    final shouldEnable = analyticsConsentGranted &&
-        allowedRole &&
-        !isDemoMode &&
-        _isWeb &&
-        hasVendor;
+    _accountAnalyticsGranted = analyticsConsentGranted;
+    _role = role;
+    _isDemoMode = isDemoMode;
+    await _recompute();
+  }
+
+  Future<void> _recompute() async {
+    final hasVendor =
+        _measurementId.isNotEmpty || _clarityProjectId.isNotEmpty;
+    final isChild = _role == UserRole.child;
+    final loggedIn = _role != null;
+
+    final shouldEnable = _isWeb &&
+        hasVendor &&
+        !_isDemoMode &&
+        !isChild &&
+        _cookieAnalyticsGranted &&
+        (!loggedIn || _accountAnalyticsGranted);
 
     if (shouldEnable) {
       await enable();

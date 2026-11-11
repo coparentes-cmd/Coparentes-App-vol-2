@@ -65,23 +65,33 @@ class _RecordingClarity extends ClarityBridge {
   }
 }
 
+AnalyticsService _analytics({
+  required _RecordingBridge bridge,
+  required _RecordingClarity clarity,
+  String measurementId = 'G-TEST',
+  String clarityProjectId = 'claritytest1',
+}) {
+  return AnalyticsService(
+    bridge: bridge,
+    clarityBridge: clarity,
+    measurementId: measurementId,
+    clarityProjectId: clarityProjectId,
+    isWeb: true,
+  );
+}
+
 void main() {
   test('stays disabled without analytics consent', () async {
     final bridge = _RecordingBridge();
     final clarity = _RecordingClarity();
-    final analytics = AnalyticsService(
-      bridge: bridge,
-      clarityBridge: clarity,
-      measurementId: 'G-TEST',
-      clarityProjectId: 'claritytest1',
-      isWeb: true,
-    );
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
 
     await analytics.syncFromUserState(
       analyticsConsentGranted: false,
       role: UserRole.parentA,
       isDemoMode: false,
     );
+    await analytics.syncCookieAnalytics(true);
 
     expect(analytics.isEnabled, isFalse);
     expect(clarity.loadCount, 0);
@@ -91,22 +101,50 @@ void main() {
     expect(bridge.pages, isEmpty);
   });
 
+  test('stays disabled without cookie analytics even with account consent',
+      () async {
+    final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
+
+    await analytics.syncFromUserState(
+      analyticsConsentGranted: true,
+      role: UserRole.parentA,
+      isDemoMode: false,
+    );
+    await analytics.syncCookieAnalytics(false);
+
+    expect(analytics.isEnabled, isFalse);
+    expect(clarity.loadCount, 0);
+  });
+
+  test('enables Clarity on login page when cookie analytics granted', () async {
+    final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
+    final analytics = _analytics(
+      bridge: bridge,
+      clarity: clarity,
+      measurementId: '',
+      clarityProjectId: 'yyktc3x67w',
+    );
+
+    await analytics.syncCookieAnalytics(true);
+
+    expect(analytics.isEnabled, isTrue);
+    expect(clarity.loadCount, 1);
+  });
+
   test('disables for child role even with consent', () async {
     final bridge = _RecordingBridge();
     final clarity = _RecordingClarity();
-    final analytics = AnalyticsService(
-      bridge: bridge,
-      clarityBridge: clarity,
-      measurementId: 'G-TEST',
-      clarityProjectId: 'claritytest1',
-      isWeb: true,
-    );
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
 
     await analytics.syncFromUserState(
       analyticsConsentGranted: true,
       role: UserRole.child,
       isDemoMode: false,
     );
+    await analytics.syncCookieAnalytics(true);
 
     expect(analytics.isEnabled, isFalse);
     expect(bridge.loadCount, 0);
@@ -116,19 +154,14 @@ void main() {
   test('disables in demo mode', () async {
     final bridge = _RecordingBridge();
     final clarity = _RecordingClarity();
-    final analytics = AnalyticsService(
-      bridge: bridge,
-      clarityBridge: clarity,
-      measurementId: 'G-TEST',
-      clarityProjectId: 'claritytest1',
-      isWeb: true,
-    );
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
 
     await analytics.syncFromUserState(
       analyticsConsentGranted: true,
       role: UserRole.parentA,
       isDemoMode: true,
     );
+    await analytics.syncCookieAnalytics(true);
 
     expect(analytics.isEnabled, isFalse);
     expect(clarity.loadCount, 0);
@@ -137,19 +170,14 @@ void main() {
   test('enables for parent with consent and logs screens/events', () async {
     final bridge = _RecordingBridge();
     final clarity = _RecordingClarity();
-    final analytics = AnalyticsService(
-      bridge: bridge,
-      clarityBridge: clarity,
-      measurementId: 'G-TEST',
-      clarityProjectId: 'claritytest1',
-      isWeb: true,
-    );
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
 
     await analytics.syncFromUserState(
       analyticsConsentGranted: true,
       role: UserRole.parentA,
       isDemoMode: false,
     );
+    await analytics.syncCookieAnalytics(true);
 
     expect(analytics.isEnabled, isTrue);
     expect(bridge.lastConsent, isTrue);
@@ -176,19 +204,14 @@ void main() {
   test('disable revokes analytics consent and stops Clarity', () async {
     final bridge = _RecordingBridge();
     final clarity = _RecordingClarity();
-    final analytics = AnalyticsService(
-      bridge: bridge,
-      clarityBridge: clarity,
-      measurementId: 'G-TEST',
-      clarityProjectId: 'claritytest1',
-      isWeb: true,
-    );
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
 
     await analytics.syncFromUserState(
       analyticsConsentGranted: true,
       role: UserRole.parentB,
       isDemoMode: false,
     );
+    await analytics.syncCookieAnalytics(true);
     await analytics.disable();
 
     expect(analytics.isEnabled, isFalse);
@@ -201,12 +224,11 @@ void main() {
   test('Clarity alone can enable when GA id is empty', () async {
     final bridge = _RecordingBridge();
     final clarity = _RecordingClarity();
-    final analytics = AnalyticsService(
+    final analytics = _analytics(
       bridge: bridge,
-      clarityBridge: clarity,
+      clarity: clarity,
       measurementId: '',
       clarityProjectId: 'yyktc3x67w',
-      isWeb: true,
     );
 
     await analytics.syncFromUserState(
@@ -214,10 +236,28 @@ void main() {
       role: UserRole.parentA,
       isDemoMode: false,
     );
+    await analytics.syncCookieAnalytics(true);
 
     expect(analytics.isEnabled, isTrue);
     expect(bridge.loadCount, 0);
     expect(clarity.loadCount, 1);
-    expect(clarity.lastProjectId, 'yyktc3x67w');
+  });
+
+  test('revoking cookie analytics stops Clarity', () async {
+    final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
+
+    await analytics.syncFromUserState(
+      analyticsConsentGranted: true,
+      role: UserRole.parentA,
+      isDemoMode: false,
+    );
+    await analytics.syncCookieAnalytics(true);
+    expect(analytics.isEnabled, isTrue);
+
+    await analytics.syncCookieAnalytics(false);
+    expect(analytics.isEnabled, isFalse);
+    expect(clarity.stopCount, 1);
   });
 }

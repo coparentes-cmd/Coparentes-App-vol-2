@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/models/user_consent.dart';
 import '../../providers/app_provider.dart';
+import '../../services/cookie_consent/cookie_consent_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/consent_widgets.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -173,6 +174,17 @@ class _PrivacyConsentsSectionState extends State<PrivacyConsentsSection> {
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () =>
+                  context.read<CookieConsentController>().openSettings(),
+              child: Text(context.tr('Ustawienia cookies')),
+            ),
+          ),
+        ),
         if (optional.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),

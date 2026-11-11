@@ -12,6 +12,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../providers/offline_sync_provider.dart';
+import '../../services/cookie_consent/cookie_consent_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/password_normalization.dart';
 import '../../widgets/brand_widgets.dart';
@@ -474,6 +475,31 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             languageCode: appProvider.language,
                             onPick: () =>
                                 _pickLanguage(context, appProvider),
+                          ),
+                        ),
+                        Positioned(
+                          left: 12,
+                          bottom: 12,
+                          child: TextButton(
+                            onPressed: () => context
+                                .read<CookieConsentController>()
+                                .openSettings(),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor:
+                                  Colors.black.withValues(alpha: 0.22),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            child: Text(
+                              context.tr('Ustawienia cookies'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
                           ),
                         ),
                       ],

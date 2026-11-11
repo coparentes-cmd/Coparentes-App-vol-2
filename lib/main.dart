@@ -33,9 +33,11 @@ import 'data/local/locale_store.dart';
 import 'services/e2e_session_service.dart';
 import 'services/analytics/analytics_navigator_observer.dart';
 import 'services/analytics/analytics_service.dart';
+import 'services/cookie_consent/cookie_consent_controller.dart';
 import 'utils/app_browser_back.dart';
 import 'utils/reset_password_url.dart';
 import 'utils/url_strategy.dart';
+import 'widgets/cookie_consent_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,6 +52,8 @@ Future<void> main() async {
   final offlineStore = OfflineStore(preferences: preferences);
   await offlineStore.initialize();
   final pinLockStore = PinLockStore(preferences: preferences);
+  final cookieConsentController = CookieConsentController();
+  await cookieConsentController.initialize();
   final apiClient = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
   final e2eSessionService = E2eSessionService(apiClient: apiClient);
   final messagingRepository = MessagingRepository(
@@ -93,6 +97,7 @@ Future<void> main() async {
       localeStore: localeStore,
       preferences: preferences,
       e2eSessionService: e2eSessionService,
+      cookieConsentController: cookieConsentController,
     ),
   );
 }
@@ -111,6 +116,7 @@ class CoparentesApp extends StatelessWidget {
   final LocaleStore localeStore;
   final SharedPreferences preferences;
   final E2eSessionService e2eSessionService;
+  final CookieConsentController cookieConsentController;
 
   const CoparentesApp({
     super.key,
@@ -127,12 +133,16 @@ class CoparentesApp extends StatelessWidget {
     required this.localeStore,
     required this.preferences,
     required this.e2eSessionService,
+    required this.cookieConsentController,
   });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider<CookieConsentController>.value(
+          value: cookieConsentController,
+        ),
         ChangeNotifierProvider(
           create: (_) => AppProvider(
             authRepository: authRepository,
@@ -240,6 +250,7 @@ class CoparentesApp extends StatelessWidget {
                           alignment: Alignment.topCenter,
                           child: OfflineStatusBanner(),
                         ),
+                        const CookieConsentBanner(),
                       ],
                     ),
                   ),
