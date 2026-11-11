@@ -1121,6 +1121,11 @@ class AppProvider extends ChangeNotifier {
     _pendingLoginChallenge = null;
     _otpAttemptsRemaining = null;
     _otpLocked = false;
+    // Count demo starts in GA4 while analytics is still enabled (cookie gate).
+    // Must run before _setDemoMode(true), which disables Clarity/GA for demo.
+    AnalyticsService.instance.logEvent('demo_enter', {
+      'role': role.name,
+    });
     _setDemoMode(true);
     _isPinLocked = false;
     _isInitializing = false;

@@ -260,4 +260,22 @@ void main() {
     expect(analytics.isEnabled, isFalse);
     expect(clarity.stopCount, 1);
   });
+
+  test('demo_enter can be logged while analytics enabled before demo disable',
+      () async {
+    final bridge = _RecordingBridge();
+    final clarity = _RecordingClarity();
+    final analytics = _analytics(bridge: bridge, clarity: clarity);
+
+    await analytics.syncCookieAnalytics(true);
+    expect(analytics.isEnabled, isTrue);
+
+    analytics.logEvent('demo_enter', {'role': 'parentA'});
+    await analytics.disable();
+
+    expect(bridge.events, contains('demo_enter'));
+    final params = bridge.eventParams[bridge.events.indexOf('demo_enter')];
+    expect(params?['role'], 'parentA');
+    expect(analytics.isEnabled, isFalse);
+  });
 }
