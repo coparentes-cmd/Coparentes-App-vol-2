@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_environment.dart';
@@ -51,6 +52,39 @@ const _demoOrange = Color(0xFFF96245);
 const _demoOrangeHover = Color(0xFFEE5537);
 const _loginGreen = Color(0xFF0FC494);
 const _tabBlue = Color(0xFF1276D6);
+
+/// Login-screen-only fonts (Poppins headings/controls, Inter body/fields).
+TextStyle _loginPoppins({
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+  double? height,
+  double? letterSpacing,
+}) {
+  return GoogleFonts.poppins(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    height: height,
+    letterSpacing: letterSpacing,
+  );
+}
+
+TextStyle _loginInter({
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+  double? height,
+  double? letterSpacing,
+}) {
+  return GoogleFonts.inter(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    height: height,
+    letterSpacing: letterSpacing,
+  );
+}
 
 enum _AuthMode { login, register, join, joinChild }
 
@@ -164,6 +198,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     final appProvider = context.watch<AppProvider>();
     final authError = appProvider.authError;
 
+    // Fonts are scoped via _loginPoppins / _loginInter on this screen only.
     return Scaffold(
       backgroundColor: const Color(0xFF0B4F94),
       body: _LoginMarketingBackdrop(
@@ -295,7 +330,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         ),
                                         child: Text(
                                           'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
-                                          style: const TextStyle(
+                                          style: _loginInter(
                                             color: AppTheme.warningColor,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
@@ -323,7 +358,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         ),
                                         child: Text(
                                           authError,
-                                          style: const TextStyle(
+                                          style: _loginInter(
                                             color: AppTheme.errorColor,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
@@ -354,7 +389,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                                     context.tr(
                                                       'To może potrwać chwilę...',
                                                     ),
-                                                    style: const TextStyle(
+                                                    style: _loginInter(
                                                       color: Colors.white,
                                                       fontSize: 12,
                                                       fontWeight:
@@ -366,7 +401,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                             )
                                           : Text(
                                               _buttonLabel(_mode),
-                                              style: const TextStyle(
+                                              style: _loginPoppins(
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 24,
                                               ),
@@ -399,7 +434,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                               context.tr(
                                 'Lokalny tryb debug jest aktywny. Użyj własnych danych seed skonfigurowanych po stronie backendu deweloperskiego.',
                               ),
-                              style: const TextStyle(
+                              style: _loginInter(
                                 fontSize: 12,
                                 color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.w600,
@@ -495,7 +530,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             ),
                             child: Text(
                               context.tr('Ustawienia cookies'),
-                              style: const TextStyle(
+                              style: _loginInter(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
                               ),
@@ -760,7 +795,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
               child: Text(
                 'Rodzina: ${_childJoinPreview!.workspaceName}',
-                style: const TextStyle(
+                style: _loginInter(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
@@ -768,7 +803,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             ),
             SizedBox(height: 8),
             Text(context.tr('Podaj datę urodzenia z profilu dodanego przez rodzica.'),
-              style: TextStyle(
+              style: _loginInter(
                 fontSize: 12,
                 color: AppTheme.textSecondary,
               ),
@@ -877,7 +912,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(context.tr('Podaj e-mail konta. Wyślemy link do ustawienia nowego hasła. Sprawdź skrzynkę i kliknij w link.'),
-                    style: TextStyle(
+                    style: _loginInter(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
                     ),
@@ -1196,7 +1231,7 @@ class _BrandIntroCard extends StatelessWidget {
           SizedBox(height: compact ? 14 : (short ? 14 : 26)),
           Text(
             context.tr('Spokojne rodzicielstwo po rozstaniu'),
-            style: TextStyle(
+            style: _loginPoppins(
               color: Colors.white.withValues(alpha: 0.92),
               fontWeight: FontWeight.w500,
               fontSize: compact ? 18 : (short ? 18 : 21),
@@ -1292,7 +1327,7 @@ class _BrandIntroCard extends StatelessWidget {
                         context.tr(
                           'Tryb demo — sprawdź czy aplikacja Ci pomoże',
                         ),
-                        style: TextStyle(
+                        style: _loginPoppins(
                           color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w500,
                           fontSize: compact ? 16 : 18,
@@ -1312,9 +1347,11 @@ class _BrandIntroCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Text(
                     context.tr('Wybierz tryb wersji demo'),
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: _loginPoppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   _DemoRoleButton(
@@ -1385,7 +1422,7 @@ class _FeatureBullet extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
+                style: _loginPoppins(
                   color: Colors.white,
                   fontSize: dense ? 20 : 24,
                   fontWeight: FontWeight.w500,
@@ -1395,9 +1432,10 @@ class _FeatureBullet extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
+                style: _loginInter(
                   color: Colors.white.withValues(alpha: 0.85),
                   fontSize: dense ? 15 : 18,
+                  fontWeight: FontWeight.w400,
                   height: 1.45,
                   letterSpacing: 0.01,
                 ),
@@ -1467,9 +1505,10 @@ class _ModeSelectorState extends State<_ModeSelector> {
                   ),
                   child: Text(
                     item.$2,
-                    style: TextStyle(
+                    style: _loginPoppins(
                       fontSize: 20,
-                      fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
+                      fontWeight:
+                          selected ? FontWeight.w500 : FontWeight.w400,
                       color: selected
                           ? AppTheme.textPrimary
                           : AppTheme.textSecondary,
@@ -1560,7 +1599,7 @@ class _RoleChoiceChipState extends State<_RoleChoiceChip> {
                   const SizedBox(width: 12),
                   Text(
                     widget.label,
-                    style: TextStyle(
+                    style: _loginPoppins(
                       fontSize: 21,
                       fontWeight: FontWeight.w500,
                       color: selected
@@ -1609,7 +1648,7 @@ class _DemoRoleButton extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: _loginPoppins(fontWeight: FontWeight.w600),
                 ),
               ),
               const Icon(
@@ -1664,10 +1703,21 @@ class _Field extends StatelessWidget {
           onSubmitted: onSubmitted,
           autocorrect: false,
           enableSuggestions: false,
-          style: const TextStyle(fontSize: 22, height: 1.2),
+          style: _loginInter(fontSize: 22, height: 1.2, fontWeight: FontWeight.w400),
           decoration: InputDecoration(
             labelText: label,
             hintText: hint,
+            hintStyle: _loginInter(
+              fontSize: 22,
+              height: 1.2,
+              fontWeight: FontWeight.w400,
+              color: AppTheme.textHint,
+            ),
+            labelStyle: _loginInter(
+              fontSize: 22,
+              fontWeight: FontWeight.w400,
+              color: AppTheme.textSecondary,
+            ),
             floatingLabelBehavior: FloatingLabelBehavior.never,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 36,
@@ -1925,7 +1975,7 @@ class _LoginPrimaryButtonState extends State<_LoginPrimaryButton>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    textStyle: const TextStyle(
+                    textStyle: _loginPoppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2094,7 +2144,7 @@ class _DemoLaunchButtonState extends State<_DemoLaunchButton>
                         child: Text(
                           widget.label,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: _loginPoppins(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
@@ -2171,10 +2221,11 @@ class _ForgotPasswordLinkState extends State<_ForgotPasswordLink> {
         ),
         child: Text(
           widget.label,
-          style: TextStyle(
+          style: _loginInter(
             fontSize: 20,
             fontWeight: FontWeight.w500,
             color: _tabBlue,
+          ).copyWith(
             decoration:
                 _hovered ? TextDecoration.underline : TextDecoration.none,
             decorationColor: _tabBlue,
