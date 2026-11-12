@@ -231,14 +231,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 onDemoRoleSelected: _submitting ? null : _enterDemoRole,
               );
               final form = BrandCard(
-                            // wzor .auth: padding 40px 44px 36px
                             padding: EdgeInsets.fromLTRB(
-                              narrow ? 18 : 44,
-                              narrow ? 22 : 40,
-                              narrow ? 18 : 44,
-                              narrow ? 22 : 36,
+                              narrow ? 16 : 36,
+                              narrow ? 18 : 32,
+                              narrow ? 16 : 36,
+                              narrow ? 18 : 28,
                             ),
-                            borderRadius: 30,
+                            borderRadius: 24,
                             border: Border.all(color: Colors.transparent),
                             boxShadow: _loginFormShadow,
                             child: CallbackShortcuts(
@@ -274,7 +273,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                     if (_mode == _AuthMode.login ||
                                         _mode == _AuthMode.join ||
                                         _mode == _AuthMode.joinChild) ...[
-                                      const SizedBox(height: 22),
+                                      const SizedBox(height: 14),
                                       Row(
                                         children: [
                                           Expanded(
@@ -292,7 +291,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                               }),
                                             ),
                                           ),
-                                          const SizedBox(width: 16),
+                                          const SizedBox(width: 12),
                                           Expanded(
                                             child: _RoleChoiceChip(
                                               label: context.tr('Dziecko'),
@@ -310,7 +309,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         ],
                                       ),
                                     ],
-                                    const SizedBox(height: 28),
+                                    const SizedBox(height: 16),
                                     if (_backendReachable == false) ...[
                                       Container(
                                         width: double.infinity,
@@ -366,7 +365,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(height: 28),
+                                    const SizedBox(height: 16),
                                     _LoginPrimaryButton(
                                       onPressed:
                                           _submitting ? null : _submit,
@@ -403,7 +402,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                               _buttonLabel(_mode),
                                               style: _loginPoppins(
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: 24,
+                                                fontSize: 17,
                                               ),
                                             ),
                                     ),
@@ -1470,9 +1469,8 @@ class _ModeSelectorState extends State<_ModeSelector> {
     ];
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
-    // wzor .tab: font-size 20px, padding 12px 4px 18px
     return SizedBox(
-      height: 58,
+      height: 44,
       child: Row(
         children: items.map((item) {
           final selected = widget.mode == item.$1;
@@ -1488,7 +1486,7 @@ class _ModeSelectorState extends State<_ModeSelector> {
                   duration: Duration(milliseconds: reduceMotion ? 0 : 180),
                   curve: const Cubic(0.2, 0.8, 0.2, 1),
                   alignment: Alignment.center,
-                  padding: const EdgeInsets.fromLTRB(4, 12, 4, 14),
+                  padding: const EdgeInsets.fromLTRB(4, 8, 4, 10),
                   decoration: BoxDecoration(
                     color: hovered && !selected
                         ? _tabBlue.withValues(alpha: 0.06)
@@ -1499,14 +1497,14 @@ class _ModeSelectorState extends State<_ModeSelector> {
                     border: Border(
                       bottom: BorderSide(
                         color: selected ? _tabBlue : AppTheme.dividerColor,
-                        width: selected ? 3 : 2,
+                        width: selected ? 2.5 : 1.5,
                       ),
                     ),
                   ),
                   child: Text(
                     item.$2,
                     style: _loginPoppins(
-                      fontSize: 20,
+                      fontSize: 15,
                       fontWeight:
                           selected ? FontWeight.w500 : FontWeight.w400,
                       color: selected
@@ -1552,30 +1550,29 @@ class _RoleChoiceChipState extends State<_RoleChoiceChip> {
       child: AnimatedContainer(
         duration: Duration(milliseconds: reduceMotion ? 0 : 180),
         curve: const Cubic(0.2, 0.8, 0.2, 1),
-        // wzor .role label: height 72, radius 18, font 21
         decoration: BoxDecoration(
           color: selected
               ? const Color(0xFFD8FCF2)
               : _hovered
                   ? const Color(0xFFF6FBF9)
                   : Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? _loginGreen : AppTheme.dividerColor,
-            width: selected ? 2.5 : 1.5,
+            width: selected ? 2 : 1.5,
           ),
           boxShadow: [
             if (selected)
               BoxShadow(
                 color: _loginGreen.withValues(alpha: 0.18),
                 blurRadius: 0,
-                spreadRadius: 4,
+                spreadRadius: 3,
               )
             else if (_hovered)
               BoxShadow(
                 color: _loginGreen.withValues(alpha: 0.10),
                 blurRadius: 0,
-                spreadRadius: 4,
+                spreadRadius: 3,
               ),
           ],
         ),
@@ -1583,9 +1580,9 @@ class _RoleChoiceChipState extends State<_RoleChoiceChip> {
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(14),
             child: SizedBox(
-              height: 72,
+              height: 48,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1593,14 +1590,14 @@ class _RoleChoiceChipState extends State<_RoleChoiceChip> {
                     selected
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
-                    size: 24,
+                    size: 20,
                     color: selected ? _loginGreen : AppTheme.textHint,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Text(
                     widget.label,
                     style: _loginPoppins(
-                      fontSize: 21,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: selected
                           ? AppTheme.textPrimary
@@ -1640,21 +1637,24 @@ class _DemoRoleButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              Icon(icon, color: AppTheme.primaryTeal, size: 22),
-              const SizedBox(width: 12),
+              Icon(icon, color: AppTheme.primaryTeal, size: 20),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   label,
-                  style: _loginPoppins(fontWeight: FontWeight.w600),
+                  style: _loginPoppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               const Icon(
                 Icons.chevron_right,
                 color: AppTheme.textHint,
-                size: 20,
+                size: 18,
               ),
             ],
           ),
@@ -1689,11 +1689,10 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // wzor .control input: height 80, radius 26, font 22, padding 0 36
     return Padding(
-      padding: const EdgeInsets.only(bottom: 22),
+      padding: const EdgeInsets.only(bottom: 12),
       child: SizedBox(
-        height: 80,
+        height: 52,
         child: TextField(
           controller: controller,
           obscureText: obscureText,
@@ -1703,35 +1702,35 @@ class _Field extends StatelessWidget {
           onSubmitted: onSubmitted,
           autocorrect: false,
           enableSuggestions: false,
-          style: _loginInter(fontSize: 22, height: 1.2, fontWeight: FontWeight.w400),
+          style: _loginInter(fontSize: 16, height: 1.2, fontWeight: FontWeight.w400),
           decoration: InputDecoration(
             labelText: label,
             hintText: hint,
             hintStyle: _loginInter(
-              fontSize: 22,
+              fontSize: 16,
               height: 1.2,
               fontWeight: FontWeight.w400,
               color: AppTheme.textHint,
             ),
             labelStyle: _loginInter(
-              fontSize: 22,
+              fontSize: 16,
               fontWeight: FontWeight.w400,
               color: AppTheme.textSecondary,
             ),
             floatingLabelBehavior: FloatingLabelBehavior.never,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 36,
-              vertical: 24,
+              horizontal: 20,
+              vertical: 14,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(16),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: AppTheme.dividerColor, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: _loginGreen, width: 1.5),
             ),
             suffixIcon: onToggleObscure == null
@@ -1745,7 +1744,7 @@ class _Field extends StatelessWidget {
                       obscureText
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      size: 30,
+                      size: 22,
                     ),
                   ),
           ),
@@ -1938,31 +1937,30 @@ class _LoginPrimaryButtonState extends State<_LoginPrimaryButton>
         transform: Matrix4.translationValues(0, _hovered && enabled ? -2 : 0, 0),
         transformAlignment: Alignment.center,
         width: double.infinity,
-        // wzor .btn: height 80, radius 20, font 24
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: _hovered && enabled
               ? [
                   BoxShadow(
                     color: _loginGreen.withValues(alpha: 0.22),
                     blurRadius: 0,
-                    spreadRadius: 5,
+                    spreadRadius: 4,
                   ),
                   BoxShadow(
                     color: _loginGreen.withValues(alpha: 0.42),
-                    blurRadius: 32,
-                    offset: const Offset(0, 14),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
                   ),
                 ]
               : const [],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           child: Stack(
             children: [
               SizedBox(
                 width: double.infinity,
-                height: 80,
+                height: 52,
                 child: ElevatedButton(
                   onPressed: widget.onPressed,
                   style: ElevatedButton.styleFrom(
@@ -1971,12 +1969,12 @@ class _LoginPrimaryButtonState extends State<_LoginPrimaryButton>
                     disabledBackgroundColor:
                         _loginGreen.withValues(alpha: 0.55),
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     textStyle: _loginPoppins(
-                      fontSize: 24,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
                   ).copyWith(
@@ -2098,10 +2096,11 @@ class _DemoLaunchButtonState extends State<_DemoLaunchButton>
               Matrix4.translationValues(0, _hovered && enabled ? -2 : 0, 0),
           transformAlignment: Alignment.center,
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: enabled ? _bg : _demoOrange.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: enabled ? _bg : Colors.transparent),
             boxShadow: enabled
                 ? [
@@ -2109,20 +2108,20 @@ class _DemoLaunchButtonState extends State<_DemoLaunchButton>
                       color: _demoOrange.withValues(
                         alpha: _hovered ? 0.45 : 0.35,
                       ),
-                      blurRadius: _hovered ? 30 : 24,
-                      offset: Offset(0, _hovered ? 14 : 10),
+                      blurRadius: _hovered ? 24 : 18,
+                      offset: Offset(0, _hovered ? 10 : 8),
                     ),
                     if (_hovered)
                       BoxShadow(
                         color: _demoOrange.withValues(alpha: 0.22),
                         blurRadius: 0,
-                        spreadRadius: 5,
+                        spreadRadius: 4,
                       ),
                   ]
                 : const [],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -2137,9 +2136,9 @@ class _DemoLaunchButtonState extends State<_DemoLaunchButton>
                             ? Icons.expand_less
                             : Icons.play_arrow_rounded,
                         color: Colors.white,
-                        size: 26,
+                        size: 22,
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           widget.label,
@@ -2147,7 +2146,7 @@ class _DemoLaunchButtonState extends State<_DemoLaunchButton>
                           style: _loginPoppins(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -2222,7 +2221,7 @@ class _ForgotPasswordLinkState extends State<_ForgotPasswordLink> {
         child: Text(
           widget.label,
           style: _loginInter(
-            fontSize: 20,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
             color: _tabBlue,
           ).copyWith(
