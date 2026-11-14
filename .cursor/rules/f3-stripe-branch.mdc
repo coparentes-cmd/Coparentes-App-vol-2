@@ -1,0 +1,39 @@
+---
+description: F3 Stripe zostaje na feature/f3-stripe — nie merge/prod bez zgody
+alwaysApply: true
+---
+
+# F3 Stripe — branch only (do odwołania)
+
+## Decyzja produktowa
+
+- F3 (billing / trial / Stripe Checkout Test / paywall mobile) **zostaje na branchu** `feature/f3-stripe` (front + backend).
+- **Nie** merguj do `main`, **nie** migruj billing na Railway, **nie** włączaj live Stripe / webhook prod — dopóki użytkownik nie napisze wprost.
+- Web na produkcji ma zostać **bez** paywalla / Stripe (jak dotychczas).
+
+## Przy przyszłych fazach (F2b, F4, F5, Android, deploy)
+
+- Zakładaj, że F3 **nie jest jeszcze na main/prod**.
+- Nie buduj kolejnych kroków tak, jakby billing już był na Railway.
+- Jeśli zmiana wymaga F3 na prod — najpierw potwierdź merge + migrację + webhook.
+- IAP / App Store (F5) to osobna ścieżka od Stripe Checkout na tym branchu.
+
+## Obowiązek: powiedzieć kiedy merge / Railway
+
+Sam **nie** merguj i **nie** migruj. Ale **proaktywnie powiedz użytkowniczce**, gdy nadchodzi dobry moment:
+
+**Najlepszy czas na merge `feature/f3-stripe` → `main` + migracja Railway + webhook prod:**
+
+1. Smoke F3 na iOS (trial → paywall → Checkout Test → active) już przeszedł u niej lokalnie, **oraz**
+2. Zbliża się dystrybucja mobile poza sam lokalny debug (TestFlight / betatesterzy / „pokaż innym”), **albo**
+3. Kolejna faza realnie **wymaga** billing na prod API (np. build wskazujący na Railway z włączonym paywallem), **albo**
+4. F2b (Apple / APNs) jest domknięte na tyle, że i tak idzie deploy mobile na wspólny backend.
+
+**Za wcześnie**, jeśli: tylko lokalny smoke w toku, Apple jeszcze nie, nikt poza nią nie używa mobile builda, web-only prace.
+
+Przy takim momencie: krótko zaproponuj „teraz warto merge + Railway (migracja billing + `STRIPE_*` + webhook)” i **czekaj na wyraźne „tak”**.
+
+## Gdzie jest kod
+
+- Front: `~/development/Coparentes-App-vol-2-main` → `feature/f3-stripe`
+- Back: `~/Desktop/coparentes-backend-main` → `feature/f3-stripe`
