@@ -208,6 +208,8 @@ class SelectedDayCard extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: AppTheme.textPrimary,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               if (e.description != null)
                                 Text(
@@ -216,6 +218,8 @@ class SelectedDayCard extends StatelessWidget {
                                     fontSize: 11,
                                     color: AppTheme.textSecondary,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                             ],
                           ),

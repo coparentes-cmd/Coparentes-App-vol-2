@@ -169,6 +169,8 @@ class _DashboardHomeState extends State<DashboardHome> {
                       color: Colors.white.withValues(alpha: 0.75),
                       fontSize: compact ? 12 : 13,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (highConflict) ...[
                     SizedBox(height: 4),
