@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -42,6 +44,8 @@ class _AppLifecycleRefresherState extends State<AppLifecycleRefresher>
       return;
     }
 
+    // After Stripe Checkout / Safari, re-check mobile entitlement.
+    unawaited(appProvider.refreshMobileBilling());
     context.read<OfflineSyncProvider>().pollFinanceNow();
     context.read<OfflineSyncProvider>().refreshStatus();
   }

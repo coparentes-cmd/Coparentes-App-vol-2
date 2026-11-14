@@ -158,6 +158,30 @@ class AppProvider extends ChangeNotifier {
 
   /// Mobile paywall gate; always true on web / demo / child.
   bool get mobileAccessAllowed => _mobileAccessAllowed;
+
+  /// Re-check entitlement after returning from Stripe Checkout / Safari.
+  Future<void> refreshMobileBilling() =>
+      _syncMobileBilling(forceEntitlementRefresh: true);
+
+  /// Opens Stripe Checkout via returned URL (caller launches browser).
+  Future<String?> createCheckoutUrl() async {
+    if (_billingRepository == null || kIsWeb || !isMobileClientPlatform) {
+      _authError = 'Płatności mobilne są dostępne tylko w aplikacji iOS/Android.';
+      notifyListeners();
+      return null;
+    }
+    try {
+      _authError = null;
+      return await _billingRepository!.createCheckoutSessionUrl();
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się otworzyć Stripe Checkout.',
+      );
+      notifyListeners();
+      return null;
+    }
+  }
   Workspace? get currentWorkspace => _currentWorkspace;
   bool get highConflictMode => _highConflictMode;
   ThemeMode get themeMode => _themeMode;
@@ -266,6 +290,10 @@ class AppProvider extends ChangeNotifier {
           return 'Podaj poprawną datę urodzenia.';
         case 'cors_not_allowed':
           return 'Serwer odrzucił połączenie (CORS). Skontaktuj się z administratorem.';
+        case 'stripe_not_configured':
+          return 'Płatności Stripe nie są jeszcze skonfigurowane (Test).';
+        case 'stripe_mobile_only':
+          return 'Subskrypcja jest dostępna tylko w aplikacji mobilnej.';
         case 'Too many requests, try again later':
           return 'Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.';
         default:
@@ -1461,7 +1489,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   /// F3: start one-time trial on first mobile parent session; never gate web.
-  Future<void> _syncMobileBilling() async {
+  Future<void> _syncMobileBilling({bool forceEntitlementRefresh = false}) async {
     final user = _currentUser;
     if (user == null ||
         _isDemoMode ||
@@ -1481,7 +1509,8 @@ class AppProvider extends ChangeNotifier {
 
     try {
       final BillingEntitlement entitlement;
-      if (user.billingStatus == BillingStatus.none) {
+      if (!forceEntitlementRefresh &&
+          user.billingStatus == BillingStatus.none) {
         entitlement = await _billingRepository!.startMobileTrial();
       } else {
         entitlement = await _billingRepository!.getEntitlement();

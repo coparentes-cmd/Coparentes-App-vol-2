@@ -63,4 +63,23 @@ class BillingRepository {
     final json = await _apiClient.postJson('/billing/start-mobile-trial', {});
     return BillingEntitlement.fromJson(json);
   }
+
+  /// Stripe Checkout (Test). Backend rejects web with `stripe_mobile_only`.
+  Future<String> createCheckoutSessionUrl() async {
+    final json = await _apiClient.postJson('/billing/checkout-session', {});
+    final url = json['url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw const ApiException(502, 'checkout_url_missing');
+    }
+    return url;
+  }
+
+  Future<String> createPortalSessionUrl() async {
+    final json = await _apiClient.postJson('/billing/portal-session', {});
+    final url = json['url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw const ApiException(502, 'portal_url_missing');
+    }
+    return url;
+  }
 }
