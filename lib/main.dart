@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -21,6 +23,7 @@ import 'providers/calendar_provider.dart';
 import 'providers/documents_provider.dart';
 import 'providers/exports_provider.dart';
 import 'providers/finance_provider.dart';
+import 'providers/messaging_provider.dart';
 import 'providers/offline_sync_provider.dart';
 import 'screens/auth/role_selection_screen.dart';
 import 'screens/auth/auth_home_resolver.dart';
@@ -34,6 +37,7 @@ import 'services/e2e_session_service.dart';
 import 'services/analytics/analytics_navigator_observer.dart';
 import 'services/analytics/analytics_service.dart';
 import 'services/cookie_consent/cookie_consent_controller.dart';
+import 'services/push/push_registration_service.dart';
 import 'utils/app_browser_back.dart';
 import 'utils/reset_password_url.dart';
 import 'utils/url_strategy.dart';
@@ -55,6 +59,7 @@ Future<void> main() async {
   final cookieConsentController = CookieConsentController();
   await cookieConsentController.initialize();
   final apiClient = AppApiClient(baseUrl: AppEnvironment.apiBaseUrl);
+  final pushRegistrationService = PushRegistrationService(apiClient: apiClient);
   final e2eSessionService = E2eSessionService(apiClient: apiClient);
   final messagingRepository = MessagingRepository(
     apiClient: apiClient,
@@ -98,6 +103,7 @@ Future<void> main() async {
       preferences: preferences,
       e2eSessionService: e2eSessionService,
       cookieConsentController: cookieConsentController,
+      pushRegistrationService: pushRegistrationService,
     ),
   );
 }
@@ -117,6 +123,7 @@ class CoparentesApp extends StatelessWidget {
   final SharedPreferences preferences;
   final E2eSessionService e2eSessionService;
   final CookieConsentController cookieConsentController;
+  final PushRegistrationService pushRegistrationService;
 
   const CoparentesApp({
     super.key,
@@ -134,12 +141,16 @@ class CoparentesApp extends StatelessWidget {
     required this.preferences,
     required this.e2eSessionService,
     required this.cookieConsentController,
+    required this.pushRegistrationService,
   });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<PushRegistrationService>.value(
+          value: pushRegistrationService,
+        ),
         ChangeNotifierProvider<CookieConsentController>.value(
           value: cookieConsentController,
         ),
@@ -350,6 +361,11 @@ class _AppGateState extends State<_AppGate> {
 
     final user = appProvider.currentUser;
     if (user == null) {
+      if (_hydratedUserId != null) {
+        unawaited(
+          context.read<PushRegistrationService>().unregisterCurrentDevice(),
+        );
+      }
       _hydratedUserId = null;
       AnalyticsService.instance.logScreen('auth');
       return const RoleSelectionScreen();
@@ -434,6 +450,13 @@ class _AppGateState extends State<_AppGate> {
           await calendarProvider.load();
           await financeProvider.load();
           await documentsProvider.load(viewerUserId: appProvider.currentUser?.id);
+        }
+
+        // F2a: register FCM/sim stub token after session hydrate (mobile only).
+        if (!isDemoMode) {
+          unawaited(
+            context.read<PushRegistrationService>().registerForCurrentUser(),
+          );
         }
       }
     });
