@@ -125,6 +125,44 @@ String exportTypeToApi(ExportType type) {
   }
 }
 
+BillingStatus billingStatusFromApi(String? value) {
+  switch (value) {
+    case 'trialing':
+      return BillingStatus.trialing;
+    case 'active':
+      return BillingStatus.active;
+    case 'expired':
+      return BillingStatus.expired;
+    case 'canceled':
+      return BillingStatus.canceled;
+    case 'none':
+    default:
+      return BillingStatus.none;
+  }
+}
+
+String billingStatusToApi(BillingStatus status) {
+  switch (status) {
+    case BillingStatus.none:
+      return 'none';
+    case BillingStatus.trialing:
+      return 'trialing';
+    case BillingStatus.active:
+      return 'active';
+    case BillingStatus.expired:
+      return 'expired';
+    case BillingStatus.canceled:
+      return 'canceled';
+  }
+}
+
+DateTime? _optionalDateTime(dynamic value) {
+  if (value is! String || value.isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(value);
+}
+
 AppUser appUserFromJson(Map<String, dynamic> json) {
   return AppUser(
     id: json['id'] as String,
@@ -136,6 +174,11 @@ AppUser appUserFromJson(Map<String, dynamic> json) {
     mustChangePassword: json['mustChangePassword'] as bool? ?? false,
     themeMode: themeModeFromApi(json['themeMode'] as String?),
     colorScheme: colorSchemeFromApi(json['colorScheme'] as String?),
+    billingStatus: billingStatusFromApi(json['billingStatus'] as String?),
+    trialStartedAt: _optionalDateTime(json['trialStartedAt']),
+    trialEndsAt: _optionalDateTime(json['trialEndsAt']),
+    currentPeriodEnd: _optionalDateTime(json['currentPeriodEnd']),
+    billingSource: json['billingSource'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 }
@@ -151,6 +194,11 @@ Map<String, dynamic> appUserToJson(AppUser user) {
     'mustChangePassword': user.mustChangePassword,
     'themeMode': themeModeToApi(user.themeMode),
     'colorScheme': colorSchemeToApi(user.colorScheme),
+    'billingStatus': billingStatusToApi(user.billingStatus),
+    'trialStartedAt': user.trialStartedAt?.toIso8601String(),
+    'trialEndsAt': user.trialEndsAt?.toIso8601String(),
+    'currentPeriodEnd': user.currentPeriodEnd?.toIso8601String(),
+    'billingSource': user.billingSource,
     'createdAt': user.createdAt.toIso8601String(),
   };
 }

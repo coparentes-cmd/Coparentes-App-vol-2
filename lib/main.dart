@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -9,6 +10,7 @@ import 'data/api/app_api_client.dart';
 import 'data/local/pin_lock_store.dart';
 import 'data/local/offline_store.dart';
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/billing_repository.dart';
 import 'data/repositories/consent_repository.dart';
 import 'data/repositories/calendar_repository.dart';
 import 'data/repositories/documents_repository.dart';
@@ -35,6 +37,7 @@ import 'services/analytics/analytics_navigator_observer.dart';
 import 'services/analytics/analytics_service.dart';
 import 'services/cookie_consent/cookie_consent_controller.dart';
 import 'utils/app_browser_back.dart';
+import 'utils/client_platform.dart';
 import 'utils/reset_password_url.dart';
 import 'utils/url_strategy.dart';
 import 'widgets/cookie_consent_banner.dart';
@@ -77,6 +80,7 @@ Future<void> main() async {
     offlineStore: offlineStore,
   );
   final consentRepository = ConsentRepository(apiClient: apiClient);
+  final billingRepository = BillingRepository(apiClient: apiClient);
 
   runApp(
     CoparentesApp(
@@ -86,6 +90,7 @@ Future<void> main() async {
         offlineStore: offlineStore,
       ),
       consentRepository: consentRepository,
+      billingRepository: billingRepository,
       messagingRepository: messagingRepository,
       exportRepository: exportRepository,
       calendarRepository: calendarRepository,
@@ -105,6 +110,7 @@ Future<void> main() async {
 class CoparentesApp extends StatelessWidget {
   final AuthRepository authRepository;
   final ConsentRepository consentRepository;
+  final BillingRepository billingRepository;
   final MessagingRepository messagingRepository;
   final ExportRepository exportRepository;
   final CalendarRepository calendarRepository;
@@ -122,6 +128,7 @@ class CoparentesApp extends StatelessWidget {
     super.key,
     required this.authRepository,
     required this.consentRepository,
+    required this.billingRepository,
     required this.messagingRepository,
     required this.exportRepository,
     required this.calendarRepository,
@@ -147,6 +154,7 @@ class CoparentesApp extends StatelessWidget {
           create: (_) => AppProvider(
             authRepository: authRepository,
             consentRepository: consentRepository,
+            billingRepository: billingRepository,
             pinLockStore: pinLockStore,
             preferences: preferences,
             localeStore: localeStore,
@@ -355,6 +363,18 @@ class _AppGateState extends State<_AppGate> {
       return const RoleSelectionScreen();
     }
 
+    final enforceMobilePaywall =
+        !kIsWeb && isMobileClientPlatform && !appProvider.isDemoMode;
+
+    if (enforceMobilePaywall &&
+        !appProvider.billingChecked &&
+        user.role != UserRole.child &&
+        !user.mustChangePassword) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (!user.mustChangePassword) {
       _hydrateSession(user.id);
     }
@@ -362,7 +382,11 @@ class _AppGateState extends State<_AppGate> {
     AnalyticsService.instance.logScreen(
       user.role == UserRole.child ? 'home_child' : 'home_parent',
     );
-    return resolveAuthenticatedHome(user);
+    return resolveAuthenticatedHome(
+      user,
+      enforceMobilePaywall: enforceMobilePaywall,
+      mobileAccessAllowed: appProvider.mobileAccessAllowed,
+    );
   }
 
   void _hydrateSession(String userId) {
