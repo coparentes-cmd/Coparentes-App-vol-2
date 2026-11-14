@@ -246,57 +246,71 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           onChanged: _applyPastedCode,
                         ),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(_boxCount, (index) {
-                          final focused = _focusNodes[index].hasFocus;
-                          return SizedBox(
-                            width: 46,
-                            height: 52,
-                            child: Focus(
-                              onKeyEvent: (node, event) => _onKeyEvent(index, event),
-                              child: TextField(
-                                controller: _controllers[index],
-                                focusNode: _focusNodes[index],
-                                enabled: !_locked && !_submitting,
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                maxLength: 1,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.textPrimary,
-                                ),
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  contentPadding: EdgeInsets.zero,
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(AppTheme.radiusMd),
-                                    borderSide: BorderSide(
-                                      color: focused
-                                          ? primary
-                                          : AppTheme.dividerColor,
-                                      width: focused ? 1.8 : 1,
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          const gap = 6.0;
+                          final boxW = ((constraints.maxWidth -
+                                      gap * (_boxCount - 1)) /
+                                  _boxCount)
+                              .clamp(36.0, 46.0);
+                          final boxH = (boxW * (52 / 46)).clamp(40.0, 52.0);
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: List.generate(_boxCount, (index) {
+                              final focused = _focusNodes[index].hasFocus;
+                              return SizedBox(
+                                width: boxW,
+                                height: boxH,
+                                child: Focus(
+                                  onKeyEvent: (node, event) =>
+                                      _onKeyEvent(index, event),
+                                  child: TextField(
+                                    controller: _controllers[index],
+                                    focusNode: _focusNodes[index],
+                                    enabled: !_locked && !_submitting,
+                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 1,
+                                    style: TextStyle(
+                                      fontSize: boxW >= 42 ? 20 : 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary,
                                     ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(AppTheme.radiusMd),
-                                    borderSide: BorderSide(
-                                      color: primary,
-                                      width: 1.8,
+                                    decoration: InputDecoration(
+                                      counterText: '',
+                                      contentPadding: EdgeInsets.zero,
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMd,
+                                        ),
+                                        borderSide: BorderSide(
+                                          color: focused
+                                              ? primary
+                                              : AppTheme.dividerColor,
+                                          width: focused ? 1.8 : 1,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMd,
+                                        ),
+                                        borderSide: BorderSide(
+                                          color: primary,
+                                          width: 1.8,
+                                        ),
+                                      ),
                                     ),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    onChanged: (value) =>
+                                        _onDigitChanged(index, value),
                                   ),
                                 ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
-                                onChanged: (value) => _onDigitChanged(index, value),
-                              ),
-                            ),
+                              );
+                            }),
                           );
-                        }),
+                        },
                       ),
                       SizedBox(height: 10),
                       Text(
