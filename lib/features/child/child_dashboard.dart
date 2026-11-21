@@ -8,12 +8,14 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/demo_time.dart';
 import '../../../utils/app_browser_back.dart';
 import '../../../utils/tab_history_stack.dart';
 import '../../../config/messaging_categories.dart';
 import '../../../l10n/locale_policy.dart';
+import '../../../widgets/floating_bottom_nav_shell.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import 'widgets/child_todo_models.dart';
@@ -123,7 +125,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFFFF8F0),
+        extendBody: true,
         body: SafeArea(
+          bottom: false,
           child: IndexedStack(
             index: _selectedIndex,
             children: [
@@ -138,34 +142,47 @@ class _ChildDashboardState extends State<ChildDashboard> {
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _navigateToTab,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.childColor,
-          unselectedItemColor: AppTheme.textHint,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.today),
-              label: context.tr('Dzisiaj'),
+        bottomNavigationBar: FloatingBottomNavShell(
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              splashColor: AppTints.coralBg,
+              highlightColor: AppTints.coralBg.withValues(alpha: 0.5),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
-              label: context.tr('Kalendarz'),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _navigateToTab,
+              backgroundColor: Colors.white,
+              selectedItemColor: AppTheme.childColor,
+              unselectedItemColor: AppTheme.textHint,
+              type: BottomNavigationBarType.fixed,
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+              selectedFontSize: 12.5,
+              unselectedFontSize: 12.5,
+              elevation: 0,
+              items: [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.today),
+                  label: context.tr('Dzisiaj'),
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  activeIcon: Icon(Icons.calendar_month),
+                  label: context.tr('Kalendarz'),
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.family_restroom_outlined),
+                  activeIcon: Icon(Icons.family_restroom),
+                  label: familyCategoryDisplayLabel,
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.list_alt_outlined),
+                  activeIcon: Icon(Icons.list_alt),
+                  label: context.tr('Lista'),
+                ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.family_restroom_outlined),
-              activeIcon: Icon(Icons.family_restroom),
-              label: familyCategoryDisplayLabel,
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt_outlined),
-              activeIcon: Icon(Icons.list_alt),
-              label: context.tr('Lista'),
-            ),
-          ],
+          ),
         ),
       ),
     );
