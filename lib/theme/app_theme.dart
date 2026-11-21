@@ -43,6 +43,17 @@ class AppTheme {
 
   static List<BoxShadow> get softShadow => AppShadows.card;
 
+  /// Dark ink on filled brand buttons (section 7).
+  static Color onBrandFill(Color fill) {
+    if (fill == primaryTeal || fill == primaryDark || fill == successColor) {
+      return AppTints.onTeal;
+    }
+    if (fill == coralColor || fill == highConflictColor) {
+      return AppTints.onCoral;
+    }
+    return Colors.white;
+  }
+
   static ThemeData buildLight(Color primary) {
     final scheme = ColorScheme.fromSeed(
       seedColor: primary,
@@ -52,11 +63,13 @@ class AppTheme {
       surface: surfaceColor,
       error: errorColor,
     );
+    final onPrimary = onBrandFill(primary);
+    final fieldRadius = BorderRadius.circular(AppRadius.sm);
 
     return ThemeData(
       useMaterial3: true,
       fontFamily: 'DMSans',
-      colorScheme: scheme,
+      colorScheme: scheme.copyWith(onPrimary: onPrimary),
       scaffoldBackgroundColor: surfaceColor,
       canvasColor: surfaceColor,
       splashFactory: InkRipple.splashFactory,
@@ -76,25 +89,31 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         color: cardColor,
         elevation: 0,
         shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(radiusLg)),
-          side: BorderSide(color: dividerColor),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide.none,
         ),
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: AppSpace.xxs,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
-          foregroundColor: Colors.white,
+          foregroundColor: onPrimary,
           elevation: 0,
           shadowColor: Colors.transparent,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size(AppSpace.touchTarget, 52),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
           textStyle: const TextStyle(
             fontFamily: 'DMSans',
             fontSize: 16,
@@ -105,12 +124,14 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: BorderSide(color: primary.withValues(alpha: 0.18), width: 1.4),
-          minimumSize: const Size.fromHeight(56),
+          foregroundColor: AppTints.tealFg,
+          side: const BorderSide(color: AppTints.secondaryOutline, width: 1.5),
+          minimumSize: const Size(AppSpace.touchTarget, 52),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: const StadiumBorder(),
-          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          backgroundColor: Colors.transparent,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -124,52 +145,105 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppTints.fieldFill,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dividerColor),
+          borderRadius: fieldRadius,
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dividerColor),
+          borderRadius: fieldRadius,
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: primary, width: 1.8),
+          borderRadius: fieldRadius,
+          borderSide: const BorderSide(color: brandHeaderBlue, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: errorColor),
+          borderRadius: fieldRadius,
+          borderSide: const BorderSide(color: AppTints.redFg, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: fieldRadius,
+          borderSide: const BorderSide(color: AppTints.redFg, width: 1.5),
+        ),
+        errorStyle: const TextStyle(color: AppTints.redFg),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: const TextStyle(color: textSecondary),
         hintStyle: const TextStyle(color: textHint),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: primary.withValues(alpha: 0.08),
-        selectedColor: primary.withValues(alpha: 0.14),
-        labelStyle: const TextStyle(color: textPrimary, fontSize: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        backgroundColor: Colors.white,
+        selectedColor: textPrimary,
+        disabledColor: AppTints.grayBg,
+        labelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+          color: textPrimary,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        showCheckmark: false,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-          side: BorderSide(color: primary.withValues(alpha: 0.12)),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          side: BorderSide.none,
+        ),
+        side: BorderSide.none,
+        elevation: 0,
+        pressElevation: 0,
+      ),
+      tabBarTheme: TabBarThemeData(
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: brandHeaderBlue,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
+        labelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        indicator: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A16202B),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusLg)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: textPrimary,
         contentTextStyle: const TextStyle(color: Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
         behavior: SnackBarBehavior.floating,
       ),
       dividerTheme: const DividerThemeData(
