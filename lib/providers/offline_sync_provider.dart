@@ -194,6 +194,12 @@ class OfflineSyncProvider extends ChangeNotifier {
       await _documentsRepository.syncPendingActions();
       _isOnline = await _apiClient.pingHealth();
       await _refreshPendingCount();
+      if (_pendingCount > 0 && _isOnline) {
+        // Sync ran without throwing, but some actions still cannot be flushed
+        // (e.g. permanent 4xx). Surface that so the banner is not a silent loop.
+        _lastSyncError =
+            'Nie udało się wysłać $_pendingCount zmian. Spróbuj ponownie lub wyloguj i zaloguj.';
+      }
       if (_isOnline && _refreshData != null) {
         await _refreshData!.call();
       }

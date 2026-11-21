@@ -548,6 +548,12 @@ class MessagingRepository {
           rethrow;
         }
 
+        // Mark-as-read is best-effort: permanent client errors must not block
+        // the offline banner forever ("Synchronizuj" looking broken).
+        if (type == 'messaging.markThreadRead') {
+          continue;
+        }
+
         if (error.statusCode == 404 && type == 'messaging.sendMessage') {
           final payload = Map<String, dynamic>.from(action['payload'] as Map);
           final requestedThreadId = payload['threadId'] as String;
@@ -558,6 +564,8 @@ class MessagingRepository {
             rewrittenQueue.add(action);
             continue;
           }
+          // Thread gone on server — drop stale send instead of looping forever.
+          continue;
         }
 
         rewrittenQueue.add(action);

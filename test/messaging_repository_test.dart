@@ -306,5 +306,37 @@ void main() {
       expect(pending.single['type'], 'messaging.markThreadRead');
       expect(pending.single['payload'], {'threadId': 'thread_retry'});
     });
+
+    test('syncPendingActions drops markThreadRead on permanent 4xx', () async {
+      await offlineStore.appendPendingAction({
+        'type': 'messaging.markThreadRead',
+        'createdAt': DateTime(2026, 6, 1).toIso8601String(),
+        'payload': {'threadId': 'thread_gone'},
+      });
+
+      final repository = MessagingRepository(
+        apiClient: AppApiClient(
+          baseUrl: 'http://127.0.0.1:0/api',
+          httpClient: _ForbiddenMarkReadHttpClient(),
+        ),
+        offlineStore: offlineStore,
+      );
+
+      await repository.syncPendingActions();
+
+      expect(offlineStore.getPendingActions(), isEmpty);
+    });
   });
+}
+
+class _ForbiddenMarkReadHttpClient extends http.BaseClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(
+      Stream.value(utf8.encode('{"error":"forbidden"}')),
+      403,
+      headers: {'content-type': 'application/json'},
+      request: request,
+    );
+  }
 }
