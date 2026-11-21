@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../../../../providers/app_provider.dart';
-import '../../../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/providers/app_provider.dart';
+import 'package:coparentes/theme/app_theme.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
-import '../../../../utils/password_normalization.dart';
+import 'package:coparentes/utils/password_normalization.dart';
 
-/// Password confirmation step for account soft-delete.
 class DeleteAccountSheet extends StatefulWidget {
   final Color color;
 
