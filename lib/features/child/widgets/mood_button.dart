@@ -1,17 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../models/models.dart';
-import '../../../../providers/app_provider.dart';
-import '../../../../providers/calendar_provider.dart';
-import '../../../../theme/app_theme.dart';
-import '../../../../utils/calendar_date_utils.dart';
-import '../../../../utils/app_browser_back.dart';
-import '../../../screens/calendar/calendar_screen.dart';
-import '../../../screens/messaging/messaging_screen.dart';
 
-import 'child_todo_models.dart';
+import '../../../../theme/app_theme.dart';
+import '../../../../theme/app_tokens.dart';
 
 class MoodButton extends StatelessWidget {
   final String emoji;
@@ -28,25 +18,31 @@ class MoodButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: selected
-              ? AppTheme.childColor.withValues(alpha: 0.15)
-              : Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? AppTheme.childColor : Colors.transparent,
-            width: 2,
+      child: AnimatedScale(
+        scale: selected && !reduceMotion ? 1.06 : 1.0,
+        duration: Duration(milliseconds: reduceMotion ? 0 : 200),
+        curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: reduceMotion ? 0 : 200),
+          curve: Curves.easeOutCubic,
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: selected ? AppTints.childFeelSelected : AppTints.childFeelIdle,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: selected ? AppTheme.childColor : Colors.transparent,
+              width: 2,
+            ),
           ),
-        ),
-        child: Center(
-          child: Text(
-            emoji,
-            style: TextStyle(fontSize: selected ? 28 : 24),
+          child: Center(
+            child: Text(
+              emoji,
+              style: TextStyle(fontSize: selected ? 26 : 22),
+            ),
           ),
         ),
       ),

@@ -589,14 +589,23 @@ class _ChildDashboardState extends State<ChildDashboard> {
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         backgroundColor: AppTheme.childColor,
+        foregroundColor: const Color(0xFF16202B),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+        ),
         title: Row(
           children: [
             const Text('📝', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 listTitle,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(
+                  color: Color(0xFF16202B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 22,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -604,7 +613,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.switch_account, color: Colors.white),
+            icon: const Icon(Icons.switch_account, color: Color(0xFF16202B)),
             tooltip: context.tr('Zmień profil'),
             onPressed: () => _showExitDialog(context),
           ),
@@ -1134,7 +1143,15 @@ class _AnimatedGradientHeaderState extends State<_AnimatedGradientHeader>
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: _colors[1].withValues(alpha: 0.35),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+                spreadRadius: -14,
+              ),
+            ],
             gradient: LinearGradient(
               // ~45deg, oversized travel like background-size: 200% 200%
               begin: Alignment(-1.5 + shift, -1.0),

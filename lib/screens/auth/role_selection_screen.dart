@@ -282,39 +282,48 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                         _mode == _AuthMode.join ||
                                         _mode == _AuthMode.joinChild) ...[
                                       const SizedBox(height: 14),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _RoleChoiceChip(
-                                              label: context.tr('Dorosły'),
-                                              selected:
-                                                  _audience == _Audience.adult,
-                                              onTap: () => setState(() {
-                                                _audience = _Audience.adult;
-                                                if (_mode ==
-                                                    _AuthMode.joinChild) {
-                                                  _mode = _AuthMode.join;
-                                                }
-                                                _childJoinPreview = null;
-                                              }),
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F3F6),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: _RoleChoiceChip(
+                                                label: context.tr('Dorosły'),
+                                                selected: _audience ==
+                                                    _Audience.adult,
+                                                onTap: () => setState(() {
+                                                  _audience = _Audience.adult;
+                                                  if (_mode ==
+                                                      _AuthMode.joinChild) {
+                                                    _mode = _AuthMode.join;
+                                                  }
+                                                  _childJoinPreview = null;
+                                                }),
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: _RoleChoiceChip(
-                                              label: context.tr('Dziecko'),
-                                              selected:
-                                                  _audience == _Audience.child,
-                                              onTap: () => setState(() {
-                                                _audience = _Audience.child;
-                                                if (_mode == _AuthMode.join) {
-                                                  _mode = _AuthMode.joinChild;
-                                                }
-                                                _childJoinPreview = null;
-                                              }),
+                                            Expanded(
+                                              child: _RoleChoiceChip(
+                                                label: context.tr('Dziecko'),
+                                                selected: _audience ==
+                                                    _Audience.child,
+                                                onTap: () => setState(() {
+                                                  _audience = _Audience.child;
+                                                  if (_mode ==
+                                                      _AuthMode.join) {
+                                                    _mode =
+                                                        _AuthMode.joinChild;
+                                                  }
+                                                  _childJoinPreview = null;
+                                                }),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ],
                                     const SizedBox(height: 16),
@@ -1546,73 +1555,49 @@ class _RoleChoiceChip extends StatefulWidget {
 }
 
 class _RoleChoiceChipState extends State<_RoleChoiceChip> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final selected = widget.selected;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    return Semantics(
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      button: true,
+      label: widget.label,
       child: AnimatedContainer(
         duration: Duration(milliseconds: reduceMotion ? 0 : 180),
-        curve: const Cubic(0.2, 0.8, 0.2, 1),
+        curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFFD8FCF2)
-              : _hovered
-                  ? const Color(0xFFF6FBF9)
-                  : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? _loginGreen : AppTheme.dividerColor,
-            width: selected ? 2 : 1.5,
-          ),
-          boxShadow: [
-            if (selected)
-              BoxShadow(
-                color: _loginGreen.withValues(alpha: 0.18),
-                blurRadius: 0,
-                spreadRadius: 3,
-              )
-            else if (_hovered)
-              BoxShadow(
-                color: _loginGreen.withValues(alpha: 0.10),
-                blurRadius: 0,
-                spreadRadius: 3,
-              ),
-          ],
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x1416202B),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(999),
             child: SizedBox(
               height: 48,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    selected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    size: 20,
-                    color: selected ? _loginGreen : AppTheme.textHint,
+              child: Center(
+                child: Text(
+                  widget.label,
+                  style: _loginPoppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: selected
+                        ? const Color(0xFF00785A)
+                        : AppTheme.textSecondary,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    widget.label,
-                    style: _loginPoppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: selected
-                          ? AppTheme.textPrimary
-                          : AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

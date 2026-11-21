@@ -174,38 +174,45 @@ class ExpenseCardState extends State<ExpenseCard> {
         widget.finance.isAwaitingOtherParent(expense, userId);
     final otherParentName = context.tr(_otherParentName(expense.paidBy));
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppTheme.softShadow,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: expense.statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    color: expense.statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     expense.categoryIcon,
                     color: expense.statusColor,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         expense.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                           color: AppTheme.textPrimary,
                         ),
                       ),
@@ -214,7 +221,7 @@ class ExpenseCardState extends State<ExpenseCard> {
                         ' · ${context.tr(expense.category)}'
                         '$childLabel',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           color: AppTheme.textSecondary,
                         ),
                       ),

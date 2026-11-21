@@ -412,14 +412,19 @@ class _DayCell extends StatelessWidget {
     return GestureDetector(
       onTap: _handleDayTap,
       behavior: HitTestBehavior.opaque,
-      child: DecoratedBox(
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: DecoratedBox(
       decoration: BoxDecoration(
         color: _cellBackground(custodyColor),
+        borderRadius: BorderRadius.circular(12),
         border: isSelected
-            ? Border.all(color: AppTheme.accentColor.withValues(alpha: 0.55), width: 1.5)
+            ? Border.all(color: AppTheme.brandHeaderBlue, width: 2)
             : null,
       ),
-      child: Padding(
+      child: Opacity(
+        opacity: isOutside ? 0.4 : 1,
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(3, 3, 3, 2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -500,7 +505,9 @@ class _DayCell extends StatelessWidget {
             ),
           ],
         ),
-      ),
+        ),
+        ),
+        ),
       ),
     );
   }
@@ -515,23 +522,17 @@ class _DayCell extends StatelessWidget {
   }
 
   Color _cellBackground(Color? custodyColor) {
+    if (isSelected) {
+      return Colors.white;
+    }
     if (custodyColor == null) {
       return Colors.white;
     }
 
     final isParentA = slots.first.custodian == UserRole.parentA;
-    final baseTint = isParentA
-        ? AppTheme.parentAColor.withValues(alpha: isOutside ? 0.18 : 0.32)
-        : AppTheme.parentBColor.withValues(alpha: isOutside ? 0.18 : 0.32);
-
-    if (isSelected) {
-      return Color.alphaBlend(
-        AppTheme.accentColor.withValues(alpha: 0.10),
-        baseTint,
-      );
-    }
-
-    return baseTint;
+    return isParentA
+        ? AppTheme.parentAColor.withValues(alpha: 0.28)
+        : AppTheme.parentBColor.withValues(alpha: 0.28);
   }
 }
 

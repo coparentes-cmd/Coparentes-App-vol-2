@@ -4,6 +4,7 @@ import '../../../config/messaging_categories.dart';
 import '../../../l10n/app_strings.dart';
 import '../../../models/models.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../widgets/message_tag_widgets.dart';
 import 'e2e_message_text.dart';
@@ -34,131 +35,118 @@ class ThreadTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lastMsg = thread.messages.isNotEmpty ? thread.messages.last : null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
-        color: selected
-            ? AppTheme.primaryTeal.withValues(alpha: 0.08)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: thread.categoryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: selected
-                        ? Border.all(color: AppTheme.primaryTeal, width: 2)
-                        : null,
-                  ),
-                  child: Icon(
-                    thread.categoryIcon,
-                    color: thread.categoryColor,
-                    size: 22,
-                  ),
+    final theme = Theme.of(context).textTheme;
+    return Material(
+      color: selected ? AppTints.tealBg : Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.cardPaddingH,
+            vertical: 14,
+          ),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppTints.threadDivider, width: 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: thread.categoryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: selected
+                      ? Border.all(color: AppTheme.primaryTeal, width: 2)
+                      : null,
                 ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              context.tr(threadListTitle(thread)),
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: _hasUnread
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: AppTheme.textPrimary,
-                              ),
+                child: Icon(
+                  thread.categoryIcon,
+                  color: thread.categoryColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            context.tr(threadListTitle(thread)),
+                            style: theme.bodyLarge?.copyWith(
+                              fontWeight: _hasUnread
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                             ),
                           ),
+                        ),
+                        Text(
+                          _formatThreadListTime(thread.lastActivity),
+                          style: theme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (lastMsg != null)
+                      Row(
+                        children: [
                           Text(
-                            _formatThreadListTime(thread.lastActivity),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textHint,
+                            '${lastMsg.senderName}: ',
+                            style: theme.bodyMedium,
+                          ),
+                          Expanded(
+                            child: E2eMessageText(
+                              message: lastMsg,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.bodyMedium,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      if (lastMsg != null)
-                        Row(
-                          children: [
-                            Text(
-                              '${lastMsg.senderName}: ',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary,
+                    if (userTags.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: userTags
+                            .map(
+                              (tag) => MessageTagChip(
+                                tag: tag,
+                                compact: true,
                               ),
-                            ),
-                            Expanded(
-                              child: E2eMessageText(
-                                message: lastMsg,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (userTags.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: userTags
-                              .map(
-                                (tag) => MessageTagChip(
-                                  tag: tag,
-                                  compact: true,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
+                            )
+                            .toList(),
+                      ),
                     ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  children: [
-                    if (_hasUnread)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primaryTeal,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${thread.messages.length}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textHint,
-                      ),
-                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              if (_hasUnread)
+                Container(
+                  constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryTeal,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Text(
+                    '${thread.messages.length}',
+                    style: theme.labelMedium?.copyWith(
+                      color: AppTints.onTeal,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

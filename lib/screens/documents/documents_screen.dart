@@ -124,26 +124,30 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFFF3E5F7),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFFEBD3F2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     context.tr('Sejf rodzinny'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6A1B7A),
                     ),
                   ),
-                  SizedBox(height: 6),
-                  Text(context.tr('Przechowuj umowy, dokumenty szkolne, medyczne i wspólne pliki — w jednym miejscu.'),
-                    style: TextStyle(
-                      fontSize: 13,
+                  const SizedBox(height: 6),
+                  Text(
+                    context.tr(
+                      'Przechowuj umowy, dokumenty szkolne, medyczne i wspólne pliki — w jednym miejscu.',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 14,
                       color: AppTheme.textSecondary,
                     ),
                   ),
@@ -151,10 +155,30 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               ),
             ),
             if (documentsProvider.error != null) ...[
-              SizedBox(height: 12),
-              Text(
-                documentsProvider.error!,
-                style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDECEC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Color(0xFFB71C1C), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        documentsProvider.error!,
+                        style: const TextStyle(
+                          color: Color(0xFFB71C1C),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
             SizedBox(height: 16),
@@ -211,10 +235,35 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
               )
             else if (documents.isEmpty)
               Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(context.tr('Brak dokumentów w tej kategorii. Dodaj pierwszy plik.'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textSecondary),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: AppTheme.softShadow,
+                      ),
+                      child: const Icon(
+                        Icons.folder_open_outlined,
+                        size: 32,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.tr(
+                        'Brak dokumentów w tej kategorii. Dodaj pierwszy plik.',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               )
             else
