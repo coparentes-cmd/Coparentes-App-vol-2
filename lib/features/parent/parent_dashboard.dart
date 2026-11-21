@@ -307,6 +307,17 @@ class _ParentDashboardState extends State<ParentDashboard> {
       children: screens,
     );
 
+    // With extendBody the floating nav overlays the body — inflate bottom
+    // padding so compose bars / scroll content clear the capsule.
+    final phoneBody = MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        padding: MediaQuery.paddingOf(context).copyWith(
+          bottom: FloatingBottomNavShell.contentBottomInset(context),
+        ),
+      ),
+      child: content,
+    );
+
     return PopScope(
       canPop: _canExitApp,
       onPopInvokedWithResult: (didPop, result) {
@@ -343,7 +354,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                   Expanded(child: content),
                 ],
               )
-            : content,
+            : phoneBody,
         bottomNavigationBar: useRail
             ? null
             : FloatingBottomNavShell(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/layout_utils.dart';
+import 'floating_bottom_nav_shell.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
 /// Same outer padding/height envelope as [MessageComposeBar] so swapping
@@ -24,7 +26,10 @@ class MessageSendCountdownBar extends StatelessWidget {
     final total = totalSeconds <= 0 ? 5 : totalSeconds;
     final progress = (secondsRemaining / total).clamp(0.0, 1.0);
 
-    // Match [MessageComposeBar]: Scaffold owns keyboard insets — no double pad.
+    // Match [MessageComposeBar] bottom clearance under floating nav.
+    final bottomClearance = isExpandedBreakpoint(context)
+        ? MediaQuery.paddingOf(context).bottom
+        : FloatingBottomNavShell.contentBottomInset(context);
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -32,7 +37,7 @@ class MessageSendCountdownBar extends StatelessWidget {
           top: BorderSide(color: AppTheme.dividerColor, width: 0.5),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + bottomClearance),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,

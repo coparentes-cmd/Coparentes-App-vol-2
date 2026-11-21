@@ -9,11 +9,17 @@ class FloatingBottomNavShell extends StatelessWidget {
 
   const FloatingBottomNavShell({super.key, required this.child});
 
-  /// Approximate bar height used for scroll bottom padding under a floating nav.
+  /// Space to clear the floating nav capsule (scroll / compose).
+  ///
+  /// Reads the physical home-indicator inset from [View], not ambient
+  /// [MediaQuery.viewPadding] — nested Scaffolds / extendBody often zero
+  /// viewPadding.bottom, which left compose sitting under this capsule.
   static double contentBottomInset(BuildContext context) {
-    final safe = MediaQuery.paddingOf(context).bottom;
-    // Icon + label + vertical padding inside the bar ≈ 64, plus outer margin.
-    return 64 + AppSpace.navMargin + safe;
+    final safe =
+        MediaQueryData.fromView(View.of(context)).viewPadding.bottom;
+    // Material 3 BottomNavigationBar (~80) + capsule bottom margin + gap
+    // above the pill so compose / send are not flush with the bar shadow.
+    return 80 + AppSpace.navMargin + safe + 28;
   }
 
   @override
