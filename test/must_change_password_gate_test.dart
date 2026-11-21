@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:coparentes/models/models.dart';
 import 'package:coparentes/screens/auth/auth_home_resolver.dart';
 import 'package:coparentes/screens/auth/must_change_password_screen.dart';
+import 'package:coparentes/screens/auth/paywall_screen.dart';
 import 'package:coparentes/screens/auth/unsupported_role_screen.dart';
 import 'package:coparentes/screens/child/child_dashboard.dart';
 import 'package:coparentes/screens/dashboard/parent_dashboard.dart';
@@ -62,6 +63,34 @@ void main() {
           _user(role: UserRole.observer, mustChangePassword: false),
         ),
         isA<UnsupportedRoleScreen>(),
+      );
+    });
+
+    test('mobile paywall only when enforceMobilePaywall and denied', () {
+      expect(
+        resolveAuthenticatedHome(
+          _user(role: UserRole.parentA, mustChangePassword: false),
+          enforceMobilePaywall: true,
+          mobileAccessAllowed: false,
+        ),
+        isA<PaywallScreen>(),
+      );
+      expect(
+        resolveAuthenticatedHome(
+          _user(role: UserRole.parentA, mustChangePassword: false),
+          enforceMobilePaywall: false,
+          mobileAccessAllowed: false,
+        ),
+        isA<ParentDashboard>(),
+        reason: 'web must never show paywall',
+      );
+      expect(
+        resolveAuthenticatedHome(
+          _user(role: UserRole.child, mustChangePassword: false),
+          enforceMobilePaywall: true,
+          mobileAccessAllowed: false,
+        ),
+        isA<ChildDashboard>(),
       );
     });
   });
