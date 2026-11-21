@@ -247,41 +247,22 @@ class FinanceScreenState extends State<FinanceScreen>
       ],
       tabBar: TabBar(
         controller: _tabController,
-        indicatorColor: Colors.white,
-        labelColor: Colors.white,
+        // Theme: white selected pill + navy label on frosted track.
         unselectedLabelColor: Colors.white70,
         tabs: [
           Tab(text: context.tr('Saldo')),
           Tab(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(context.tr('Wydatki')),
-                const SizedBox(width: 4),
-                Consumer<FinanceProvider>(
-                  builder: (_, fp, __) {
-                    final pending = fp.pendingCount;
-                    if (pending == 0) return const SizedBox.shrink();
-                    return Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '$pending',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppTheme.primaryTeal,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            child: Consumer<FinanceProvider>(
+              builder: (context, fp, _) {
+                return ListenableBuilder(
+                  listenable: _tabController,
+                  builder: (_, __) => ParentHeaderTabLabel(
+                    label: context.tr('Wydatki'),
+                    selected: _tabController.index == 1,
+                    badgeCount: fp.pendingCount,
+                  ),
+                );
+              },
             ),
           ),
           Tab(text: context.tr('Raporty')),

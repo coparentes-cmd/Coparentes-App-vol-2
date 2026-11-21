@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import '../../../../models/models.dart';
-import '../../../../providers/app_provider.dart';
-import '../../../../theme/app_theme.dart';
 import 'package:coparentes/l10n/app_strings.dart';
+import 'package:coparentes/models/models.dart';
+import 'package:coparentes/providers/app_provider.dart';
+import 'package:coparentes/theme/app_theme.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
 
 class EmailInviteSheet extends StatefulWidget {

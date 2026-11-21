@@ -201,6 +201,7 @@ class AppTheme {
       tabBarTheme: TabBarThemeData(
         dividerColor: Colors.transparent,
         indicatorSize: TabBarIndicatorSize.tab,
+        // Selected tab: white pill on frosted header track (mobile + web).
         labelColor: brandHeaderBlue,
         unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
         labelStyle: const TextStyle(

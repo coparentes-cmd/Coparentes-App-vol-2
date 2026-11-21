@@ -51,17 +51,25 @@ class MessagingScreen extends StatefulWidget {
 
 enum _ChatListTab { all, unread, family, schedule }
 
-class MessagingScreenState extends State<MessagingScreen> {
+class MessagingScreenState extends State<MessagingScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   String? _conversationThreadId;
   String? _conversationCategory;
   bool _conversationAllowsPrivateTags = false;
   bool _returnToPreviousTab = false;
   _ChatListTab _listTab = _ChatListTab.all;
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(
+      length: _ChatListTab.values.length,
+      vsync: this,
+      initialIndex: _listTab.index,
+    );
+    _tabController.addListener(_onTabControllerTick);
     _searchController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -77,8 +85,21 @@ class MessagingScreenState extends State<MessagingScreen> {
     }
   }
 
+  void _onTabControllerTick() {
+    if (_tabController.indexIsChanging) {
+      return;
+    }
+    final next = _ChatListTab.values[_tabController.index];
+    if (next == _listTab) {
+      return;
+    }
+    _onChatFilterSelected(next);
+  }
+
   @override
   void dispose() {
+    _tabController.removeListener(_onTabControllerTick);
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -480,7 +501,7 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
-  /// Navy header matching Finanse: title + compact search + add, categories below.
+  /// Navy header matching Finanse: title + compact search + add; TabBar like Finanse.
   Widget _buildChatListScaffold({
     required BuildContext context,
     required MessagingProvider messaging,
@@ -496,54 +517,59 @@ class MessagingScreenState extends State<MessagingScreen> {
       context,
       ParentTabScaffold.toolbarHeight,
     );
-    final tabRowHeight = parentTabResolvedTabBarHeight(context);
 
     return ParentTabScaffold(
-      headerHeight: titleRowHeight + tabRowHeight,
-      header: Column(
-        children: [
-          SizedBox(
-            height: titleRowHeight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Text(
-                    context.tr('Czat'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor: 0.5,
-                        alignment: Alignment.centerLeft,
-                        child: _buildHeaderSearchField(context),
-                      ),
-                    ),
-                  ),
-                  if (!isReadOnly) ...[
-                    const SizedBox(width: 8),
-                    _buildNewThreadButton(context),
-                  ],
-                ],
+      headerHeight: titleRowHeight,
+      header: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            Text(
+              context.tr('Czat'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  alignment: Alignment.centerLeft,
+                  child: _buildHeaderSearchField(context),
+                ),
+              ),
+            ),
+            if (!isReadOnly) ...[
+              const SizedBox(width: 8),
+              _buildNewThreadButton(context),
+            ],
+          ],
+        ),
+      ),
+      // Same chrome as Finanse: frosted track + white selected pill.
+      tabBar: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        unselectedLabelColor: Colors.white70,
+        tabs: [
+          Tab(text: context.tr(allTabDisplayLabel)),
+          Tab(
+            child: ListenableBuilder(
+              listenable: _tabController,
+              builder: (_, __) => ParentHeaderTabLabel(
+                label: context.tr('Nieprzeczytane'),
+                selected: _tabController.index == 1,
+                badgeCount: unreadCount,
               ),
             ),
           ),
-          SizedBox(
-            height: tabRowHeight,
-            child: _ChatFilterTabs(
-              selected: _listTab,
-              unreadCount: unreadCount,
-              onDark: true,
-              onSelect: _onChatFilterSelected,
-            ),
-          ),
+          Tab(text: context.tr(familyCategoryDisplayLabel)),
+          Tab(text: context.tr(scheduleCategoryChannel)),
         ],
       ),
       body: body,
@@ -559,6 +585,9 @@ class MessagingScreenState extends State<MessagingScreen> {
       _conversationThreadId = null;
       _conversationCategory = null;
     });
+    if (_tabController.index != tab.index) {
+      _tabController.animateTo(tab.index);
+    }
   }
 
   Widget _buildHeaderSearchField(BuildContext context) {
@@ -836,77 +865,6 @@ class MessagingScreenState extends State<MessagingScreen> {
     );
 
     _openThreadConversation(thread.id, allowPrivateTags: true);
-  }
-}
-
-class _ChatFilterTabs extends StatelessWidget {
-  final _ChatListTab selected;
-  final int unreadCount;
-  final ValueChanged<_ChatListTab> onSelect;
-  final bool onDark;
-
-  const _ChatFilterTabs({
-    required this.selected,
-    required this.unreadCount,
-    required this.onSelect,
-    this.onDark = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <(_ChatListTab, String)>[
-      (_ChatListTab.all, context.tr(allTabDisplayLabel)),
-      (
-        _ChatListTab.unread,
-        unreadCount > 0
-            ? '${context.tr('Nieprzeczytane')} ($unreadCount)'
-            : context.tr('Nieprzeczytane'),
-      ),
-      (_ChatListTab.family, context.tr(familyCategoryDisplayLabel)),
-      (_ChatListTab.schedule, context.tr(scheduleCategoryChannel)),
-    ];
-
-    // Match Finanse TabBar: white label + white underline on navy.
-    final selectedColor = onDark ? Colors.white : AppTheme.brandHeaderBlue;
-    final unselectedColor =
-        onDark ? Colors.white70 : AppTheme.textSecondary;
-
-    return ListView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      children: items.map((item) {
-        final tab = item.$1;
-        final label = item.$2;
-        final isSelected = selected == tab;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: InkWell(
-            onTap: () => onSelect(tab),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isSelected ? selectedColor : Colors.transparent,
-                    width: 2.5,
-                  ),
-                ),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? selectedColor : unselectedColor,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
   }
 }
 

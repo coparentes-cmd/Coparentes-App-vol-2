@@ -129,6 +129,67 @@ class ParentTabScaffold extends StatelessWidget {
 double parentTabbedHeaderHeight() =>
     ParentTabScaffold.toolbarHeight + ParentTabScaffold.tabBarHeight;
 
+/// Label (+ optional badge) for header [TabBar] pills.
+///
+/// Custom [Tab.child] widgets do not reliably pick up [TabBarTheme.labelColor]
+/// on Flutter web, so selected state must set contrast colors explicitly
+/// (dark blue on the white pill, light text when unselected).
+class ParentHeaderTabLabel extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final int badgeCount;
+
+  const ParentHeaderTabLabel({
+    super.key,
+    required this.label,
+    required this.selected,
+    this.badgeCount = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected
+        ? AppTheme.brandHeaderBlue
+        : Colors.white.withValues(alpha: 0.85);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 14,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            color: color,
+          ),
+        ),
+        if (badgeCount > 0) ...[
+          const SizedBox(width: 4),
+          Container(
+            width: 16,
+            height: 16,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? AppTheme.primaryTeal : Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$badgeCount',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.1,
+                fontWeight: FontWeight.bold,
+                color: selected ? Colors.white : AppTheme.primaryTeal,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Compact action on the parent tab header (rounded square, right side).
 class ParentHeaderActionButton extends StatelessWidget {
   static const Color buttonColor = Color(0xFF2C2C2C);
