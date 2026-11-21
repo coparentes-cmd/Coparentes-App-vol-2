@@ -576,7 +576,7 @@ const enOverlay = <String, String>{
   'Możesz dodać maksymalnie 3 załączniki.': 'You can add up to 3 attachments.',
   'Wklej treść wiadomości do analizy tonu': 'Paste a message to check its tone',
   'Wniosek o usunięcie konta — Coparentes': 'Account deletion request — Coparentes',
-  'Wpisz coś powyżej — jak w Google Keep.': 'Type something above — like in Google Keep.',
+  'Wpisz coś powyżej.': 'Type something above.',
   'np. Wyjazd służbowy, urodziny babci...': 'e.g. Work trip, grandma’s birthday...',
   'Analiza tonu przed wysłaniem wiadomości': 'Tone analysis before sending a message',
   'Kliknij datę początkową, potem końcową.': 'Tap the start date, then the end date.',

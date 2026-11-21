@@ -744,7 +744,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          Text(context.tr('Wpisz coś powyżej — jak w Google Keep.'),
+                          Text(context.tr('Wpisz coś powyżej.'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
