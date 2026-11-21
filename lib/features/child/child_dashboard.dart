@@ -128,18 +128,25 @@ class _ChildDashboardState extends State<ChildDashboard> {
         extendBody: true,
         body: SafeArea(
           bottom: false,
-          child: IndexedStack(
-            index: _selectedIndex,
-            children: [
-              _buildTodayTab(context, firstName),
-              const CalendarScreen(),
-              MessagingScreen(
-                key: _messagingKey,
-                familyOnly: true,
-                isTabActive: _selectedIndex == 2,
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              padding: MediaQuery.paddingOf(context).copyWith(
+                bottom: FloatingBottomNavShell.contentBottomInset(context),
               ),
-              _buildListTab(),
-            ],
+            ),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: [
+                _buildTodayTab(context, firstName),
+                const CalendarScreen(),
+                MessagingScreen(
+                  key: _messagingKey,
+                  familyOnly: true,
+                  isTabActive: _selectedIndex == 2,
+                ),
+                _buildListTab(),
+              ],
+            ),
           ),
         ),
         bottomNavigationBar: FloatingBottomNavShell(
