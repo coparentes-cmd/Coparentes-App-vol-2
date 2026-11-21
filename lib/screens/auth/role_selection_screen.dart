@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_environment.dart';
@@ -53,7 +52,14 @@ const _demoOrangeHover = Color(0xFFEE5537);
 const _loginGreen = Color(0xFF0FC494);
 const _tabBlue = Color(0xFF1276D6);
 
-/// Login-screen-only fonts (Poppins headings/controls, Inter body/fields).
+FontWeight _clampLoginWeight(FontWeight? weight) {
+  if (weight == null) return FontWeight.w400;
+  // Wariant A: max SemiBold (600) — bez w700/w800.
+  if (weight.value > FontWeight.w600.value) return FontWeight.w600;
+  return weight;
+}
+
+/// Login-screen fonts — DM Sans from assets (offline-safe).
 TextStyle _loginPoppins({
   double? fontSize,
   FontWeight? fontWeight,
@@ -61,9 +67,10 @@ TextStyle _loginPoppins({
   double? height,
   double? letterSpacing,
 }) {
-  return GoogleFonts.poppins(
+  return TextStyle(
+    fontFamily: 'DMSans',
     fontSize: fontSize,
-    fontWeight: fontWeight,
+    fontWeight: _clampLoginWeight(fontWeight),
     color: color,
     height: height,
     letterSpacing: letterSpacing,
@@ -77,9 +84,10 @@ TextStyle _loginInter({
   double? height,
   double? letterSpacing,
 }) {
-  return GoogleFonts.inter(
+  return TextStyle(
+    fontFamily: 'DMSans',
     fontSize: fontSize,
-    fontWeight: fontWeight,
+    fontWeight: _clampLoginWeight(fontWeight),
     color: color,
     height: height,
     letterSpacing: letterSpacing,
