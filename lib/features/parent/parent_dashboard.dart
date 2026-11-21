@@ -5,6 +5,7 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/offline_sync_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../config/feature_flags.dart';
 import '../../../config/messaging_categories.dart';
 import '../../../utils/app_browser_back.dart';
@@ -12,6 +13,7 @@ import '../../../utils/demo_time.dart';
 import '../../../utils/layout_utils.dart';
 import '../../../utils/messaging_helpers.dart';
 import '../../../utils/tab_history_stack.dart';
+import '../../../widgets/floating_bottom_nav_shell.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/finance/finance_screen.dart';
@@ -166,9 +168,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AppProvider>().currentUser;
-    final isParentA = user?.role == UserRole.parentA;
-    final accent = isParentA ? AppTheme.parentAColor : AppTheme.parentBColor;
+    context.watch<AppProvider>().currentUser;
     final useRail = isExpandedBreakpoint(context);
 
     final screens = [
@@ -263,11 +263,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
                     return const SizedBox.shrink();
                   }
                   return Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
                       color: AppTheme.errorColor,
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
                     ),
                   );
                 },
@@ -314,6 +315,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
         }
       },
       child: Scaffold(
+        extendBody: !useRail,
         body: useRail
             ? Row(
                 children: [
@@ -321,17 +323,18 @@ class _ParentDashboardState extends State<ParentDashboard> {
                     selectedIndex: _selectedIndex,
                     onDestinationSelected: _navigateToTab,
                     backgroundColor: Colors.white,
-                    selectedIconTheme: IconThemeData(color: accent),
+                    selectedIconTheme:
+                        const IconThemeData(color: AppTints.tealFg),
                     unselectedIconTheme:
                         const IconThemeData(color: AppTheme.textHint),
-                    selectedLabelTextStyle: TextStyle(
-                      color: accent,
+                    selectedLabelTextStyle: const TextStyle(
+                      color: AppTints.tealFg,
                       fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                      fontSize: 12.5,
                     ),
                     unselectedLabelTextStyle: const TextStyle(
                       color: AppTheme.textHint,
-                      fontSize: 12,
+                      fontSize: 12.5,
                     ),
                     labelType: NavigationRailLabelType.all,
                     destinations: railDestinations,
@@ -343,28 +346,26 @@ class _ParentDashboardState extends State<ParentDashboard> {
             : content,
         bottomNavigationBar: useRail
             ? null
-            : Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x14000000),
-                      blurRadius: 12,
-                      offset: Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: BottomNavigationBar(
-                  currentIndex: _selectedIndex,
-                  onTap: _navigateToTab,
-                  type: BottomNavigationBarType.fixed,
-                  backgroundColor: Colors.white,
-                  selectedItemColor: accent,
-                  unselectedItemColor: AppTheme.textHint,
-                  showSelectedLabels: false,
-                  showUnselectedLabels: false,
-                  elevation: 0,
-                  items: bottomItems,
+            : FloatingBottomNavShell(
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    splashColor: AppTints.tealBg,
+                    highlightColor: AppTints.tealBg.withValues(alpha: 0.4),
+                  ),
+                  child: BottomNavigationBar(
+                    currentIndex: _selectedIndex,
+                    onTap: _navigateToTab,
+                    type: BottomNavigationBarType.fixed,
+                    backgroundColor: Colors.white,
+                    selectedItemColor: AppTints.tealFg,
+                    unselectedItemColor: AppTheme.textHint,
+                    showSelectedLabels: false,
+                    showUnselectedLabels: false,
+                    selectedFontSize: 12.5,
+                    unselectedFontSize: 12.5,
+                    elevation: 0,
+                    items: bottomItems,
+                  ),
                 ),
               ),
       ),

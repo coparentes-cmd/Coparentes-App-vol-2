@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/app_tokens.dart';
 import '../utils/layout_utils.dart';
 import 'app_content_shell.dart';
 
-/// Shared inset header for parent bottom-nav tabs — matches content width (16px).
+/// Shared inset header for parent bottom-nav tabs — matches content width.
 class ParentTabScaffold extends StatelessWidget {
-  static const horizontalInset = 16.0;
+  static const horizontalInset = AppSpace.screenHorizontal;
   static const topInset = 8.0;
-  static const borderRadius = 14.0;
+  static const borderRadius = AppRadius.xl;
   static const toolbarHeight = kToolbarHeight;
   static const tabBarHeight = 48.0;
 
@@ -33,22 +34,16 @@ class ParentTabScaffold extends StatelessWidget {
     this.floatingActionButton,
   }) : assert(header != null || title != null);
 
-  double get _totalHeaderHeight =>
-      headerHeight + (tabBar != null ? tabBarHeight : 0);
-
   @override
   Widget build(BuildContext context) {
     final color = headerColor ?? AppTheme.brandHeaderBlue;
     final topPadding = MediaQuery.paddingOf(context).top;
     final sideInset = parentTabHeaderHorizontalInset(context);
     final topGap = parentTabHeaderTopInset(context);
-    final compact = isCompactPhoneLayout(context);
     final resolvedHeaderHeight =
         parentTabResolvedHeaderHeight(context, headerHeight);
     final resolvedTabBarHeight = parentTabResolvedTabBarHeight(context);
-    final headerRadius = compact
-        ? BorderRadius.zero
-        : BorderRadius.circular(borderRadius);
+    final headerRadius = BorderRadius.circular(borderRadius);
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor,
@@ -64,42 +59,64 @@ class ParentTabScaffold extends StatelessWidget {
                 sideInset,
                 0,
               ),
-              child: Material(
-                color: color,
-                borderRadius: headerRadius,
-                clipBehavior: Clip.antiAlias,
-                elevation: 0,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      height: resolvedHeaderHeight,
-                      child: header ??
-                          AppBar(
-                            primary: false,
-                            automaticallyImplyLeading: false,
-                            elevation: 0,
-                            scrolledUnderElevation: 0,
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            toolbarHeight: resolvedHeaderHeight,
-                            title: Text(title!),
-                            actions: actions,
-                          ),
-                    ),
-                    if (tabBar != null)
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: headerRadius,
+                  boxShadow: AppShadows.headerGlow(color),
+                ),
+                child: Material(
+                  color: color,
+                  borderRadius: headerRadius,
+                  clipBehavior: Clip.antiAlias,
+                  elevation: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       SizedBox(
-                        height: resolvedTabBarHeight,
-                        child: Material(
-                          color: Colors.transparent,
-                          child: tabBar!,
-                        ),
+                        height: resolvedHeaderHeight,
+                        child: header ??
+                            AppBar(
+                              primary: false,
+                              automaticallyImplyLeading: false,
+                              elevation: 0,
+                              scrolledUnderElevation: 0,
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              toolbarHeight: resolvedHeaderHeight,
+                              title: Text(
+                                title!,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall
+                                    ?.copyWith(color: Colors.white),
+                              ),
+                              actions: actions,
+                            ),
                       ),
-                  ],
+                      if (tabBar != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
+                            ),
+                            child: SizedBox(
+                              height: resolvedTabBarHeight,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: tabBar!,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.sm),
             Expanded(child: body),
           ],
         ),
@@ -112,7 +129,7 @@ class ParentTabScaffold extends StatelessWidget {
 double parentTabbedHeaderHeight() =>
     ParentTabScaffold.toolbarHeight + ParentTabScaffold.tabBarHeight;
 
-/// Compact action on the green parent tab header (pill, right side).
+/// Compact action on the parent tab header (rounded square, right side).
 class ParentHeaderActionButton extends StatelessWidget {
   static const Color buttonColor = Color(0xFF2C2C2C);
 
@@ -133,70 +150,46 @@ class ParentHeaderActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = backgroundColor ?? buttonColor;
-    final compact = isCompactPhoneLayout(context);
-    final iconOnly = useIconOnlyHeaderActions(context, label: label);
+    final resolvedBg = backgroundColor ?? Colors.white.withValues(alpha: 0.16);
+    final brandFill = backgroundColor == AppTheme.purpleColor ||
+        backgroundColor == AppTheme.primaryTeal ||
+        backgroundColor == AppTheme.coralColor;
+    final iconColor =
+        brandFill ? AppTheme.onBrandFill(backgroundColor!) : Colors.white;
+    final glow = brandFill
+        ? AppShadows.glow(backgroundColor!)
+        : const <BoxShadow>[];
 
-    final horizontalPadding = iconOnly
-        ? 8.0
-        : compact
-            ? (prominent ? 10.0 : 8.0)
-            : (prominent ? 16.0 : 12.0);
-    final verticalPadding = iconOnly
-        ? 7.0
-        : compact
-            ? (prominent ? 6.0 : 5.0)
-            : (prominent ? 11.0 : 8.0);
-    final iconSize = iconOnly
-        ? 16.0
-        : compact
-            ? (prominent ? 16.0 : 14.0)
-            : (prominent ? 20.0 : 16.0);
-    final fontSize = compact
-        ? (prominent ? 11.0 : 11.0)
-        : (prominent ? 14.0 : 12.0);
+    // `prominent` kept for call-site compatibility; square actions are uniform.
+    final _ = prominent;
 
-    final buttonStyle = TextButton.styleFrom(
-      backgroundColor: bg,
-      foregroundColor: Colors.white,
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
-      ),
-      minimumSize: Size.zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          iconOnly ? 18 : (prominent ? (compact ? 18 : 24) : (compact ? 16 : 20)),
+    final button = Material(
+      color: resolvedBg,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, size: 22, color: iconColor),
         ),
       ),
     );
 
-    final button = iconOnly
-        ? TextButton(
-            onPressed: onPressed,
-            style: buttonStyle,
-            child: Icon(icon, size: iconSize),
-          )
-        : TextButton.icon(
-            onPressed: onPressed,
-            style: buttonStyle,
-            icon: Icon(icon, size: iconSize),
-            label: Text(
-              label,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: prominent ? FontWeight.w700 : FontWeight.w600,
-              ),
-            ),
-          );
-
     return Padding(
-      padding: EdgeInsets.only(right: compact ? 4 : 8),
+      padding: const EdgeInsets.only(right: 8),
       child: Center(
-        child: iconOnly
-            ? Tooltip(message: label, child: button)
-            : button,
+        child: Tooltip(
+          message: label,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              boxShadow: glow,
+            ),
+            child: button,
+          ),
+        ),
       ),
     );
   }

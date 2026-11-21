@@ -490,16 +490,26 @@ class FinanceScreenState extends State<FinanceScreen>
               child: SizedBox(
                 width: double.infinity,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryTeal,
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(
+                      begin: Alignment(-0.7, -1),
+                      end: Alignment(0.7, 1),
+                      colors: [
+                        AppTheme.primaryTeal,
+                        Color(0xFF00A57C),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryTeal.withValues(alpha: 0.22),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                        color: AppTheme.primaryTeal.withValues(alpha: 0.35),
+                        blurRadius: 28,
+                        offset: const Offset(0, 14),
+                        spreadRadius: -14,
                       ),
                     ],
                   ),
@@ -513,27 +523,29 @@ class FinanceScreenState extends State<FinanceScreen>
                               ' ${context.tr('winien')} ',
                             ),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF08352A),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         signedBalance.abs() < 0.01
                             ? context.tr('Po zaakceptowanych wydatkach oboje jesteście na zero.')
                             : signedBalance > 0
                             ? context.tr('Drugi rodzic winien Tobie po akceptacji wydatków.') : context.tr('Ty winien/winna drugiemu rodzicowi po akceptacji wydatków.'),
-                        style:
-                            const TextStyle(color: Colors.white70, fontSize: 11),
+                        style: TextStyle(
+                          color: const Color(0xFF08352A).withValues(alpha: 0.75),
+                          fontSize: 13,
+                        ),
                       ),
                       if (finance.lastSyncedAt != null && !app.isDemoMode) ...[
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
                           'Ostatnia synchronizacja: ${context.tr(_formatSyncTime(finance.lastSyncedAt!))}',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 10,
+                          style: TextStyle(
+                            color: const Color(0xFF08352A).withValues(alpha: 0.55),
+                            fontSize: 11,
                           ),
                         ),
                       ],

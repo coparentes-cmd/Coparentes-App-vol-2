@@ -139,7 +139,7 @@ class BrandCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? Colors.white,
         borderRadius: BorderRadius.circular(borderRadius ?? AppTheme.radiusLg),
-        border: border ?? Border.all(color: AppTheme.dividerColor),
+        border: border,
         boxShadow: boxShadow ?? AppTheme.softShadow,
       ),
       child: child,

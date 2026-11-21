@@ -8,12 +8,14 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/calendar_provider.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../utils/calendar_date_utils.dart';
 import '../../../utils/demo_time.dart';
 import '../../../utils/app_browser_back.dart';
 import '../../../utils/tab_history_stack.dart';
 import '../../../config/messaging_categories.dart';
 import '../../../l10n/locale_policy.dart';
+import '../../../widgets/floating_bottom_nav_shell.dart';
 import '../../screens/calendar/calendar_screen.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import 'widgets/child_todo_models.dart';
@@ -123,7 +125,9 @@ class _ChildDashboardState extends State<ChildDashboard> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFFFF8F0),
+        extendBody: true,
         body: SafeArea(
+          bottom: false,
           child: IndexedStack(
             index: _selectedIndex,
             children: [
@@ -138,34 +142,47 @@ class _ChildDashboardState extends State<ChildDashboard> {
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _navigateToTab,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.childColor,
-          unselectedItemColor: AppTheme.textHint,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.today),
-              label: context.tr('Dzisiaj'),
+        bottomNavigationBar: FloatingBottomNavShell(
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              splashColor: AppTints.coralBg,
+              highlightColor: AppTints.coralBg.withValues(alpha: 0.5),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
-              label: context.tr('Kalendarz'),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _navigateToTab,
+              backgroundColor: Colors.white,
+              selectedItemColor: AppTheme.childColor,
+              unselectedItemColor: AppTheme.textHint,
+              type: BottomNavigationBarType.fixed,
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+              selectedFontSize: 12.5,
+              unselectedFontSize: 12.5,
+              elevation: 0,
+              items: [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.today),
+                  label: context.tr('Dzisiaj'),
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  activeIcon: Icon(Icons.calendar_month),
+                  label: context.tr('Kalendarz'),
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.family_restroom_outlined),
+                  activeIcon: Icon(Icons.family_restroom),
+                  label: familyCategoryDisplayLabel,
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.list_alt_outlined),
+                  activeIcon: Icon(Icons.list_alt),
+                  label: context.tr('Lista'),
+                ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.family_restroom_outlined),
-              activeIcon: Icon(Icons.family_restroom),
-              label: familyCategoryDisplayLabel,
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt_outlined),
-              activeIcon: Icon(Icons.list_alt),
-              label: context.tr('Lista'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -572,14 +589,23 @@ class _ChildDashboardState extends State<ChildDashboard> {
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         backgroundColor: AppTheme.childColor,
+        foregroundColor: const Color(0xFF16202B),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+        ),
         title: Row(
           children: [
             const Text('📝', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 listTitle,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(
+                  color: Color(0xFF16202B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 22,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -587,7 +613,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.switch_account, color: Colors.white),
+            icon: const Icon(Icons.switch_account, color: Color(0xFF16202B)),
             tooltip: context.tr('Zmień profil'),
             onPressed: () => _showExitDialog(context),
           ),
@@ -718,7 +744,7 @@ class _ChildDashboardState extends State<ChildDashboard> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          Text(context.tr('Wpisz coś powyżej — jak w Google Keep.'),
+                          Text(context.tr('Wpisz coś powyżej.'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
@@ -1117,7 +1143,15 @@ class _AnimatedGradientHeaderState extends State<_AnimatedGradientHeader>
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: _colors[1].withValues(alpha: 0.35),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+                spreadRadius: -14,
+              ),
+            ],
             gradient: LinearGradient(
               // ~45deg, oversized travel like background-size: 200% 200%
               begin: Alignment(-1.5 + shift, -1.0),

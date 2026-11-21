@@ -9,7 +9,20 @@ import '../utils/calendar_date_utils.dart';
 import '../utils/demo_time.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
-const _maxVisibleEvents = 3;
+const _maxVisibleEventsDesktop = 3;
+
+int _maxVisibleEventsForRowHeight(double rowHeight) {
+  if (rowHeight >= 90) {
+    return _maxVisibleEventsDesktop;
+  }
+  if (rowHeight >= 76) {
+    return 2;
+  }
+  if (rowHeight >= 62) {
+    return 1;
+  }
+  return 0;
+}
 
 DateTime _monthStart(DateTime date) => DateTime(date.year, date.month, 1);
 
@@ -186,7 +199,39 @@ class _MonthGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TableCalendar<void>(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const daysOfWeekHeight = 30.0;
+        final availableHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : 600.0;
+        final rowHeight =
+            ((availableHeight - daysOfWeekHeight) / 6).clamp(48.0, 96.0);
+        final maxVisibleEvents = _maxVisibleEventsForRowHeight(rowHeight);
+
+        Widget dayCell({
+          required DateTime day,
+          required bool isSelected,
+          required bool isOutside,
+        }) {
+          return _DayCell(
+            day: day,
+            isToday: isSameDay(day, DemoTime.now()),
+            isSelected: isSelected,
+            isOutside: isOutside,
+            slots: getSlotsForDay(day),
+            events: getEventsForDay(day),
+            accentColor: accentColor,
+            onDaySelected: onDaySelected,
+            onDayTap: onDayTap,
+            onEventDoubleTap: onEventDoubleTap,
+            isException: isExceptionDay?.call(day) ?? false,
+            hasPending: hasPendingException?.call(day) ?? false,
+            maxVisibleEvents: maxVisibleEvents,
+          );
+        }
+
+        return TableCalendar<void>(
       firstDay: DateTime.now().subtract(const Duration(days: 365)),
       lastDay: DateTime.now().add(const Duration(days: 730)),
       focusedDay: month,
@@ -198,66 +243,30 @@ class _MonthGrid extends StatelessWidget {
       availableGestures: AvailableGestures.none,
       pageAnimationEnabled: false,
       sixWeekMonthsEnforced: true,
-      daysOfWeekHeight: 30,
-      rowHeight: 96,
+      daysOfWeekHeight: daysOfWeekHeight,
+      rowHeight: rowHeight,
       onDaySelected: (selected, focused) => onDaySelected(selected),
       headerVisible: false,
       calendarBuilders: CalendarBuilders<void>(
-        defaultBuilder: (context, day, focused) => _DayCell(
+        defaultBuilder: (context, day, focused) => dayCell(
           day: day,
-          isToday: isSameDay(day, DemoTime.now()),
           isSelected: isSameDay(day, selectedDay),
           isOutside: day.month != month.month,
-          slots: getSlotsForDay(day),
-          events: getEventsForDay(day),
-          accentColor: accentColor,
-          onDaySelected: onDaySelected,
-          onDayTap: onDayTap,
-          onEventDoubleTap: onEventDoubleTap,
-          isException: isExceptionDay?.call(day) ?? false,
-          hasPending: hasPendingException?.call(day) ?? false,
         ),
-        todayBuilder: (context, day, focused) => _DayCell(
+        todayBuilder: (context, day, focused) => dayCell(
           day: day,
-          isToday: isSameDay(day, DemoTime.now()),
           isSelected: isSameDay(day, selectedDay),
           isOutside: day.month != month.month,
-          slots: getSlotsForDay(day),
-          events: getEventsForDay(day),
-          accentColor: accentColor,
-          onDaySelected: onDaySelected,
-          onDayTap: onDayTap,
-          onEventDoubleTap: onEventDoubleTap,
-          isException: isExceptionDay?.call(day) ?? false,
-          hasPending: hasPendingException?.call(day) ?? false,
         ),
-        selectedBuilder: (context, day, focused) => _DayCell(
+        selectedBuilder: (context, day, focused) => dayCell(
           day: day,
-          isToday: isSameDay(day, DemoTime.now()),
           isSelected: true,
           isOutside: day.month != month.month,
-          slots: getSlotsForDay(day),
-          events: getEventsForDay(day),
-          accentColor: accentColor,
-          onDaySelected: onDaySelected,
-          onDayTap: onDayTap,
-          onEventDoubleTap: onEventDoubleTap,
-          isException: isExceptionDay?.call(day) ?? false,
-          hasPending: hasPendingException?.call(day) ?? false,
         ),
-        outsideBuilder: (context, day, focused) => _DayCell(
+        outsideBuilder: (context, day, focused) => dayCell(
           day: day,
-          isToday: isSameDay(day, DemoTime.now()),
           isSelected: isSameDay(day, selectedDay),
           isOutside: true,
-          slots: getSlotsForDay(day),
-          events: getEventsForDay(day),
-          accentColor: accentColor,
-          onDaySelected: onDaySelected,
-          onDayTap: onDayTap,
-          onEventDoubleTap: onEventDoubleTap,
-          isException: isExceptionDay?.call(day) ?? false,
-          hasPending: hasPendingException?.call(day) ?? false,
         ),
       ),
       calendarStyle: CalendarStyle(
@@ -282,6 +291,8 @@ class _MonthGrid extends StatelessWidget {
           color: AppTheme.textSecondary,
         ),
       ),
+    );
+      },
     );
   }
 }
@@ -367,6 +378,7 @@ class _DayCell extends StatelessWidget {
   final ValueChanged<CalendarEvent>? onEventDoubleTap;
   final bool isException;
   final bool hasPending;
+  final int maxVisibleEvents;
 
   const _DayCell({
     required this.day,
@@ -381,6 +393,7 @@ class _DayCell extends StatelessWidget {
     this.onEventDoubleTap,
     this.isException = false,
     this.hasPending = false,
+    this.maxVisibleEvents = _maxVisibleEventsDesktop,
   });
 
   void _handleDayTap() {
@@ -393,20 +406,25 @@ class _DayCell extends StatelessWidget {
     final custodyColor = _custodyColor();
     final sortedEvents = List<CalendarEvent>.from(events)
       ..sort((a, b) => compareEventTimes(a.startDate, b.startDate));
-    final visibleEvents = sortedEvents.take(_maxVisibleEvents).toList();
+    final visibleEvents = sortedEvents.take(maxVisibleEvents).toList();
     final hiddenCount = sortedEvents.length - visibleEvents.length;
 
     return GestureDetector(
       onTap: _handleDayTap,
       behavior: HitTestBehavior.opaque,
-      child: DecoratedBox(
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: DecoratedBox(
       decoration: BoxDecoration(
         color: _cellBackground(custodyColor),
+        borderRadius: BorderRadius.circular(12),
         border: isSelected
-            ? Border.all(color: AppTheme.accentColor.withValues(alpha: 0.55), width: 1.5)
+            ? Border.all(color: AppTheme.brandHeaderBlue, width: 2)
             : null,
       ),
-      child: Padding(
+      child: Opacity(
+        opacity: isOutside ? 0.4 : 1,
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(3, 3, 3, 2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -451,12 +469,11 @@ class _DayCell extends StatelessWidget {
             ),
             Expanded(
               child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  maxHeight: double.infinity,
-                  child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                // ListView clips instead of throwing RenderFlex overflow when
+                // chips do not fit a short phone row.
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
                   children: [
                     ...visibleEvents.map(
                       (event) => _EventChip(
@@ -483,13 +500,14 @@ class _DayCell extends StatelessWidget {
                         ),
                       ),
                   ],
-                  ),
                 ),
               ),
             ),
           ],
         ),
-      ),
+        ),
+        ),
+        ),
       ),
     );
   }
@@ -504,23 +522,17 @@ class _DayCell extends StatelessWidget {
   }
 
   Color _cellBackground(Color? custodyColor) {
+    if (isSelected) {
+      return Colors.white;
+    }
     if (custodyColor == null) {
       return Colors.white;
     }
 
     final isParentA = slots.first.custodian == UserRole.parentA;
-    final baseTint = isParentA
-        ? AppTheme.parentAColor.withValues(alpha: isOutside ? 0.18 : 0.32)
-        : AppTheme.parentBColor.withValues(alpha: isOutside ? 0.18 : 0.32);
-
-    if (isSelected) {
-      return Color.alphaBlend(
-        AppTheme.accentColor.withValues(alpha: 0.10),
-        baseTint,
-      );
-    }
-
-    return baseTint;
+    return isParentA
+        ? AppTheme.parentAColor.withValues(alpha: 0.28)
+        : AppTheme.parentBColor.withValues(alpha: 0.28);
   }
 }
 

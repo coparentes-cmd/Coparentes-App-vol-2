@@ -44,7 +44,7 @@ QUALITY_FIX = {
     "Jak się dzisiaj czujesz? 💭": "How are you feeling today? 💭",
     "To tylko dla Ciebie – rodzice tego nie widzą 🔒": "Just for you – parents cannot see this 🔒",
     "Brak planu na dziś — rodzice mogą dodać coś w kalendarzu.": "No plan for today — parents can add something in the calendar.",
-    "Wpisz coś powyżej — jak w Google Keep.": "Type something above — like in Google Keep.",
+    "Wpisz coś powyżej.": "Type something above.",
     "Tytuł listy": "List title",
     "Dodaj dokument": "Add document",
     "1 dzień temu": "1 day ago",

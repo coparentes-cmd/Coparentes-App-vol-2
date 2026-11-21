@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_tokens.dart';
+
 class AppTheme {
   static const Color primaryTeal = Color(0xFF00C896);
   static const Color primaryDark = Color(0xFF009C75);
@@ -15,8 +17,9 @@ class AppTheme {
   static const Color errorColor = Color(0xFFD32F2F);
   static const Color warningColor = Color(0xFFF59E0B);
   static const Color successColor = Color(0xFF00A37A);
-  static const Color textPrimary = Color(0xFF111111);
-  static const Color textSecondary = Color(0xFF5F6673);
+  /// Wariant A: darker ink for contrast on light surfaces (table 2.2).
+  static const Color textPrimary = AppTints.ink;
+  static const Color textSecondary = AppTints.inkMuted;
   static const Color textHint = Color(0xFF94A3B8);
   static const Color dividerColor = Color(0xFFE5ECF5);
   static const Color immutableBadge = primaryTeal;
@@ -27,8 +30,9 @@ class AppTheme {
   static const Color childColor = coralColor;
   static const Color observerColor = purpleColor;
 
-  static const double radiusMd = 20;
-  static const double radiusLg = 28;
+  /// Aliases aligned with [AppRadius] (kept for existing call sites).
+  static const double radiusMd = AppRadius.md;
+  static const double radiusLg = AppRadius.xl;
   static const double radiusXl = 36;
 
   static const LinearGradient brandGradient = LinearGradient(
@@ -37,13 +41,18 @@ class AppTheme {
     end: Alignment.centerRight,
   );
 
-  static List<BoxShadow> get softShadow => const [
-        BoxShadow(
-          color: Color(0x140F193D),
-          blurRadius: 28,
-          offset: Offset(0, 12),
-        ),
-      ];
+  static List<BoxShadow> get softShadow => AppShadows.card;
+
+  /// Dark ink on filled brand buttons (section 7).
+  static Color onBrandFill(Color fill) {
+    if (fill == primaryTeal || fill == primaryDark || fill == successColor) {
+      return AppTints.onTeal;
+    }
+    if (fill == coralColor || fill == highConflictColor) {
+      return AppTints.onCoral;
+    }
+    return Colors.white;
+  }
 
   static ThemeData buildLight(Color primary) {
     final scheme = ColorScheme.fromSeed(
@@ -54,10 +63,13 @@ class AppTheme {
       surface: surfaceColor,
       error: errorColor,
     );
+    final onPrimary = onBrandFill(primary);
+    final fieldRadius = BorderRadius.circular(AppRadius.sm);
 
     return ThemeData(
       useMaterial3: true,
-      colorScheme: scheme,
+      fontFamily: 'DMSans',
+      colorScheme: scheme.copyWith(onPrimary: onPrimary),
       scaffoldBackgroundColor: surfaceColor,
       canvasColor: surfaceColor,
       splashFactory: InkRipple.splashFactory,
@@ -68,103 +80,170 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: const TextStyle(
+          fontFamily: 'DMSans',
           color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         color: cardColor,
         elevation: 0,
         shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(radiusLg)),
-          side: BorderSide(color: dividerColor),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide.none,
         ),
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: AppSpace.xxs,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
-          foregroundColor: Colors.white,
+          foregroundColor: onPrimary,
           elevation: 0,
           shadowColor: Colors.transparent,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size(AppSpace.touchTarget, 52),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
           textStyle: const TextStyle(
+            fontFamily: 'DMSans',
             fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.1,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: BorderSide(color: primary.withValues(alpha: 0.18), width: 1.4),
-          minimumSize: const Size.fromHeight(56),
+          foregroundColor: AppTints.tealFg,
+          side: const BorderSide(color: AppTints.secondaryOutline, width: 1.5),
+          minimumSize: const Size(AppSpace.touchTarget, 52),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: const StadiumBorder(),
-          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          backgroundColor: Colors.transparent,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: accentColor,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(
+            fontFamily: 'DMSans',
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppTints.fieldFill,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dividerColor),
+          borderRadius: fieldRadius,
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dividerColor),
+          borderRadius: fieldRadius,
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: primary, width: 1.8),
+          borderRadius: fieldRadius,
+          borderSide: const BorderSide(color: brandHeaderBlue, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: errorColor),
+          borderRadius: fieldRadius,
+          borderSide: const BorderSide(color: AppTints.redFg, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: fieldRadius,
+          borderSide: const BorderSide(color: AppTints.redFg, width: 1.5),
+        ),
+        errorStyle: const TextStyle(color: AppTints.redFg),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: const TextStyle(color: textSecondary),
         hintStyle: const TextStyle(color: textHint),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: primary.withValues(alpha: 0.08),
-        selectedColor: primary.withValues(alpha: 0.14),
-        labelStyle: const TextStyle(color: textPrimary, fontSize: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        backgroundColor: Colors.white,
+        selectedColor: textPrimary,
+        disabledColor: AppTints.grayBg,
+        labelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+          color: textPrimary,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        showCheckmark: false,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-          side: BorderSide(color: primary.withValues(alpha: 0.12)),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          side: BorderSide.none,
+        ),
+        side: BorderSide.none,
+        elevation: 0,
+        pressElevation: 0,
+      ),
+      tabBarTheme: TabBarThemeData(
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: brandHeaderBlue,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.85),
+        labelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        indicator: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A16202B),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusLg)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusLg)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: textPrimary,
         contentTextStyle: const TextStyle(color: Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
         behavior: SnackBarBehavior.floating,
       ),
       dividerTheme: const DividerThemeData(
@@ -178,19 +257,116 @@ class AppTheme {
         unselectedItemColor: textHint,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+        ),
       ),
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(color: textPrimary, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.6),
-        headlineMedium: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.4),
-        headlineSmall: TextStyle(color: textPrimary, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.2),
-        titleLarge: TextStyle(color: textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
-        titleMedium: TextStyle(color: textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(color: textPrimary, fontSize: 16, height: 1.45),
-        bodyMedium: TextStyle(color: textSecondary, fontSize: 14, height: 1.45),
-        bodySmall: TextStyle(color: textHint, fontSize: 12, height: 1.4),
-        labelLarge: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+        headlineLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 30,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
+        headlineSmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
+        titleLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: 0,
+        ),
+        titleMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          height: 1.3,
+          letterSpacing: 0,
+        ),
+        titleSmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          letterSpacing: 0,
+        ),
+        bodyLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+          letterSpacing: 0,
+        ),
+        bodyMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.4,
+          letterSpacing: 0,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: textHint,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          height: 1.4,
+          letterSpacing: 0,
+        ),
+        labelLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: 0,
+        ),
+        labelMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: textPrimary,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+          letterSpacing: 0,
+        ),
+        labelSmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          letterSpacing: 0.8,
+        ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,
@@ -223,6 +399,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'DMSans',
       colorScheme: scheme,
       scaffoldBackgroundColor: const Color(0xFF0F1521),
       canvasColor: const Color(0xFF0F1521),
@@ -233,10 +410,12 @@ class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: const TextStyle(
+          fontFamily: 'DMSans',
           color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -293,19 +472,100 @@ class AppTheme {
         unselectedItemColor: Colors.white38,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'DMSans',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+        ),
       ),
       textTheme: const TextTheme(
-        headlineLarge: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.6),
-        headlineMedium: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.4),
-        headlineSmall: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
-        titleLarge: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
-        titleMedium: TextStyle(color: Colors.white70, fontSize: 15, fontWeight: FontWeight.w600),
-        bodyLarge: TextStyle(color: Colors.white, fontSize: 16, height: 1.45),
-        bodyMedium: TextStyle(color: Colors.white70, fontSize: 14, height: 1.45),
-        bodySmall: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
-        labelLarge: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+        headlineLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 30,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
+        headlineSmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          letterSpacing: -0.3,
+        ),
+        titleLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+        ),
+        titleMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white70,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          height: 1.3,
+        ),
+        bodyLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
+        bodyMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white70,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.4,
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white54,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          height: 1.4,
+        ),
+        labelLarge: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        labelMedium: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+        ),
+        labelSmall: TextStyle(
+          fontFamily: 'DMSans',
+          color: Colors.white70,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+          letterSpacing: 0.8,
+        ),
       ),
       dividerTheme: const DividerThemeData(
         color: Color(0xFF243145),

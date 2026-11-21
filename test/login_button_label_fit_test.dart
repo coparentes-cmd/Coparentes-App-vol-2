@@ -25,53 +25,56 @@ double _measure(String text, TextStyle style) {
   return painter.width;
 }
 
-Future<void> _loadPoppins() async {
-  final medium = File('test/fonts/Poppins-Medium.ttf');
-  final bold = File('test/fonts/Poppins-Bold.ttf');
-  expect(medium.existsSync(), isTrue, reason: 'missing Poppins-Medium.ttf');
-  expect(bold.existsSync(), isTrue, reason: 'missing Poppins-Bold.ttf');
-  final loader = FontLoader('Poppins')
+Future<void> _loadDmSans() async {
+  final regular = File('assets/fonts/DMSans-Regular.ttf');
+  final medium = File('assets/fonts/DMSans-Medium.ttf');
+  final semiBold = File('assets/fonts/DMSans-SemiBold.ttf');
+  expect(regular.existsSync(), isTrue, reason: 'missing DMSans-Regular.ttf');
+  expect(medium.existsSync(), isTrue, reason: 'missing DMSans-Medium.ttf');
+  expect(semiBold.existsSync(), isTrue, reason: 'missing DMSans-SemiBold.ttf');
+  final loader = FontLoader('DMSans')
+    ..addFont(Future.value(ByteData.sublistView(regular.readAsBytesSync())))
     ..addFont(Future.value(ByteData.sublistView(medium.readAsBytesSync())))
-    ..addFont(Future.value(ByteData.sublistView(bold.readAsBytesSync())));
+    ..addFont(Future.value(ByteData.sublistView(semiBold.readAsBytesSync())));
   await loader.load();
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(_loadPoppins);
+  setUpAll(_loadDmSans);
 
   for (final viewport in [390.0, 1440.0]) {
     test('login labels fit at ${viewport.toInt()}px', () {
       const tabStyle = TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'DMSans',
         fontSize: 15,
         fontWeight: FontWeight.w500,
       );
       const roleStyle = TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'DMSans',
         fontSize: 15,
         fontWeight: FontWeight.w500,
       );
       const primaryStyle = TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'DMSans',
         fontSize: 17,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
       );
       const demoStyle = TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'DMSans',
         fontSize: 15,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
       );
       const forgotStyle = TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'DMSans',
         fontSize: 14,
         fontWeight: FontWeight.w500,
       );
       const cookieStyle = TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'DMSans',
         fontSize: 13,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
       );
 
       final inner = _cardInner(viewport);
