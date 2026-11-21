@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_tokens.dart';
+
 class AppTheme {
   static const Color primaryTeal = Color(0xFF00C896);
   static const Color primaryDark = Color(0xFF009C75);
@@ -15,8 +17,9 @@ class AppTheme {
   static const Color errorColor = Color(0xFFD32F2F);
   static const Color warningColor = Color(0xFFF59E0B);
   static const Color successColor = Color(0xFF00A37A);
-  static const Color textPrimary = Color(0xFF111111);
-  static const Color textSecondary = Color(0xFF5F6673);
+  /// Wariant A: darker ink for contrast on light surfaces (table 2.2).
+  static const Color textPrimary = AppTints.ink;
+  static const Color textSecondary = AppTints.inkMuted;
   static const Color textHint = Color(0xFF94A3B8);
   static const Color dividerColor = Color(0xFFE5ECF5);
   static const Color immutableBadge = primaryTeal;
@@ -27,8 +30,9 @@ class AppTheme {
   static const Color childColor = coralColor;
   static const Color observerColor = purpleColor;
 
-  static const double radiusMd = 20;
-  static const double radiusLg = 28;
+  /// Aliases aligned with [AppRadius] (kept for existing call sites).
+  static const double radiusMd = AppRadius.md;
+  static const double radiusLg = AppRadius.xl;
   static const double radiusXl = 36;
 
   static const LinearGradient brandGradient = LinearGradient(
@@ -37,13 +41,7 @@ class AppTheme {
     end: Alignment.centerRight,
   );
 
-  static List<BoxShadow> get softShadow => const [
-        BoxShadow(
-          color: Color(0x140F193D),
-          blurRadius: 28,
-          offset: Offset(0, 12),
-        ),
-      ];
+  static List<BoxShadow> get softShadow => AppShadows.card;
 
   static ThemeData buildLight(Color primary) {
     final scheme = ColorScheme.fromSeed(
