@@ -12,6 +12,7 @@ import '../../../models/models.dart';
 import '../../../providers/app_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/client_platform.dart';
+import '../../../widgets/mobile_onboarding_chrome.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
 
@@ -80,6 +81,8 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
     }
 
     final code = ws.inviteCode;
+    final childName =
+        ws.children.isNotEmpty ? ws.children.first.name : null;
     if (!_loaded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _load(ws.id);
@@ -91,7 +94,7 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         child: Material(
-          color: AppTheme.primaryTeal.withValues(alpha: 0.12),
+          color: MobileOnboarding.blueSoft,
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
@@ -105,11 +108,11 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
                       context.tr('Zaproś drugiego rodzica'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryDark,
+                        color: MobileOnboarding.blue,
                       ),
                     ),
                   ),
-                  const Icon(Icons.expand_more, color: AppTheme.primaryDark),
+                  const Icon(Icons.expand_more, color: MobileOnboarding.blue),
                 ],
               ),
             ),
@@ -122,9 +125,14 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
+        elevation: 0,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -132,30 +140,26 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
                 children: [
                   Expanded(
                     child: Text(
-                      context.tr('Drugi rodzic jeszcze nie dołączył'),
+                      context.tr('Drugi rodzic jeszcze nie dołączył!'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                     ),
                   ),
                   TextButton(
                     onPressed: () => _setCollapsed(ws.id, true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: MobileOnboarding.blue,
+                    ),
                     child: Text(context.tr('Zwiń')),
                   ),
                 ],
               ),
               if (code != null && code.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                SelectableText(
-                  code,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                OnboardingDashedCodeBox(code: code),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -169,6 +173,7 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
                             ),
                           );
                         },
+                        style: MobileOnboarding.outlineButton(),
                         child: Text(context.tr('Kopiuj')),
                       ),
                     ),
@@ -198,10 +203,22 @@ class _PartnerPendingBannerState extends State<PartnerPendingBanner> {
                                 .catchError((_) => false),
                           );
                         },
+                        style: MobileOnboarding.primaryButton(),
                         child: Text(context.tr('Wyślij')),
                       ),
                     ),
                   ],
+                ),
+              ],
+              if (childName != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  childName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ],

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/consent_config.dart';
+import '../../data/models/user_consent.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/password_normalization.dart';
-import '../../widgets/brand_widgets.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
+import '../../widgets/registration_consent_panel.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
 
-/// Mobile-only parent-B join: code → account → welcome (no consents — API has none).
+/// Mobile-only parent-B join: code → account+zgody (UI gate) → welcome.
+/// Consents are UX-only here — join API has no consent payload.
 class JoinParentFlowScreen extends StatefulWidget {
   const JoinParentFlowScreen({super.key});
 
@@ -22,7 +26,24 @@ class _JoinParentFlowScreenState extends State<JoinParentFlowScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  late Map<ConsentType, bool> _selections;
+  bool _settingsExpanded = true;
   bool _submitting = false;
+  bool _codeLooksValid = false;
+
+  static final _joinConsentTypes = <ConsentType>[
+    ConsentType.terms,
+    ConsentType.dataProcessing,
+    ConsentType.emailNotifications,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selections = {
+      for (final t in ConsentType.values) t: false,
+    };
+  }
 
   @override
   void dispose() {
@@ -37,6 +58,22 @@ class _JoinParentFlowScreenState extends State<JoinParentFlowScreen> {
     ScaffoldMessenger.of(context).showTopSnackBar(
       SnackBar(content: Text(msg)),
     );
+  }
+
+  bool get _joinConsentsOk =>
+      (_selections[ConsentType.terms] ?? false) &&
+      (_selections[ConsentType.dataProcessing] ?? false);
+
+  List<ConsentDefinition> get _joinConsentDefs => ConsentConfig
+      .registrationConsents
+      .where((d) => _joinConsentTypes.contains(d.type))
+      .toList();
+
+  void _onCodeChanged(String value) {
+    final ok = value.trim().length >= 6;
+    if (ok != _codeLooksValid) {
+      setState(() => _codeLooksValid = ok);
+    }
   }
 
   void _goCodeNext() {
@@ -56,9 +93,17 @@ class _JoinParentFlowScreenState extends State<JoinParentFlowScreen> {
       _toast(context.tr('Imię i nazwisko musi mieć co najmniej 2 znaki.'));
       return;
     }
+    if (email.isEmpty) {
+      _toast(context.tr('Uzupełnij e-mail.'));
+      return;
+    }
     final lengthError = validateNormalizedPasswordLength(password);
     if (lengthError != null) {
       _toast(lengthError);
+      return;
+    }
+    if (!_joinConsentsOk) {
+      _toast(context.tr('Zaznacz wymagane zgody'));
       return;
     }
     setState(() => _submitting = true);
@@ -96,67 +141,61 @@ class _JoinParentFlowScreenState extends State<JoinParentFlowScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(context.tr('Dołączanie')),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_step == 1) {
-              setState(() => _step = 0);
-            } else if (_step == 0) {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-      ),
-      body: BrandBackdrop(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: BrandCard(
-                      padding: const EdgeInsets.all(22),
-                      child: _buildStep(context),
-                    ),
+      backgroundColor: MobileOnboarding.pageBg,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_step < 2)
+                OnboardingProgressHeader(
+                  stepLabel: context.tr(
+                    _step == 0 ? 'Krok 1 z 2' : 'Krok 2 z 2',
                   ),
+                  progress: _step == 0 ? 0.5 : 1,
+                  onBack: () {
+                    if (_step == 1) {
+                      setState(() => _step = 0);
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                  },
                 ),
-                if (_step < 2)
-                  SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _submitting
-                          ? null
-                          : (_step == 0 ? _goCodeNext : _join),
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              context.tr(
-                                _step == 0 ? 'Dalej' : 'Dołącz do przestrzeni',
-                              ),
-                            ),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _finish,
-                      child: Text(context.tr('Zaczynamy')),
-                    ),
-                  ),
-              ],
-            ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: _buildStep(context),
+                ),
+              ),
+              if (_step < 2)
+                ElevatedButton(
+                  onPressed: _submitting
+                      ? null
+                      : (_step == 0 ? _goCodeNext : _join),
+                  style: MobileOnboarding.primaryButton(enabled: !_submitting),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          context.tr(
+                            _step == 0 ? 'Dalej' : 'Dołącz do przestrzeni',
+                          ),
+                        ),
+                )
+              else
+                ElevatedButton(
+                  onPressed: _finish,
+                  style: MobileOnboarding.primaryButton(),
+                  child: Text(context.tr('Zaczynamy')),
+                ),
+            ],
           ),
         ),
       ),
@@ -171,20 +210,72 @@ class _JoinParentFlowScreenState extends State<JoinParentFlowScreen> {
           children: [
             Text(
               context.tr('Wpisz kod'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _codeController,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(
-                labelText: context.tr('Kod zaproszenia'),
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               context.tr(
-                'Nie masz kodu? Poproś drugiego rodzica, znajdzie go w Ustawieniach.',
+                'Kod dostałeś/aś od drugiego rodzica — np. SMS-em albo e-mailem.',
+              ),
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: _onCodeChanged,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Kod zaproszenia'),
+                    ),
+                  ),
+                  if (_codeLooksValid) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: MobileOnboarding.greenFg,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            context.tr(
+                              'Kod wygląda poprawnie — dołączysz do przestrzeni drugiego rodzica.',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: MobileOnboarding.greenFg,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              context.tr(
+                'Nie masz kodu? Poproś drugiego rodzica — znajdzie go w Ustawieniach.',
               ),
               style: const TextStyle(
                 fontSize: 12,
@@ -200,59 +291,134 @@ class _JoinParentFlowScreenState extends State<JoinParentFlowScreen> {
           children: [
             Text(
               context.tr('Twoje konto'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: InputDecoration(
-                labelText: context.tr('Imię i nazwisko'),
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'E-mail'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: context.tr('Hasło'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Imię i nazwisko'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'E-mail'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Hasło'),
+                      hintText: context.tr('Minimum 8 znaków'),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  RegistrationConsentPanel(
+                    selections: _selections,
+                    onChanged: (next) => setState(() => _selections = next),
+                    settingsExpanded: _settingsExpanded,
+                    onExpandSettings: () =>
+                        setState(() => _settingsExpanded = true),
+                    consents: _joinConsentDefs,
+                  ),
+                ],
               ),
             ),
           ],
         );
       default:
         final ws = context.watch<AppProvider>().currentWorkspace;
-        final childName = ws?.children.isNotEmpty == true
-            ? ws!.children.first.name
-            : null;
+        final child = ws?.children.isNotEmpty == true ? ws!.children.first : null;
+        final childLine = child == null
+            ? context.tr(
+                'Dziecko pojawi się tutaj, gdy drugi rodzic je doda.',
+              )
+            : '${child.name}${child.age > 0 ? ', ${child.age} lat' : ''}';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              context.tr('Gotowe, jesteś we wspólnej przestrzeni.'),
-              style: Theme.of(context).textTheme.titleLarge,
+              context.tr('Gotowe, jesteś we wspólnej przestrzeni'),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              childName ??
-                  context.tr(
-                    'Dziecko pojawi się tutaj, gdy drugi rodzic je doda.',
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Bullet(text: childLine),
+                  _Bullet(
+                    text: context.tr('Wspólny kalendarz opieki'),
                   ),
-              style: const TextStyle(color: AppTheme.textSecondary),
+                  _Bullet(
+                    text: context.tr('Czat z archiwum'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              context.tr('Kalendarz i czat są gotowe do użycia.'),
-              style: const TextStyle(color: AppTheme.textSecondary),
-            ),
+            const SizedBox(height: 14),
+            OnboardingInfoBox.trialGreen(context),
           ],
         );
     }
+  }
+}
+
+class _Bullet extends StatelessWidget {
+  final String text;
+
+  const _Bullet({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '•  ',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: MobileOnboarding.blue,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.35,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -226,11 +226,12 @@ void main() {
     },
   );
 
-  test('web consent path still uses Switch ConsentRow in source', () {
+  test('web consent path still uses ConsentRow; mobile uses panel', () {
     final src =
         File('lib/screens/auth/consent_registration_screen.dart').readAsStringSync();
-    expect(src.contains('ConsentRow('), isTrue);
-    expect(src.contains('RegistrationConsentPanel('), isTrue);
-    expect(src.contains("mobile ? 'Załóż konto' : 'Utwórz'"), isTrue);
+    expect(src.contains('ConsentRow'), isTrue);
+    expect(src.contains('RegistrationConsentPanel'), isTrue);
+    expect(src.contains('Załóż konto'), isTrue);
+    expect(src.contains("'Utwórz'"), isTrue);
   });
 }

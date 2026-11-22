@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Coparentes Etap A — makiety 1–12</title>
+<style>
+  @font-face {
+    font-family: "DMSans";
+    src: url("../assets/fonts/DMSans-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "DMSans";
+    src: url("../assets/fonts/DMSans-Medium.ttf") format("truetype");
+    font-weight: 500;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "DMSans";
+    src: url("../assets/fonts/DMSans-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "DMSans";
+    src: url("../assets/fonts/DMSans-SemiBold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: "DMSans";
+    src: url("../assets/fonts/DMSans-SemiBold.ttf") format("truetype");
+    font-weight: 800;
+    font-style: normal;
+  }
+  :root {
+    --blue: #2F6FED;
+    --blue-soft: #E8F0FE;
+    --green-soft: #E7F7EE;
+    --green: #1B7A45;
+    --amber-soft: #FFF3E0;
+    --amber: #B45309;
+    --bg: #F4F6F9;
+    --ink: #16202B;
+    --muted: #64748B;
+    --line: #E5ECF5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "DMSans", sans-serif;
+    background: #1a2332; color: #fff; padding: 24px;
+  }
+  .brand-logo {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand-logo img {
+    width: 28px; height: 28px; object-fit: contain;
+  }
+  .brand-logo span {
+    font-size: 16px; font-weight: 700; letter-spacing: -0.6px; color: #16202B;
+  }
+  .brand-logo.sm img { width: 22px; height: 22px; }
+  .brand-logo.sm span { font-size: 14px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  .sub { color: #94a3b8; margin-bottom: 24px; font-size: 14px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 28px;
+  }
+  .phone {
+    width: 280px; height: 560px; margin: 0 auto;
+    background: var(--bg); border-radius: 28px; overflow: hidden;
+    color: var(--ink); position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,.45);
+    border: 3px solid #0f172a;
+    display: flex; flex-direction: column;
+  }
+  .label {
+    text-align: center; font-size: 12px; color: #94a3b8;
+    margin-bottom: 8px; font-weight: 600;
+  }
+  .status { height: 28px; padding: 8px 16px 0; font-size: 11px; font-weight: 700; }
+  .pad { padding: 12px 16px 16px; flex: 1; display: flex; flex-direction: column; }
+  .progress { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-weight: 700; }
+  .bar { height: 6px; background: var(--line); border-radius: 99px; margin: 8px 0 14px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--blue); }
+  h2 { margin: 0 0 8px; font-size: 22px; font-weight: 800; }
+  p.lead { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .card { background: #fff; border-radius: 16px; padding: 14px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .field .box {
+    height: 40px; border: 1px solid var(--line); border-radius: 10px;
+    display: flex; align-items: center; padding: 0 10px; font-size: 13px; background: #fff;
+  }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .chip {
+    height: 40px; border-radius: 12px; border: 1.5px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+  }
+  .chip.on { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+  .btn {
+    height: 48px; border-radius: 14px; background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px;
+    margin-top: auto; border: none;
+  }
+  .btn.outline {
+    background: #fff; color: var(--blue); border: 1.5px solid var(--blue);
+  }
+  .btn.amber { background: var(--amber); }
+  .link {
+    text-align: center; color: var(--blue); font-weight: 700; font-size: 13px;
+    margin-top: 10px; padding: 8px;
+  }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+  .tile {
+    min-height: 48px; border-radius: 10px; border: 1px solid #D7DEE8;
+    font-size: 10px; font-weight: 700; text-align: center;
+    display: flex; align-items: center; justify-content: center; padding: 6px; line-height: 1.2;
+  }
+  .tile.fill { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .consent { display: flex; gap: 8px; margin-bottom: 8px; font-size: 11px; }
+  .check { width: 16px; height: 16px; border-radius: 4px; background: var(--blue); flex: 0 0 auto; margin-top: 2px; }
+  .check.off { background: #fff; border: 1.5px solid #cbd5e1; }
+  .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 99px; }
+  .badge.req { background: #fde8e8; color: #D32F2F; }
+  .badge.opt { background: var(--green-soft); color: var(--green); }
+  .info {
+    background: var(--blue-soft); color: var(--blue); border-radius: 12px;
+    padding: 10px; font-size: 11px; font-weight: 600; line-height: 1.35; margin-top: 10px;
+  }
+  .info.green { background: var(--green-soft); color: var(--green); }
+  .info.amber { background: var(--amber-soft); color: var(--ink); }
+  .code {
+    border: 1.5px dashed #9BB6E8; border-radius: 14px; padding: 18px;
+    text-align: center; font-size: 22px; font-weight: 800; color: var(--blue); letter-spacing: 1px;
+    background: #fff;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .ok { color: var(--green); font-size: 12px; font-weight: 600; margin-top: 10px; display: flex; gap: 6px; align-items: flex-start; }
+  .nav {
+    height: 56px; background: #fff; border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(5, 1fr); font-size: 9px; color: var(--muted);
+  }
+  .nav div { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .nav .on { color: var(--blue); font-weight: 700; }
+  .dot { width: 18px; height: 18px; border-radius: 6px; background: #fecaca; color: #b91c1c; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; }
+  ul.bul { margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.5; }
+  .subrow { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .subrow:last-child { border-bottom: 0; }
+  .muted { color: var(--muted); }
+  .green { color: var(--green); font-weight: 800; }
+</style>
+</head>
+<body>
+  <h1>Coparentes — Etap A (makiety zgodne z briefem)</h1>
+  <p class="sub">Podgląd wyglądu mobile 1–12. Web bez zmian. Powitanie (1) bez zmian w kodzie.</p>
+  <div class="grid">
+
+    <div>
+      <div class="label">1. Powitanie — bez zmian</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="brand-logo"><img src="../assets/branding/coparentes-logo.png" alt="Coparentes"/><span>Coparentes</span></div>
+        <h2 style="font-size:18px;margin-top:12px">Spokojne rodzicielstwo po rozstaniu</h2>
+        <p class="lead">Komunikacja · Organizacja · Finanse</p>
+        <div class="chips"><div class="chip on">Dorosły</div><div class="chip">Dziecko</div></div>
+        <div class="field"><label>E-mail</label><div class="box">anna@…</div></div>
+        <div class="btn">Dalej</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">2. Krok 1 z 2 — O Tobie</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="progress"><span>Wstecz</span><span>Krok 1 z 2</span></div>
+        <div class="bar"><i style="width:50%"></i></div>
+        <h2>O Tobie</h2>
+        <div class="field"><label>Imię</label><div class="box">Anna</div></div>
+        <div class="field"><label>Nazwisko</label><div class="box">Kowalska</div></div>
+        <div class="chips"><div class="chip on">Mama</div><div class="chip">Tata</div></div>
+        <div class="field"><label>E-mail</label><div class="box">anna@…</div></div>
+        <div class="field"><label>Hasło</label><div class="box">••••••••</div></div>
+        <div class="btn">Dalej</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">3. Krok 2 z 2 — Zgody</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="progress"><span>Wstecz</span><span>Krok 2 z 2</span></div>
+        <div class="bar"><i style="width:100%"></i></div>
+        <h2>Zgody</h2>
+        <div class="card" style="overflow:auto;max-height:280px">
+          <div class="tiles">
+            <div class="tile fill">Akceptuj wszystkie</div>
+            <div class="tile">Odrzuć opcjonalne</div>
+            <div class="tile">Ustawienia zgód</div>
+          </div>
+          <div class="consent"><div class="check"></div><div><b>Regulamin…</b> <span class="badge req">Wymagane</span></div></div>
+          <div class="consent"><div class="check"></div><div><b>Moje dane</b> <span class="badge req">Wymagane</span></div></div>
+          <div class="consent"><div class="check"></div><div><b>Dane dziecka</b> <span class="badge req">Wymagane</span></div></div>
+          <div class="consent"><div class="check off"></div><div><b>Powiadomienia</b> <span class="badge opt">Opcjonalne</span></div></div>
+        </div>
+        <div class="info">Na telefonie: 30 dni za darmo, potem 29,99 zł / miesiąc. Web bez płatności.</div>
+        <div class="btn">Załóż konto</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">4. Zaproś drugiego rodzica</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="brand-logo sm" style="margin-bottom:12px"><img src="../assets/branding/coparentes-logo.png" alt=""/><span>Coparentes</span></div>
+        <h2>Zaproś drugiego rodzica</h2>
+        <p class="lead">Wspólny kalendarz i czat działają najlepiej, gdy oboje jesteście w przestrzeni.</p>
+        <div class="code">DEMO-2026</div>
+        <div class="row2"><div class="btn outline" style="margin:0;height:44px">Kopiuj kod</div><div class="btn" style="margin:0;height:44px">Wyślij</div></div>
+        <div class="link">Zrobię to później</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">5. Dodaj dziecko</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="brand-logo sm" style="margin-bottom:12px"><img src="../assets/branding/coparentes-logo.png" alt=""/><span>Coparentes</span></div>
+        <h2>Dodaj dziecko</h2>
+        <p class="lead">Profil dziecka ułatwia wspólny kalendarz i czat.</p>
+        <div class="card">
+          <div class="field"><label>Imię i nazwisko dziecka</label><div class="box">Zosia Kowalska</div></div>
+          <div class="field"><label>Data urodzenia</label><div class="box">01.06.2018</div></div>
+          <div class="link" style="text-align:left;padding:0">+ Dodaj więcej informacji</div>
+          <p class="lead" style="margin-top:10px;font-size:11px">Po dodaniu: kod dla dziecka (nie wysyłaj go drugiemu rodzicowi).</p>
+        </div>
+        <div class="btn">Dodaj dziecko</div>
+        <div class="link">Zrobię to później</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">6. Start + przypomnienie</div>
+      <div class="phone">
+        <div class="status">9:41</div>
+        <div class="pad" style="padding-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="dot">A</div>
+            <div class="brand-logo sm"><img src="../assets/branding/coparentes-logo.png" alt=""/><span>Coparentes</span></div>
+            <span></span>
+          </div>
+          <div class="card" style="border:1px solid var(--line)">
+            <b>Drugi rodzic jeszcze nie dołączył!</b>
+            <div class="code" style="margin-top:10px;font-size:18px;padding:12px">DEMO-2026</div>
+            <div class="row2"><div class="btn outline" style="margin:0;height:40px;font-size:13px">Kopiuj</div><div class="btn" style="margin:0;height:40px;font-size:13px">Wyślij</div></div>
+            <div class="muted" style="margin-top:8px;font-size:12px">Zosia</div>
+          </div>
+          <p class="lead" style="margin-top:12px">Dzisiaj: Zosia — 3 wydarzenia</p>
+        </div>
+        <div class="nav">
+          <div class="on">Start</div><div>Chat</div><div>Kalendarz</div><div>Finanse</div><div>Dokumenty</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="label">7. Rodzic B — wpisz kod</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="progress"><span>Wstecz</span><span>Krok 1 z 2</span></div>
+        <div class="bar"><i style="width:50%"></i></div>
+        <h2>Wpisz kod</h2>
+        <p class="lead">Kod dostałeś/aś od drugiego rodzica — np. SMS-em albo e-mailem.</p>
+        <div class="card">
+          <div class="field"><label>Kod zaproszenia</label><div class="box">DEMO-2026</div></div>
+          <div class="ok">✓ Kod wygląda poprawnie — dołączysz do przestrzeni drugiego rodzica.</div>
+        </div>
+        <div class="btn">Dalej</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">8. Rodzic B — konto + zgody</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="progress"><span>Wstecz</span><span>Krok 2 z 2</span></div>
+        <div class="bar"><i style="width:100%"></i></div>
+        <h2>Twoje konto</h2>
+        <div class="card" style="overflow:auto;max-height:300px">
+          <div class="field"><label>Imię i nazwisko</label><div class="box">Marek Kowalski</div></div>
+          <div class="field"><label>E-mail</label><div class="box">marek@…</div></div>
+          <div class="field"><label>Hasło</label><div class="box">••••••••</div></div>
+          <div class="tiles">
+            <div class="tile fill">Akceptuj wszystkie</div>
+            <div class="tile">Odrzuć opcjonalne</div>
+            <div class="tile">Ustawienia zgód</div>
+          </div>
+          <div class="consent"><div class="check"></div><div><b>Regulamin</b> <span class="badge req">Wymagane</span></div></div>
+          <div class="consent"><div class="check"></div><div><b>Moje dane</b> <span class="badge req">Wymagane</span></div></div>
+          <div class="consent"><div class="check off"></div><div><b>Powiadomienia</b> <span class="badge opt">Opcjonalne</span></div></div>
+        </div>
+        <div class="btn">Dołącz do przestrzeni</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">9. Rodzic B — powitanie</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <h2>Gotowe, jesteś we wspólnej przestrzeni</h2>
+        <div class="card"><ul class="bul"><li>Zosia, 8 lat</li><li>Wspólny kalendarz opieki</li><li>Czat z archiwum</li></ul></div>
+        <div class="info green">Pierwsze 30 dni w app mobilnej darmowe, potem 29,99 zł / miesiąc. Web bez opłat.</div>
+        <div class="btn">Zaczynamy</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">10. Płatności — ostatnie dni trial</div>
+      <div class="phone">
+        <div class="status">9:41</div>
+        <div class="pad">
+          <h2 style="font-size:18px">Dzień dobry, Anna</h2>
+          <div class="info amber">
+            <b>Okres próbny kończy się 22 grudnia</b>
+            <div class="row2" style="margin-top:10px">
+              <div class="btn amber" style="margin:0;height:36px;font-size:13px">Zamów</div>
+              <div class="link" style="margin:0;padding:8px;color:var(--amber)">Zobacz szczegóły</div>
+            </div>
+          </div>
+        </div>
+        <div class="nav"><div class="on">Start</div><div>Chat</div><div>Kalendarz</div><div>Finanse</div><div>Dokumenty</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="label">11. Paywall — po trialu</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <div class="brand-logo"><img src="../assets/branding/coparentes-logo.png" alt=""/><span>Coparentes</span></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <h2 style="text-align:center">Twój okres próbny się skończył!</h2>
+          <p class="lead" style="text-align:center;font-size:15px;font-weight:600">29,99 zł miesięcznie, zawiera VAT</p>
+          <div class="info">Aplikacja webowa Coparentes pozostaje bez płatności.</div>
+        </div>
+        <div class="btn">Zamawiam i płacę</div>
+        <div class="link">Korzystaj dalej w przeglądarce za darmo</div>
+      </div></div>
+    </div>
+
+    <div>
+      <div class="label">12. Subskrypcja aktywna</div>
+      <div class="phone"><div class="status">9:41</div><div class="pad">
+        <h2>Subskrypcja</h2>
+        <div class="card">
+          <div class="subrow"><span class="muted">Status</span><span class="green">Aktywna</span></div>
+          <div class="subrow"><span class="muted">Plan</span><b>29,99 zł / miesiąc</b></div>
+          <div class="subrow"><span class="muted">Następna płatność</span><b>22 stycznia</b></div>
+        </div>
+        <p class="lead">Potwierdzenia e-mailem. Zarządzanie w Stripe.</p>
+        <div class="btn outline">Zarządzaj subskrypcją</div>
+      </div></div>
+    </div>
+
+  </div>
+</body>
+</html>

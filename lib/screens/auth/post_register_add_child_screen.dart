@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_widgets.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
 
@@ -35,7 +36,7 @@ class _PostRegisterAddChildScreenState
   }
 
   String _formatDob(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
   Future<void> _pickDob() async {
     final now = DateTime.now();
@@ -111,61 +112,83 @@ class _PostRegisterAddChildScreenState
         }
       },
       child: Scaffold(
-        body: BrandBackdrop(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const BrandLogo(width: 140, height: 46),
-                  const SizedBox(height: 20),
-                  Text(
-                    context.tr('Dodaj dziecko'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+        backgroundColor: MobileOnboarding.pageBg,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const BrandLogo(width: 160, height: 44),
+                const SizedBox(height: 20),
+                Text(
+                  context.tr('Dodaj dziecko'),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: BrandCard(
-                        padding: const EdgeInsets.all(22),
-                        child: _added == null
-                            ? _buildForm(context)
-                            : _buildAfterAdd(context),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.tr(
+                    'Profil dziecka ułatwia wspólny kalendarz i czat.',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.4,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
                       ),
+                      child: _added == null
+                          ? _buildForm(context)
+                          : _buildAfterAdd(context),
                     ),
                   ),
-                  if (_added == null) ...[
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _submitting ? null : _submit,
-                        child: _submitting
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(context.tr('Dodaj dziecko')),
-                      ),
+                ),
+                if (_added == null) ...[
+                  ElevatedButton(
+                    onPressed: _submitting ? null : _submit,
+                    style: MobileOnboarding.primaryButton(
+                      enabled: !_submitting,
                     ),
-                    TextButton(
-                      onPressed: _submitting ? null : _finish,
-                      child: Text(context.tr('Zrobię to później')),
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(context.tr('Dodaj dziecko')),
+                  ),
+                  TextButton(
+                    onPressed: _submitting ? null : _finish,
+                    style: TextButton.styleFrom(
+                      foregroundColor: MobileOnboarding.blue,
                     ),
-                  ] else
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _finish,
-                        child: Text(context.tr('Dalej')),
-                      ),
+                    child: Text(
+                      context.tr('Zrobię to później'),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                ],
-              ),
+                  ),
+                ] else
+                  ElevatedButton(
+                    onPressed: _finish,
+                    style: MobileOnboarding.primaryButton(),
+                    child: Text(context.tr('Dalej')),
+                  ),
+              ],
             ),
           ),
         ),
@@ -181,7 +204,7 @@ class _PostRegisterAddChildScreenState
           controller: _nameController,
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
-            labelText: context.tr('Imię i nazwisko'),
+            labelText: context.tr('Imię i nazwisko dziecka'),
           ),
         ),
         const SizedBox(height: 12),
@@ -198,10 +221,17 @@ class _PostRegisterAddChildScreenState
         ),
         TextButton(
           onPressed: () => setState(() => _showMore = !_showMore),
+          style: TextButton.styleFrom(
+            foregroundColor: MobileOnboarding.blue,
+            alignment: Alignment.centerLeft,
+          ),
           child: Text(
             context.tr(
-              _showMore ? 'Ukryj dodatkowe informacje' : 'Dodaj więcej informacji',
+              _showMore
+                  ? 'Ukryj dodatkowe informacje'
+                  : '+ Dodaj więcej informacji',
             ),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
         if (_showMore)
@@ -209,6 +239,17 @@ class _PostRegisterAddChildScreenState
             controller: _schoolController,
             decoration: InputDecoration(labelText: context.tr('Szkoła')),
           ),
+        const SizedBox(height: 8),
+        Text(
+          context.tr(
+            'Po dodaniu: kod dla dziecka (nie wysyłaj go drugiemu rodzicowi).',
+          ),
+          style: const TextStyle(
+            fontSize: 12,
+            height: 1.35,
+            color: AppTheme.textHint,
+          ),
+        ),
       ],
     );
   }
@@ -228,17 +269,11 @@ class _PostRegisterAddChildScreenState
           ),
         ),
         const SizedBox(height: 12),
-        SelectableText(
-          code?.isNotEmpty == true ? code! : '—',
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
-          ),
-        ),
+        OnboardingDashedCodeBox(code: code?.isNotEmpty == true ? code! : '—'),
         const SizedBox(height: 12),
         OutlinedButton(
           onPressed: code == null || code.isEmpty ? null : _copyChildCode,
+          style: MobileOnboarding.outlineButton(),
           child: Text(context.tr('Kopiuj')),
         ),
       ],

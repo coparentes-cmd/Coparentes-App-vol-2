@@ -4,15 +4,16 @@ import '../config/consent_config.dart';
 import '../data/models/user_consent.dart';
 import '../theme/app_theme.dart';
 import '../utils/open_url.dart';
+import 'mobile_onboarding_chrome.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 
 /// Mobile registration consents: 3 action tiles + checkbox list (6 consents).
-/// Does not change consent payloads — only presentation.
 class RegistrationConsentPanel extends StatelessWidget {
   final Map<ConsentType, bool> selections;
   final ValueChanged<Map<ConsentType, bool>> onChanged;
   final bool settingsExpanded;
   final VoidCallback onExpandSettings;
+  final List<ConsentDefinition>? consents;
 
   const RegistrationConsentPanel({
     super.key,
@@ -20,7 +21,11 @@ class RegistrationConsentPanel extends StatelessWidget {
     required this.onChanged,
     required this.settingsExpanded,
     required this.onExpandSettings,
+    this.consents,
   });
+
+  List<ConsentDefinition> get _defs =>
+      consents ?? ConsentConfig.registrationConsents;
 
   void _acceptAll() {
     onChanged({
@@ -71,16 +76,15 @@ class RegistrationConsentPanel extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        ...ConsentConfig.registrationConsents.map((definition) {
-          final value = selections[definition.type] ?? false;
-          return _ConsentCheckboxRow(
-            definition: definition,
-            value: value,
-            onChanged: (v) => _toggle(definition.type, v),
-          );
-        }),
-        if (!settingsExpanded)
-          const SizedBox.shrink(),
+        if (settingsExpanded)
+          ..._defs.map((definition) {
+            final value = selections[definition.type] ?? false;
+            return _ConsentCheckboxRow(
+              definition: definition,
+              value: value,
+              onChanged: (v) => _toggle(definition.type, v),
+            );
+          }),
       ],
     );
   }
@@ -100,20 +104,18 @@ class _ConsentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: filled ? AppTheme.primaryTeal : Colors.white,
-      borderRadius: BorderRadius.circular(14),
+      color: filled ? MobileOnboarding.blue : Colors.white,
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: filled
-                  ? AppTheme.primaryTeal
-                  : AppTheme.dividerColor,
+              color: filled ? MobileOnboarding.blue : const Color(0xFFD7DEE8),
             ),
           ),
           alignment: Alignment.center,
@@ -121,7 +123,7 @@ class _ConsentTile extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
               height: 1.2,
               color: filled ? Colors.white : AppTheme.textPrimary,
@@ -148,24 +150,27 @@ class _ConsentCheckboxRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final required = definition.type.isRequired;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 48,
-            height: 48,
+            width: 44,
+            height: 44,
             child: Checkbox(
               value: value,
               onChanged: (v) => onChanged(v ?? false),
-              activeColor: AppTheme.primaryTeal,
+              activeColor: MobileOnboarding.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 4,
@@ -187,17 +192,17 @@ class _ConsentCheckboxRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: required
                             ? AppTheme.errorColor.withValues(alpha: 0.12)
-                            : AppTheme.primaryTeal.withValues(alpha: 0.12),
+                            : MobileOnboarding.greenSoft,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        context.tr(required ? 'Wymagana' : 'Opcjonalna'),
+                        context.tr(required ? 'Wymagane' : 'Opcjonalne'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: required
                               ? AppTheme.errorColor
-                              : AppTheme.primaryDark,
+                              : MobileOnboarding.greenFg,
                         ),
                       ),
                     ),
@@ -218,16 +223,16 @@ class _ConsentCheckboxRow extends StatelessWidget {
                       onPressed: () => openExternalUrl(block.linkUrl!),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        minimumSize: const Size(48, 48),
+                        minimumSize: const Size(48, 40),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         alignment: Alignment.centerLeft,
+                        foregroundColor: MobileOnboarding.blue,
                       ),
                       child: Text(
                         context.tr(block.linkLabel ?? 'Czytaj więcej'),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.accentColor,
                         ),
                       ),
                     );

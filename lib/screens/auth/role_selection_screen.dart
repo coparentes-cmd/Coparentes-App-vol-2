@@ -18,6 +18,7 @@ import '../../utils/client_platform.dart';
 import '../../utils/password_normalization.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/language_flag.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
 import 'consent_registration_screen.dart';
 import 'join_parent_flow_screen.dart';
 import 'package:coparentes/l10n/app_strings.dart';
@@ -720,34 +721,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         // only after a successful "Utwórz".
         return [
           if (_isMobileUi) ...[
-            Text(
-              context.tr('Krok 1 z 2'),
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textSecondary,
-              ),
+            OnboardingProgressHeader(
+              stepLabel: context.tr('Krok 1 z 2'),
+              progress: 0.5,
             ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: 0.5,
-                minHeight: 6,
-                backgroundColor: AppTheme.dividerColor,
-                color: AppTheme.primaryTeal,
-              ),
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Text(
               context.tr('O Tobie'),
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 26,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
           AutofillGroup(
             onDisposeAction: AutofillContextAction.cancel,
@@ -774,19 +761,35 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: _RoleChoiceChip(
-                          label: context.tr('Mama'),
-                          selected: _registerIsMama,
-                          onTap: () => setState(() => _registerIsMama = true),
-                        ),
+                        child: _isMobileUi
+                            ? OnboardingRoleChip(
+                                label: context.tr('Mama'),
+                                selected: _registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = true),
+                              )
+                            : _RoleChoiceChip(
+                                label: context.tr('Mama'),
+                                selected: _registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = true),
+                              ),
                       ),
                       SizedBox(width: 10),
                       Expanded(
-                        child: _RoleChoiceChip(
-                          label: context.tr('Tata'),
-                          selected: !_registerIsMama,
-                          onTap: () => setState(() => _registerIsMama = false),
-                        ),
+                        child: _isMobileUi
+                            ? OnboardingRoleChip(
+                                label: context.tr('Tata'),
+                                selected: !_registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = false),
+                              )
+                            : _RoleChoiceChip(
+                                label: context.tr('Tata'),
+                                selected: !_registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = false),
+                              ),
                       ),
                     ],
                   ),

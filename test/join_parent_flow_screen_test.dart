@@ -151,6 +151,9 @@ void main() {
       await tester.enterText(fields.at(0), 'Marek Kowalski');
       await tester.enterText(fields.at(1), 'marek@test.coparentes.app');
       await tester.enterText(fields.at(2), 'Password123!');
+      await tester.tap(find.text('Akceptuj wszystkie'));
+      await tester.pump();
+      await tester.ensureVisible(find.text('Dołącz do przestrzeni'));
       await tester.tap(find.text('Dołącz do przestrzeni'));
       for (var i = 0; i < 40; i++) {
         await tester.pump(const Duration(milliseconds: 20));
@@ -160,8 +163,11 @@ void main() {
       expect(auth.joinCalls, 1);
       expect(auth.lastInviteCode, 'PARENTCODE');
       expect(appProvider.currentUser?.role, UserRole.parentB);
-      expect(find.text('Gotowe, jesteś we wspólnej przestrzeni.'), findsOneWidget);
-      expect(find.text('Zosia'), findsOneWidget);
+      expect(
+        find.text('Gotowe, jesteś we wspólnej przestrzeni'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Zosia'), findsOneWidget);
       expect(find.text('Zaczynamy'), findsOneWidget);
     },
   );

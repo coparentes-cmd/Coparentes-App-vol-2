@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/legal_config.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/models.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/app_tokens.dart';
 import '../../utils/app_snackbar.dart';
 import '../../utils/open_url.dart';
+import '../../widgets/brand_widgets.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
+import 'subscription_screen.dart';
 
-/// Mobile-only gate when trial/subscription is missing (F3).
-/// Never shown on web (`resolveAuthenticatedHome` + `kIsWeb` guard).
+/// Mobile-only gate when trial/subscription is missing (F3) — mockup 11.
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
 
@@ -77,186 +79,107 @@ class _PaywallScreenState extends State<PaywallScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AppProvider>().currentUser;
     final status = user?.billingStatus ?? BillingStatus.none;
-    // Portal needs a Stripe customer — set when Checkout completed (billingSource).
     final hasStripeCustomer = user?.billingSource == 'stripe';
-    final trialEnded = status == BillingStatus.expired ||
-        status == BillingStatus.canceled ||
-        (status == BillingStatus.trialing &&
-            user?.trialEndsAt != null &&
-            !user!.trialEndsAt!.isAfter(DateTime.now()));
+    final isActive = status == BillingStatus.active;
 
-    final headline = trialEnded
-        ? context.tr('Okres próbny zakończony')
-        : context.tr('Wymagana subskrypcja');
-    final body = trialEnded
-        ? context.tr(
-            'Twój 30-dniowy okres próbny na telefonie dobiegł końca. '
-            'Subskrypcja Coparentes kosztuje 29,99 zł miesięcznie. '
-            'Aplikacja webowa pozostaje bez płatności.',
-          )
-        : context.tr(
-            'Na telefonie Coparentes wymaga aktywnego okresu próbnego lub subskrypcji. '
-            'Web działa bez tej bramki.',
-          );
-
-    final scheme = Theme.of(context).colorScheme;
+    if (isActive) {
+      return const SubscriptionScreen();
+    }
 
     return PopScope(
       canPop: false,
       child: Scaffold(
-        body: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppTheme.brandHeaderBlue.withValues(alpha: 0.12),
-                scheme.surface,
-                scheme.surface,
-              ],
-              stops: const [0, 0.35, 1],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Coparentes',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.brandHeaderBlue,
-                      letterSpacing: 0.3,
-                    ),
+        backgroundColor: MobileOnboarding.pageBg,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const BrandLogo(width: 160, height: 44),
+                const Spacer(),
+                Text(
+                  context.tr('Twój okres próbny się skończył!'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
                   ),
-                  const SizedBox(height: 28),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: AppTints.tealBg,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(
-                      Icons.lock_outline_rounded,
-                      color: AppTints.tealFg,
-                      size: 28,
-                    ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  context.tr('29,99 zł miesięcznie, zawiera VAT'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    headline,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
+                ),
+                const SizedBox(height: 24),
+                OnboardingInfoBox(
+                  text: context.tr(
+                    'Aplikacja webowa Coparentes pozostaje bez płatności. '
+                    'Na telefonie subskrypcja odblokowuje pełny dostęp.',
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    body,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.45,
-                      color: scheme.onSurface.withValues(alpha: 0.75),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _FeatureLine(
-                    icon: Icons.chat_bubble_outline,
-                    label: context.tr('Czat, kalendarz i finanse na telefonie'),
-                  ),
-                  _FeatureLine(
-                    icon: Icons.computer_outlined,
-                    label: context.tr('Web zawsze bez paywalla'),
-                  ),
-                  _FeatureLine(
-                    icon: Icons.child_care_outlined,
-                    label: context.tr('Konta dzieci bez opłat'),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _busy ? null : _startCheckout,
-                      child: _checkoutLoading
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(context.tr('Subskrybuj 29,99 zł/mies.')),
-                    ),
-                  ),
-                  if (hasStripeCustomer) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: _busy ? null : _openPortal,
-                        child: _portalLoading
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Text(context.tr('Zarządzaj subskrypcją')),
-                      ),
-                    ),
-                  ],
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: _busy ? null : _startCheckout,
+                  style: MobileOnboarding.primaryButton(enabled: !_busy),
+                  child: _checkoutLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(context.tr('Zamawiam i płacę')),
+                ),
+                if (hasStripeCustomer) ...[
                   const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => context.read<AppProvider>().logout(),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.errorColor,
-                      ),
-                      child: Text(context.tr('Wyloguj')),
-                    ),
+                  OutlinedButton(
+                    onPressed: _busy ? null : _openPortal,
+                    style: MobileOnboarding.outlineButton(),
+                    child: _portalLoading
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(context.tr('Zarządzaj subskrypcją')),
                   ),
                 ],
-              ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => openExternalUrl(LegalConfig.websiteUrl),
+                  style: TextButton.styleFrom(
+                    foregroundColor: MobileOnboarding.blue,
+                  ),
+                  child: Text(
+                    context.tr('Korzystaj dalej w przeglądarce za darmo'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => context.read<AppProvider>().logout(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.errorColor,
+                  ),
+                  child: Text(context.tr('Wyloguj')),
+                ),
+              ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _FeatureLine extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _FeatureLine({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppTints.tealFg),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14.5,
-                height: 1.3,
-                color: Theme.of(context).colorScheme.onSurface.withValues(
-                      alpha: 0.85,
-                    ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

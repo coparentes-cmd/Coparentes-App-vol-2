@@ -9,6 +9,7 @@ import '../../config/legal_config.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_widgets.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
 import 'post_register_add_child_screen.dart';
@@ -96,90 +97,80 @@ class _InvitePartnerScreenState extends State<InvitePartnerScreen> {
         }
       },
       child: Scaffold(
-        body: BrandBackdrop(
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const BrandLogo(width: 140, height: 46),
-                  const SizedBox(height: 24),
-                  Text(
-                    context.tr('Zaproś drugiego rodzica'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+        backgroundColor: MobileOnboarding.pageBg,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const BrandLogo(width: 160, height: 44),
+                const SizedBox(height: 20),
+                Text(
+                  context.tr('Zaproś drugiego rodzica'),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
                   ),
-                  const SizedBox(height: 8),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  context.tr(
+                    'Wspólny kalendarz i czat działają najlepiej, gdy oboje jesteście w przestrzeni.',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.4,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                if (!hasCode)
                   Text(
                     context.tr(
-                      'Wspólny kalendarz i czat działają, gdy oboje jesteście w przestrzeni.',
+                      'Nie udało się pobrać kodu. Znajdziesz go też w Ustawieniach.',
                     ),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(height: 28),
-                  BrandCard(
-                    padding: const EdgeInsets.all(22),
-                    child: Column(
-                      children: [
-                        if (!hasCode) ...[
-                          Text(
-                            context.tr(
-                              'Nie udało się pobrać kodu. Znajdziesz go też w Ustawieniach.',
-                            ),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ] else ...[
-                          SelectableText(
-                            code,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: _copy,
-                                  child: Text(context.tr('Kopiuj kod')),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: _send,
-                                  child: Text(context.tr('Wyślij')),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _continue,
-                      child: Text(
-                        context.tr(
-                          _sharedOrCopied ? 'Gotowe' : 'Zrobię to później',
+                    style: const TextStyle(color: AppTheme.textSecondary),
+                  )
+                else ...[
+                  OnboardingDashedCodeBox(code: code),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _copy,
+                          style: MobileOnboarding.outlineButton(),
+                          child: Text(context.tr('Kopiuj kod')),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _send,
+                          style: MobileOnboarding.primaryButton(),
+                          child: Text(context.tr('Wyślij')),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _continue,
+                  style: TextButton.styleFrom(
+                    foregroundColor: MobileOnboarding.blue,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: Text(
+                    context.tr(
+                      _sharedOrCopied ? 'Gotowe' : 'Zrobię to później',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
