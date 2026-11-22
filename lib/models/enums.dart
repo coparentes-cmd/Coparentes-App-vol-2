@@ -1,5 +1,8 @@
 enum UserRole { parentA, parentB, child, observer }
 
+/// Mobile subscription / trial (F3). Web ignores for access.
+enum BillingStatus { none, trialing, active, expired, canceled }
+
 enum MessageTone { neutral, tense, aggressive, positive }
 
 enum ExpenseStatus { pending, accepted, disputed, settled }

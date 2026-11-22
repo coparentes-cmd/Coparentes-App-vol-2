@@ -100,7 +100,7 @@ void main() {
   });
 
   test(
-    'registerWorkspace starts tour at step 2 (krok 1 = invite parent)',
+    'registerWorkspace on mobile/VM does not start popup tour',
     () async {
       final prefs = await SharedPreferences.getInstance();
       final offline = OfflineStore(preferences: prefs);
@@ -130,10 +130,17 @@ void main() {
         consents: {for (final t in ConsentType.values) t: true},
       );
       expect(ok, isTrue);
-      expect(ap.onboardingTourStep, 2);
+      // Tour step is only set under kIsWeb; VM/mobile use InvitePartnerScreen.
+      expect(ap.onboardingTourStep, isNull);
       expect(ap.currentWorkspace?.inviteCode, 'DSIMPWKFEIF3S2HDW_0H8Q');
     },
   );
+
+  test('registerWorkspace gates tour behind kIsWeb', () {
+    final src = File('lib/providers/app_provider.dart').readAsStringSync();
+    expect(src.contains('if (kIsWeb)'), isTrue);
+    expect(src.contains('await setOnboardingTourStep(2);'), isTrue);
+  });
 
   testWidgets(
     'presentParentInviteFromTour opens Skopiuj / Wyślij kod e-mailem sheet',

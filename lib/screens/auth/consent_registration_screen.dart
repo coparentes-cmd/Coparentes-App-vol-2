@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,11 +7,15 @@ import '../../config/consent_config.dart';
 import '../../data/models/user_consent.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/client_platform.dart';
 import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/consent_widgets.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
+import '../../widgets/registration_consent_panel.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
+import 'invite_partner_screen.dart';
 
 class RegistrationDraft {
   final String name;
@@ -47,6 +52,9 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
   late Map<ConsentType, bool> _selections;
   bool _submitting = false;
   bool _autofillCommitted = false;
+  bool _settingsExpanded = true;
+
+  bool get _useMobileConsentUi => !kIsWeb && isMobileClientPlatform;
 
   @override
   void initState() {
@@ -64,7 +72,6 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
   }
 
   void _cancel() {
-    // Web: discard autofill context without prompting the browser to save.
     TextInput.finishAutofillContext(shouldSave: false);
     Navigator.of(context).pop();
   }
@@ -105,11 +112,18 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
       return;
     }
 
-    // Web: only after a successful create should the browser be asked to save.
     _autofillCommitted = true;
     TextInput.finishAutofillContext(shouldSave: true);
-    // Let AppGate rebuild to ParentDashboard on the root route, then clear the
-    // consent/register stack so we land on home — not RoleSelection/login.
+
+    if (_useMobileConsentUi) {
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => const InvitePartnerScreen(),
+        ),
+      );
+      return;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -123,10 +137,117 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = _useMobileConsentUi;
+    if (mobile) {
+      return _buildMobile(context);
+    }
+    return _buildWeb(context);
+  }
+
+  Widget _buildMobile(BuildContext context) {
     return PopScope(
       canPop: !_submitting,
       onPopInvokedWithResult: (didPop, _) {
-        // System back / gesture: discard without prompting password save.
+        if (didPop && !_autofillCommitted) {
+          TextInput.finishAutofillContext(shouldSave: false);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: MobileOnboarding.pageBg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      OnboardingProgressHeader(
+                        stepLabel: context.tr('Krok 2 z 2'),
+                        progress: 1,
+                        onBack: _submitting ? null : _cancel,
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        context.tr('Zgody'),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: RegistrationConsentPanel(
+                          selections: _selections,
+                          onChanged: (next) =>
+                              setState(() => _selections = next),
+                          settingsExpanded: _settingsExpanded,
+                          onExpandSettings: () => setState(
+                            () => _settingsExpanded = true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      OnboardingInfoBox.trial(context),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!_canSubmit) ...[
+                      Text(
+                        _missingRequiredHint,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textHint,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    ElevatedButton(
+                      key: const Key('consent_create_button'),
+                      onPressed:
+                          _canSubmit && !_submitting ? _submit : null,
+                      style: MobileOnboarding.primaryButton(
+                        enabled: _canSubmit && !_submitting,
+                      ),
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(context.tr('Załóż konto')),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeb(BuildContext context) {
+    return PopScope(
+      canPop: !_submitting,
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop && !_autofillCommitted) {
           TextInput.finishAutofillContext(shouldSave: false);
         }
@@ -155,7 +276,8 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                               const SizedBox(height: 24),
                               Text(
                                 context.tr('Zanim zaczniesz'),
-                                style: Theme.of(context).textTheme.headlineSmall,
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
                               ),
                               const SizedBox(height: 8),
                               Text(

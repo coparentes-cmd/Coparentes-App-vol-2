@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:coparentes/data/api/app_api_client.dart';
 import 'package:coparentes/data/local/offline_store.dart';
@@ -141,105 +142,83 @@ void main() {
     expect(appProvider.isInitializing, isFalse);
   }
 
-  Future<void> pumpConsent(WidgetTester tester) async {
-    await settleInit(tester);
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AppProvider>.value(
-        value: appProvider,
-        child: const MaterialApp(
-          home: ConsentRegistrationScreen(draft: _draft),
-        ),
-      ),
-    );
-    await tester.pump();
-  }
-
-  Future<void> grantRequiredConsents(WidgetTester tester) async {
-    final switches = find.byType(Switch);
-    expect(switches, findsWidgets);
-    // Required trio are the first three ConsentRows.
-    for (var i = 0; i < 3; i++) {
-      await tester.ensureVisible(switches.at(i));
-      await tester.tap(switches.at(i));
-      await tester.pump();
-    }
-  }
-
+  // flutter_test defaults to Android → mobile consent tiles / post-register invite.
   testWidgets(
-    'before Utwórz: zero registerWorkspace and empty SharedPreferences',
+    'mobile: Akceptuj wszystkie → Załóż konto → InvitePartnerScreen',
     (tester) async {
       await settleInit(tester);
 
       await tester.pumpWidget(
         ChangeNotifierProvider<AppProvider>.value(
           value: appProvider,
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) {
-                return Scaffold(
-                  body: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const ConsentRegistrationScreen(
-                            draft: _draft,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('open-consents'),
-                  ),
-                );
-              },
-            ),
+          child: const MaterialApp(
+            home: ConsentRegistrationScreen(draft: _draft),
           ),
         ),
       );
       await tester.pump();
 
-      await tester.tap(find.text('open-consents'));
-      await tester.pumpAndSettle();
+      expect(find.text('Akceptuj wszystkie'), findsOneWidget);
+      expect(find.text('Załóż konto'), findsOneWidget);
+      expect(find.byType(Switch), findsNothing);
+      expect(find.byType(Checkbox), findsWidgets);
 
-      expect(find.text('Utwórz'), findsOneWidget);
-      expect(auth.registerCalls, 0);
-      expect(prefs.getKeys(), isEmpty);
-      expect(appProvider.currentUser, isNull);
+      final button = tester.widget<ElevatedButton>(
+        find.byKey(const Key('consent_create_button')),
+      );
+      expect(button.onPressed, isNull);
+
+      await tester.tap(find.text('Akceptuj wszystkie'));
+      await tester.pump();
+      final enabled = tester.widget<ElevatedButton>(
+        find.byKey(const Key('consent_create_button')),
+      );
+      expect(enabled.onPressed, isNotNull);
+
+      await tester.ensureVisible(
+        find.byKey(const Key('consent_create_button')),
+      );
+      await tester.tap(find.byKey(const Key('consent_create_button')));
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        if (find.text('Zaproś drugiego rodzica').evaluate().isNotEmpty) {
+          break;
+        }
+      }
+
+      expect(auth.registerCalls, 1);
+      expect(appProvider.currentUser, isNotNull);
+      expect(find.text('Zaproś drugiego rodzica'), findsOneWidget);
+      expect(find.text('PARENTCODE'), findsOneWidget);
     },
   );
 
-  testWidgets('Utwórz disabled until required consents granted', (tester) async {
-    await pumpConsent(tester);
-
-    expect(find.text('Zaznacz wymagane zgody'), findsOneWidget);
-    final button = tester.widget<ElevatedButton>(
-      find.byKey(const Key('consent_create_button')),
-    );
-    expect(button.onPressed, isNull);
-
-    await grantRequiredConsents(tester);
-
-    expect(find.text('Zaznacz wymagane zgody'), findsNothing);
-    final enabled = tester.widget<ElevatedButton>(
-      find.byKey(const Key('consent_create_button')),
-    );
-    expect(enabled.onPressed, isNotNull);
-    expect(auth.registerCalls, 0);
-  });
-
   testWidgets(
-    'Utwórz calls registerWorkspace exactly once on double tap',
+    'mobile: double tap Załóż konto calls registerWorkspace once',
     (tester) async {
       auth.hold = Completer<AuthSession>();
-      await pumpConsent(tester);
-      await grantRequiredConsents(tester);
+      await settleInit(tester);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AppProvider>.value(
+          value: appProvider,
+          child: const MaterialApp(
+            home: ConsentRegistrationScreen(draft: _draft),
+          ),
+        ),
+      );
+      await tester.pump();
 
+      await tester.tap(find.text('Akceptuj wszystkie'));
+      await tester.pump();
+      await tester.ensureVisible(
+        find.byKey(const Key('consent_create_button')),
+      );
       await tester.tap(find.byKey(const Key('consent_create_button')));
       await tester.pump();
       await tester.tap(find.byKey(const Key('consent_create_button')));
       await tester.pump();
 
       expect(auth.registerCalls, 1);
-
       auth.hold!.complete(_parentSession());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
@@ -247,112 +226,12 @@ void main() {
     },
   );
 
-  testWidgets(
-    'successful Utwórz leaves AppGate-style home, not login',
-    (tester) async {
-      await settleInit(tester);
-
-      await tester.pumpWidget(
-        ChangeNotifierProvider<AppProvider>.value(
-          value: appProvider,
-          child: MaterialApp(
-            home: Builder(
-              builder: (context) {
-                final user = context.watch<AppProvider>().currentUser;
-                if (user == null) {
-                  return Scaffold(
-                    body: Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const ConsentRegistrationScreen(
-                                draft: _draft,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('open-register'),
-                      ),
-                    ),
-                  );
-                }
-                return const Scaffold(
-                  body: Center(
-                    child: Text('parent-home', key: Key('parent_home')),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('open-register'), findsOneWidget);
-      await tester.tap(find.text('open-register'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      await grantRequiredConsents(tester);
-      await tester.tap(find.byKey(const Key('consent_create_button')));
-      await tester.pump();
-      // registerWorkspace awaits prefs + consents load before popping the stack.
-      for (var i = 0; i < 40; i++) {
-        await tester.pump(const Duration(milliseconds: 20));
-        if (find.byType(ConsentRegistrationScreen).evaluate().isEmpty &&
-            appProvider.currentUser != null) {
-          break;
-        }
-      }
-
-      expect(auth.registerCalls, 1);
-      expect(appProvider.currentUser, isNotNull);
-      expect(find.byKey(const Key('parent_home')), findsOneWidget);
-      expect(find.text('open-register'), findsNothing);
-      expect(find.byType(ConsentRegistrationScreen), findsNothing);
-    },
-  );
-
-  testWidgets('Anuluj does not call API and does not persist', (tester) async {
-    await settleInit(tester);
-
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AppProvider>.value(
-        value: appProvider,
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) {
-              return Scaffold(
-                body: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const ConsentRegistrationScreen(
-                          draft: _draft,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('open-consents'),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.tap(find.text('open-consents'));
-    await tester.pumpAndSettle();
-
-    await grantRequiredConsents(tester);
-    await tester.tap(find.byKey(const Key('consent_cancel_button')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('open-consents'), findsOneWidget);
-    expect(auth.registerCalls, 0);
-    expect(prefs.getKeys(), isEmpty);
-    expect(appProvider.currentUser, isNull);
+  test('web consent path still uses ConsentRow; mobile uses panel', () {
+    final src =
+        File('lib/screens/auth/consent_registration_screen.dart').readAsStringSync();
+    expect(src.contains('ConsentRow'), isTrue);
+    expect(src.contains('RegistrationConsentPanel'), isTrue);
+    expect(src.contains('Załóż konto'), isTrue);
+    expect(src.contains("'Utwórz'"), isTrue);
   });
 }

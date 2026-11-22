@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../utils/client_platform.dart';
 import 'api_client_factory.dart';
 
 class ApiException implements Exception {
@@ -137,6 +138,7 @@ class AppApiClient {
   Map<String, String> _headers({Map<String, String>? extra}) {
     return {
       'Content-Type': 'application/json',
+      'X-Client-Platform': clientPlatformHeader(),
       if (_token != null) 'Authorization': 'Bearer $_token',
       if (_trustedDeviceToken != null && _trustedDeviceToken!.isNotEmpty)
         'X-Trusted-Device-Token': _trustedDeviceToken!,

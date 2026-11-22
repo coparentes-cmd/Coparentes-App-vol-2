@@ -5,11 +5,15 @@ EdgeInsets topSnackBarMargin(
   Size size,
   EdgeInsets padding, {
   double barHeight = 64,
+  double viewInsetsBottom = 0,
 }) {
   final top = padding.top + 12;
-  final bottom = (size.height - top - barHeight).clamp(24.0, size.height);
-  // Keep side insets inside the layout width so long error text cannot clip
-  // off the phone screen when the viewport meta was missing / scale was off.
+  // Subtract keyboard inset — otherwise Flutter asserts "presented off screen"
+  // during login when the soft keyboard is open.
+  final usableHeight =
+      (size.height - viewInsetsBottom).clamp(120.0, size.height);
+  final bottom =
+      (usableHeight - top - barHeight).clamp(24.0, usableHeight);
   final side = size.width < 360 ? 8.0 : 12.0;
   return EdgeInsets.fromLTRB(side, 0, side, bottom);
 }
@@ -20,7 +24,12 @@ extension AppTopSnackBar on ScaffoldMessengerState {
     SnackBar snackBar,
   ) {
     final media = MediaQuery.of(context);
-    final margin = topSnackBarMargin(media.size, media.padding);
+    final keyboardOpen = media.viewInsets.bottom > 0;
+    final margin = topSnackBarMargin(
+      media.size,
+      media.padding,
+      viewInsetsBottom: media.viewInsets.bottom,
+    );
 
     hideCurrentSnackBar();
     return showSnackBar(
@@ -31,19 +40,23 @@ extension AppTopSnackBar on ScaffoldMessengerState {
         ),
         backgroundColor: snackBar.backgroundColor,
         elevation: snackBar.elevation,
-        margin: margin,
+        // Fixed avoids off-screen asserts when keyboard + floating margin fight.
+        margin: keyboardOpen ? null : margin,
         padding: snackBar.padding ??
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: snackBar.shape ??
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        behavior: SnackBarBehavior.floating,
+        behavior: keyboardOpen
+            ? SnackBarBehavior.fixed
+            : SnackBarBehavior.floating,
         action: snackBar.action,
         actionOverflowThreshold: snackBar.actionOverflowThreshold,
         showCloseIcon: snackBar.showCloseIcon,
         closeIconColor: snackBar.closeIconColor,
-        duration: snackBar.duration,
+        duration: snackBar.duration ?? const Duration(seconds: 4),
         onVisible: snackBar.onVisible,
-        dismissDirection: DismissDirection.up,
+        dismissDirection:
+            keyboardOpen ? DismissDirection.down : DismissDirection.up,
         clipBehavior: snackBar.clipBehavior,
       ),
     );

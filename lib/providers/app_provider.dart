@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +16,7 @@ import '../data/models/auth_session.dart';
 import '../data/models/login_challenge.dart';
 import '../data/local/pin_lock_store.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/billing_repository.dart';
 import '../data/repositories/consent_repository.dart';
 import '../data/models/user_consent.dart';
 import '../models/models.dart';
@@ -22,6 +24,7 @@ import '../services/analytics/analytics_service.dart';
 import '../services/e2e_crypto_service.dart';
 import '../services/e2e_key_storage_service.dart';
 import '../services/e2e_session_service.dart';
+import '../utils/client_platform.dart';
 import '../utils/demo_time.dart';
 
 export 'calendar_provider.dart';
@@ -71,6 +74,7 @@ class GenerateRecoveryCodeOutcome {
 class AppProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final ConsentRepository _consentRepository;
+  final BillingRepository? _billingRepository;
   final PinLockStore _pinLockStore;
   final SharedPreferences _preferences;
   final LocaleStore? _localeStore;
@@ -86,6 +90,10 @@ class AppProvider extends ChangeNotifier {
   /// so the forced-change screen can pass it as currentPassword without re-prompting.
   String? _pendingLoginPassword;
 
+  /// F3: mobile paywall — web always allowed; set after trial/entitlement sync.
+  bool _mobileAccessAllowed = true;
+  bool _billingChecked = true;
+
   AppProvider({
     required AuthRepository authRepository,
     required ConsentRepository consentRepository,
@@ -94,8 +102,10 @@ class AppProvider extends ChangeNotifier {
     LocaleStore? localeStore,
     Locale? initialLocale,
     E2eSessionService? e2eSessionService,
+    BillingRepository? billingRepository,
   })  : _authRepository = authRepository,
         _consentRepository = consentRepository,
+        _billingRepository = billingRepository,
         _pinLockStore = pinLockStore,
         _preferences = preferences,
         _localeStore = localeStore,
@@ -142,6 +152,56 @@ class AppProvider extends ChangeNotifier {
 
   // Getters
   AppUser? get currentUser => _currentUser;
+
+  /// True when mobile billing sync finished (or not required — web/demo/child).
+  bool get billingChecked => _billingChecked;
+
+  /// Mobile paywall gate; always true on web / demo / child.
+  bool get mobileAccessAllowed => _mobileAccessAllowed;
+
+  /// Re-check entitlement after returning from Stripe Checkout / Safari.
+  Future<void> refreshMobileBilling() =>
+      _syncMobileBilling(forceEntitlementRefresh: true);
+
+  /// Opens Stripe Checkout via returned URL (caller launches browser).
+  Future<String?> createCheckoutUrl() async {
+    if (_billingRepository == null || kIsWeb || !isMobileClientPlatform) {
+      _authError = 'Płatności mobilne są dostępne tylko w aplikacji iOS/Android.';
+      notifyListeners();
+      return null;
+    }
+    try {
+      _authError = null;
+      return await _billingRepository!.createCheckoutSessionUrl();
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się otworzyć Stripe Checkout.',
+      );
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Stripe Customer Portal (manage / cancel). Mobile only.
+  Future<String?> createPortalUrl() async {
+    if (_billingRepository == null || kIsWeb || !isMobileClientPlatform) {
+      _authError = 'Portal subskrypcji jest dostępny tylko w aplikacji mobilnej.';
+      notifyListeners();
+      return null;
+    }
+    try {
+      _authError = null;
+      return await _billingRepository!.createPortalSessionUrl();
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się otworzyć portalu Stripe.',
+      );
+      notifyListeners();
+      return null;
+    }
+  }
   Workspace? get currentWorkspace => _currentWorkspace;
   bool get highConflictMode => _highConflictMode;
   ThemeMode get themeMode => _themeMode;
@@ -250,6 +310,10 @@ class AppProvider extends ChangeNotifier {
           return 'Podaj poprawną datę urodzenia.';
         case 'cors_not_allowed':
           return 'Serwer odrzucił połączenie (CORS). Skontaktuj się z administratorem.';
+        case 'stripe_not_configured':
+          return 'Płatności Stripe nie są jeszcze skonfigurowane (Test).';
+        case 'stripe_mobile_only':
+          return 'Subskrypcja jest dostępna tylko w aplikacji mobilnej.';
         case 'Too many requests, try again later':
           return 'Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.';
         default:
@@ -439,8 +503,10 @@ class AppProvider extends ChangeNotifier {
       _setDemoMode(false);
       _applySession(session);
       await saveParentFamilyRole(isMama ? 'mama' : 'tata');
-      // Tour starts at invite-parent (legacy step 1 = E2E recovery retired).
-      await setOnboardingTourStep(2);
+      // Web keeps the dialog tour; mobile uses dedicated post-register screens.
+      if (kIsWeb) {
+        await setOnboardingTourStep(2);
+      }
       await loadUserConsents();
       AnalyticsService.instance.logEvent('sign_up');
       notifyListeners();
@@ -1418,6 +1484,8 @@ class AppProvider extends ChangeNotifier {
     _authError = null;
     _pendingE2ePassword = null;
     _pendingLoginPassword = null;
+    _mobileAccessAllowed = true;
+    _billingChecked = true;
     _setDemoMode(false);
     _onboardingTourStep = null;
     _requirePinOnResume = false;
@@ -1439,6 +1507,57 @@ class AppProvider extends ChangeNotifier {
     _isPinLocked = false;
     _loadOnboardingTourStep(session.user.id);
     unawaited(_loadPinSettings());
+    unawaited(_syncMobileBilling());
+  }
+
+  /// F3: start one-time trial on first mobile parent session; never gate web.
+  Future<void> _syncMobileBilling({bool forceEntitlementRefresh = false}) async {
+    final user = _currentUser;
+    if (user == null ||
+        _isDemoMode ||
+        kIsWeb ||
+        !isMobileClientPlatform ||
+        user.role == UserRole.child ||
+        _billingRepository == null) {
+      _mobileAccessAllowed = true;
+      _billingChecked = true;
+      notifyListeners();
+      return;
+    }
+
+    _billingChecked = false;
+    _mobileAccessAllowed = user.hasMobileEntitlement;
+    notifyListeners();
+
+    try {
+      final BillingEntitlement entitlement;
+      if (!forceEntitlementRefresh &&
+          user.billingStatus == BillingStatus.none) {
+        entitlement = await _billingRepository!.startMobileTrial();
+      } else {
+        entitlement = await _billingRepository!.getEntitlement();
+      }
+
+      final updated = entitlement.user;
+      if (updated != null) {
+        _currentUser = updated;
+      } else if (_currentUser != null) {
+        _currentUser = _currentUser!.copyWith(
+          billingStatus: entitlement.billingStatus,
+          trialStartedAt: entitlement.trialStartedAt,
+          trialEndsAt: entitlement.trialEndsAt,
+          currentPeriodEnd: entitlement.currentPeriodEnd,
+          billingSource: entitlement.billingSource,
+        );
+      }
+      _mobileAccessAllowed = entitlement.accessAllowed;
+    } catch (_) {
+      // Offline: trust session billing fields already on the user.
+      _mobileAccessAllowed = _currentUser?.hasMobileEntitlement ?? false;
+    } finally {
+      _billingChecked = true;
+      notifyListeners();
+    }
   }
 
   void _retainLoginPasswordIfMustChange(String password) {

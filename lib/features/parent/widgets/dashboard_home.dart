@@ -12,12 +12,14 @@ import '../../../../utils/demo_time.dart';
 import '../../../../utils/layout_utils.dart';
 import '../../../../utils/messaging_helpers.dart';
 import '../../../../widgets/parent_tab_scaffold.dart';
+import '../../../../widgets/trial_ending_banner.dart';
 import '../../../screens/settings/settings_screen.dart';
 
 import 'day_agenda_list.dart';
 import 'message_thread_preview.dart';
 import 'next_handover_bar.dart';
 import 'onboarding_tour_card.dart';
+import 'partner_pending_banner.dart';
 import 'today_card.dart';
 
 enum _DashboardFeedTab { messages, finance, calendar, family }
@@ -247,7 +249,9 @@ class _DashboardHomeState extends State<DashboardHome> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
+                const TrialEndingBanner(),
                 const OnboardingTourCard(),
+                const PartnerPendingBanner(),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TodayCard(

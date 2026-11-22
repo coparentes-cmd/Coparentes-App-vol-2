@@ -14,11 +14,12 @@ class AppStrings {
   }
 
   static String of(BuildContext context, String source) {
-    // Prefer AppProvider so UI rebuilds immediately on setLocale (Localizations
-    // alone can lag one frame / require a refresh on web).
+    // listen: false — safe from async handlers / snackbars (debug asserts if
+    // listen:true outside build). Locale switches still rebuild via
+    // AppProvider.notifyListeners + MaterialApp locale.
     String code;
     try {
-      code = Provider.of<AppProvider>(context, listen: true).language;
+      code = Provider.of<AppProvider>(context, listen: false).language;
     } on ProviderNotFoundException {
       code = Localizations.localeOf(context).languageCode;
     }

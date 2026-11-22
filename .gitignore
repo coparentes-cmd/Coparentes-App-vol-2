@@ -32,3 +32,7 @@ config/api.env
 
 # Screenshot tooling (scripts/)
 scripts/node_modules/
+
+# Firebase (keep local; do not commit secrets)
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json

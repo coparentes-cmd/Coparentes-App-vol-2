@@ -1,0 +1,18 @@
+# Ikona aplikacji Coparentes
+
+## Zakaz
+
+- Nie przywracaj / nie commituj **domyślnej ikony Fluttera** w:
+  - `ios/Runner/Assets.xcassets/AppIcon.appiconset/`
+  - `android/app/src/main/res/mipmap-*/`
+- Po `flutter create`, merge conflictach assetów albo nowym worktree — **od razu** odtwórz ikony Coparentes.
+
+## Źródło prawdy
+
+- `assets/branding/coparentes-app-icon-1024.png`
+- Regeneracja: `dart run flutter_launcher_icons` albo `./tool/ensure_app_icons.sh`
+- Guard: `flutter test test/app_icon_guard_test.dart` (musi być zielony)
+
+## Po zmianie ikony
+
+Podmień `assets/branding/coparentes-app-icon-1024.png`, potem `./tool/ensure_app_icons.sh`. Test guard odrzuca znane hashe Flutter default.

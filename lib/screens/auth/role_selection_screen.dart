@@ -14,12 +14,17 @@ import '../../providers/app_provider.dart';
 import '../../providers/offline_sync_provider.dart';
 import '../../services/cookie_consent/cookie_consent_controller.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/client_platform.dart';
 import '../../utils/password_normalization.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/language_flag.dart';
+import '../../widgets/mobile_onboarding_chrome.dart';
 import 'consent_registration_screen.dart';
+import 'join_parent_flow_screen.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
+
+bool get _isMobileUi => !kIsWeb && isMobileClientPlatform;
 
 /// Brand login gradient from wzor-logowanie.html (marketing shell only).
 const _loginGradient = LinearGradient(
@@ -129,9 +134,23 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   bool _obscureLoginPassword = true;
 
+  static bool _isLocalSmokeApi(String baseUrl) {
+    final u = baseUrl.toLowerCase();
+    return u.contains('localhost') ||
+        u.contains('127.0.0.1') ||
+        u.contains('192.168.') ||
+        u.contains('10.0.') ||
+        u.contains(':3000');
+  }
+
   @override
   void initState() {
     super.initState();
+    // Local F3 smoke: prefill in debug/profile (home-screen launches use profile).
+    if (!kReleaseMode && _isLocalSmokeApi(AppEnvironment.apiBaseUrl)) {
+      _emailController.text = 'f3smoke@example.com';
+      _passwordController.text = 'Test1234!';
+    }
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _checkBackendReachability());
   }
@@ -348,6 +367,37 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                           'Serwer API niedostępny (${AppEnvironment.apiBaseUrl}). Rejestracja i logowanie nie zadziałają, dopóki backend nie odpowiada.',
                                           style: _loginInter(
                                             color: AppTheme.warningColor,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+                                    if (!kReleaseMode &&
+                                        _isLocalSmokeApi(
+                                            AppEnvironment.apiBaseUrl)) ...[
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF0FC494)
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: const Color(0xFF0FC494)
+                                                .withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'F3 smoke (lokalne API):\nf3smoke@example.com / Test1234!\n${AppEnvironment.apiBaseUrl}',
+                                          style: _loginInter(
+                                            color: const Color(0xFF0A7A5A),
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                             height: 1.35,
@@ -670,6 +720,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         // ConsentRegistrationScreen calls finishAutofillContext(shouldSave: true)
         // only after a successful "Utwórz".
         return [
+          if (_isMobileUi) ...[
+            OnboardingProgressHeader(
+              stepLabel: context.tr('Krok 1 z 2'),
+              progress: 0.5,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              context.tr('O Tobie'),
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           AutofillGroup(
             onDisposeAction: AutofillContextAction.cancel,
             child: Column(
@@ -695,31 +761,48 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: _RoleChoiceChip(
-                          label: context.tr('Mama'),
-                          selected: _registerIsMama,
-                          onTap: () => setState(() => _registerIsMama = true),
-                        ),
+                        child: _isMobileUi
+                            ? OnboardingRoleChip(
+                                label: context.tr('Mama'),
+                                selected: _registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = true),
+                              )
+                            : _RoleChoiceChip(
+                                label: context.tr('Mama'),
+                                selected: _registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = true),
+                              ),
                       ),
                       SizedBox(width: 10),
                       Expanded(
-                        child: _RoleChoiceChip(
-                          label: context.tr('Tata'),
-                          selected: !_registerIsMama,
-                          onTap: () => setState(() => _registerIsMama = false),
-                        ),
+                        child: _isMobileUi
+                            ? OnboardingRoleChip(
+                                label: context.tr('Tata'),
+                                selected: !_registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = false),
+                              )
+                            : _RoleChoiceChip(
+                                label: context.tr('Tata'),
+                                selected: !_registerIsMama,
+                                onTap: () =>
+                                    setState(() => _registerIsMama = false),
+                              ),
                       ),
                     ],
                   ),
                 ),
-                _Field(
-                  controller: _workspaceController,
-                  label: context.tr('Nazwa przestrzeni'),
-                  hint: 'np. Rodzina Kowalska',
-                  autofillHints: const [AutofillHints.organizationName],
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                ),
+                if (!_isMobileUi)
+                  _Field(
+                    controller: _workspaceController,
+                    label: context.tr('Nazwa przestrzeni'),
+                    hint: 'np. Rodzina Kowalska',
+                    autofillHints: const [AutofillHints.organizationName],
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                  ),
                 _Field(
                   controller: _emailController,
                   label: 'E-mail',
@@ -744,6 +827,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           ),
         ];
       case _AuthMode.join:
+        if (_isMobileUi) {
+          return [
+            Text(
+              context.tr(
+                'Dołączanie dorosłego odbywa się w osobnych krokach — jedna czynność na ekran.',
+              ),
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ];
+        }
         return [
           _Field(
             controller: _inviteCodeController,
@@ -1032,6 +1130,17 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Future<void> _submit() async {
     final appProvider = context.read<AppProvider>();
+
+    // Mobile parent-join is a dedicated multi-step flow — no fields on this screen.
+    if (_mode == _AuthMode.join && _isMobileUi) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const JoinParentFlowScreen(),
+        ),
+      );
+      return;
+    }
+
     final email = _emailController.text.trim();
     final password = normalizePassword(_passwordController.text);
 
@@ -1066,7 +1175,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         _showMessage('Imię i nazwisko musi mieć co najmniej 2 znaki.');
         return;
       }
-      final workspaceName = _workspaceController.text.trim();
+      final workspaceName = _isMobileUi
+          ? 'Nasza przestrzeń'
+          : _workspaceController.text.trim();
       if (workspaceName.length < 2) {
         _showMessage('Nazwa przestrzeni musi mieć co najmniej 2 znaki.');
         return;
@@ -1191,7 +1302,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showTopSnackBar(SnackBar(content: Text(context.tr(message))));
+    FocusManager.instance.primaryFocus?.unfocus();
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      SnackBar(content: Text(context.tr(message))),
+    );
   }
 
   String _buttonLabel(_AuthMode mode) {
@@ -1199,9 +1313,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
       case _AuthMode.login:
         return context.tr('Zaloguj');
       case _AuthMode.register:
-        return context.tr('Zarejestruj');
+        return context.tr(_isMobileUi ? 'Dalej' : 'Zarejestruj');
       case _AuthMode.join:
-        return context.tr('Dołącz');
+        return context.tr(_isMobileUi ? 'Dalej' : 'Dołącz');
       case _AuthMode.joinChild:
         return context.tr('Wejdź');
     }

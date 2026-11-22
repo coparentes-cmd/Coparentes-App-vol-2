@@ -14,6 +14,11 @@ class AppUser {
   final bool mustChangePassword;
   final ThemeMode themeMode;
   final AppColorScheme colorScheme;
+  final BillingStatus billingStatus;
+  final DateTime? trialStartedAt;
+  final DateTime? trialEndsAt;
+  final DateTime? currentPeriodEnd;
+  final String? billingSource;
   final DateTime createdAt;
 
   AppUser({
@@ -27,8 +32,50 @@ class AppUser {
     this.mustChangePassword = false,
     this.themeMode = ThemeMode.light,
     this.colorScheme = AppColorScheme.teal,
+    this.billingStatus = BillingStatus.none,
+    this.trialStartedAt,
+    this.trialEndsAt,
+    this.currentPeriodEnd,
+    this.billingSource,
     required this.createdAt,
   });
+
+  /// Local mirror of backend `hasMobileAppAccess` for parents (child always true).
+  bool get hasMobileEntitlement {
+    if (role == UserRole.child) {
+      return true;
+    }
+    final now = DateTime.now();
+    switch (billingStatus) {
+      case BillingStatus.trialing:
+        return trialEndsAt != null && trialEndsAt!.isAfter(now);
+      case BillingStatus.active:
+        if (currentPeriodEnd == null) {
+          return true;
+        }
+        return currentPeriodEnd!.isAfter(now);
+      case BillingStatus.none:
+      case BillingStatus.expired:
+      case BillingStatus.canceled:
+        return false;
+    }
+  }
+
+  /// True when mobile trial is active and ends within the next 3 days (D−3).
+  bool get isTrialEndingSoon {
+    if (role == UserRole.child || billingStatus != BillingStatus.trialing) {
+      return false;
+    }
+    final ends = trialEndsAt;
+    if (ends == null) {
+      return false;
+    }
+    final now = DateTime.now();
+    if (!ends.isAfter(now)) {
+      return false;
+    }
+    return ends.difference(now).inDays <= 3;
+  }
 
   AppUser copyWith({
     String? id,
@@ -41,6 +88,11 @@ class AppUser {
     bool? mustChangePassword,
     ThemeMode? themeMode,
     AppColorScheme? colorScheme,
+    BillingStatus? billingStatus,
+    DateTime? trialStartedAt,
+    DateTime? trialEndsAt,
+    DateTime? currentPeriodEnd,
+    String? billingSource,
     DateTime? createdAt,
   }) {
     return AppUser(
@@ -54,6 +106,11 @@ class AppUser {
       mustChangePassword: mustChangePassword ?? this.mustChangePassword,
       themeMode: themeMode ?? this.themeMode,
       colorScheme: colorScheme ?? this.colorScheme,
+      billingStatus: billingStatus ?? this.billingStatus,
+      trialStartedAt: trialStartedAt ?? this.trialStartedAt,
+      trialEndsAt: trialEndsAt ?? this.trialEndsAt,
+      currentPeriodEnd: currentPeriodEnd ?? this.currentPeriodEnd,
+      billingSource: billingSource ?? this.billingSource,
       createdAt: createdAt ?? this.createdAt,
     );
   }
