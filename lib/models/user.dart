@@ -61,6 +61,22 @@ class AppUser {
     }
   }
 
+  /// True when mobile trial is active and ends within the next 3 days (D−3).
+  bool get isTrialEndingSoon {
+    if (role == UserRole.child || billingStatus != BillingStatus.trialing) {
+      return false;
+    }
+    final ends = trialEndsAt;
+    if (ends == null) {
+      return false;
+    }
+    final now = DateTime.now();
+    if (!ends.isAfter(now)) {
+      return false;
+    }
+    return ends.difference(now).inDays <= 3;
+  }
+
   AppUser copyWith({
     String? id,
     String? name,

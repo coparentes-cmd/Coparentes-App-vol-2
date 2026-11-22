@@ -37,6 +37,12 @@ class CookieConsentController extends ChangeNotifier {
     _consent = stored;
     _ready = true;
     if (stored == null) {
+      // Mobile has no browser cookies / Clarity — don't block login/smoke behind
+      // a web cookie wall. Web keeps the blocking banner until the user chooses.
+      if (!kIsWeb) {
+        await _persist(CookieConsent.rejectOptional());
+        return;
+      }
       final defaults = CookieConsent.defaults();
       _syncDraftFrom(defaults);
       _bannerVisible = true;

@@ -62,4 +62,33 @@ void main() {
       );
     });
   });
+
+  group('AppUser.isTrialEndingSoon', () {
+    test('true within 3 days of trial end', () {
+      expect(
+        _parent(
+          status: BillingStatus.trialing,
+          trialEndsAt: DateTime.now().add(const Duration(days: 2)),
+        ).isTrialEndingSoon,
+        isTrue,
+      );
+    });
+
+    test('false when trial far away or not trialing', () {
+      expect(
+        _parent(
+          status: BillingStatus.trialing,
+          trialEndsAt: DateTime.now().add(const Duration(days: 10)),
+        ).isTrialEndingSoon,
+        isFalse,
+      );
+      expect(
+        _parent(
+          status: BillingStatus.active,
+          trialEndsAt: DateTime.now().add(const Duration(days: 1)),
+        ).isTrialEndingSoon,
+        isFalse,
+      );
+    });
+  });
 }

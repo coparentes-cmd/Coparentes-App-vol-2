@@ -182,6 +182,26 @@ class AppProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  /// Stripe Customer Portal (manage / cancel). Mobile only.
+  Future<String?> createPortalUrl() async {
+    if (_billingRepository == null || kIsWeb || !isMobileClientPlatform) {
+      _authError = 'Portal subskrypcji jest dostępny tylko w aplikacji mobilnej.';
+      notifyListeners();
+      return null;
+    }
+    try {
+      _authError = null;
+      return await _billingRepository!.createPortalSessionUrl();
+    } catch (error) {
+      _authError = _mapAuthError(
+        error,
+        fallback: 'Nie udało się otworzyć portalu Stripe.',
+      );
+      notifyListeners();
+      return null;
+    }
+  }
   Workspace? get currentWorkspace => _currentWorkspace;
   bool get highConflictMode => _highConflictMode;
   ThemeMode get themeMode => _themeMode;
@@ -483,8 +503,10 @@ class AppProvider extends ChangeNotifier {
       _setDemoMode(false);
       _applySession(session);
       await saveParentFamilyRole(isMama ? 'mama' : 'tata');
-      // Tour starts at invite-parent (legacy step 1 = E2E recovery retired).
-      await setOnboardingTourStep(2);
+      // Web keeps the dialog tour; mobile uses dedicated post-register screens.
+      if (kIsWeb) {
+        await setOnboardingTourStep(2);
+      }
       await loadUserConsents();
       AnalyticsService.instance.logEvent('sign_up');
       notifyListeners();

@@ -78,5 +78,17 @@
 		<string>http</string>
 		<string>mailto</string>
 	</array>
+	<!-- Local F3 smoke: allow cleartext HTTP to Mac LAN API (debug). -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Coparentes łączy się z lokalnym serwerem API podczas testów na tym samym Wi‑Fi.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

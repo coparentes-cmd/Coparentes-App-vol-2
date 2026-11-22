@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -201,6 +202,10 @@ class _OnboardingTourCardState extends State<OnboardingTourCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Mobile uses InvitePartnerScreen / PartnerPendingBanner instead of popups.
+    if (!kIsWeb) {
+      return const SizedBox.shrink();
+    }
     final ap = context.watch<AppProvider>();
     if (_eligible(ap) &&
         !_dialogOpen &&

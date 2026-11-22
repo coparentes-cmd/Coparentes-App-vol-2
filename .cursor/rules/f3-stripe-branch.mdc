@@ -35,5 +35,6 @@ Przy takim momencie: krótko zaproponuj „teraz warto merge + Railway (migracja
 
 ## Gdzie jest kod
 
-- Front: `~/development/Coparentes-App-vol-2-main` → `feature/f3-stripe`
-- Back: `~/Desktop/coparentes-backend-main` → `feature/f3-stripe`
+- Front worktree: `~/development/Coparentes-App-f3` → `feature/f3-work` (main + F3)
+- Back worktree: `~/development/coparentes-backend-f3` → `feature/f3-work`
+- Historyczne branche: `origin/feature/f3-stripe` (front + backend)

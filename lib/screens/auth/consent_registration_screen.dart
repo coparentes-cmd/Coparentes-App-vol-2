@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,11 +7,14 @@ import '../../config/consent_config.dart';
 import '../../data/models/user_consent.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/client_platform.dart';
 import '../../utils/layout_utils.dart';
 import '../../widgets/brand_widgets.dart';
 import '../../widgets/consent_widgets.dart';
+import '../../widgets/registration_consent_panel.dart';
 import 'package:coparentes/l10n/app_strings.dart';
 import 'package:coparentes/utils/app_snackbar.dart';
+import 'invite_partner_screen.dart';
 
 class RegistrationDraft {
   final String name;
@@ -47,6 +51,9 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
   late Map<ConsentType, bool> _selections;
   bool _submitting = false;
   bool _autofillCommitted = false;
+  bool _settingsExpanded = true;
+
+  bool get _useMobileConsentUi => !kIsWeb && isMobileClientPlatform;
 
   @override
   void initState() {
@@ -64,7 +71,6 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
   }
 
   void _cancel() {
-    // Web: discard autofill context without prompting the browser to save.
     TextInput.finishAutofillContext(shouldSave: false);
     Navigator.of(context).pop();
   }
@@ -105,11 +111,18 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
       return;
     }
 
-    // Web: only after a successful create should the browser be asked to save.
     _autofillCommitted = true;
     TextInput.finishAutofillContext(shouldSave: true);
-    // Let AppGate rebuild to ParentDashboard on the root route, then clear the
-    // consent/register stack so we land on home — not RoleSelection/login.
+
+    if (_useMobileConsentUi) {
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => const InvitePartnerScreen(),
+        ),
+      );
+      return;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -123,15 +136,24 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = _useMobileConsentUi;
     return PopScope(
       canPop: !_submitting,
       onPopInvokedWithResult: (didPop, _) {
-        // System back / gesture: discard without prompting password save.
         if (didPop && !_autofillCommitted) {
           TextInput.finishAutofillContext(shouldSave: false);
         }
       },
       child: Scaffold(
+        appBar: mobile
+            ? AppBar(
+                title: Text(context.tr('Krok 2 z 2')),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _submitting ? null : _cancel,
+                ),
+              )
+            : null,
         body: BrandBackdrop(
           child: SafeArea(
             child: Center(
@@ -149,13 +171,18 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Center(
-                                child: BrandLogo(width: 168, height: 54),
-                              ),
-                              const SizedBox(height: 24),
+                              if (!mobile) ...[
+                                const Center(
+                                  child: BrandLogo(width: 168, height: 54),
+                                ),
+                                const SizedBox(height: 24),
+                              ],
                               Text(
-                                context.tr('Zanim zaczniesz'),
-                                style: Theme.of(context).textTheme.headlineSmall,
+                                context.tr(
+                                  mobile ? 'Zgody' : 'Zanim zaczniesz',
+                                ),
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -170,32 +197,43 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                                     ),
                               ),
                               const SizedBox(height: 18),
-                              ...ConsentConfig.registrationConsents.map(
-                                (definition) {
-                                  return Column(
-                                    children: [
-                                      ConsentRow(
-                                        definition: definition,
-                                        value: _selections[definition.type] ??
-                                            false,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _selections[definition.type] =
-                                                value;
-                                          });
-                                        },
-                                      ),
-                                      if (definition !=
-                                          ConsentConfig
-                                              .registrationConsents.last)
-                                        const Divider(
-                                          color: AppTheme.dividerColor,
-                                          height: 1,
+                              if (mobile)
+                                RegistrationConsentPanel(
+                                  selections: _selections,
+                                  onChanged: (next) =>
+                                      setState(() => _selections = next),
+                                  settingsExpanded: _settingsExpanded,
+                                  onExpandSettings: () => setState(
+                                    () => _settingsExpanded = true,
+                                  ),
+                                )
+                              else
+                                ...ConsentConfig.registrationConsents.map(
+                                  (definition) {
+                                    return Column(
+                                      children: [
+                                        ConsentRow(
+                                          definition: definition,
+                                          value: _selections[definition.type] ??
+                                              false,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selections[definition.type] =
+                                                  value;
+                                            });
+                                          },
                                         ),
-                                    ],
-                                  );
-                                },
-                              ),
+                                        if (definition !=
+                                            ConsentConfig
+                                                .registrationConsents.last)
+                                          const Divider(
+                                            color: AppTheme.dividerColor,
+                                            height: 1,
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
                               const SizedBox(height: 18),
                               Text(
                                 context.tr(
@@ -264,24 +302,30 @@ class _ConsentRegistrationScreenState extends State<ConsentRegistrationScreen> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : Text(context.tr('Utwórz')),
+                                    : Text(
+                                        context.tr(
+                                          mobile ? 'Załóż konto' : 'Utwórz',
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Center(
-                            child: TextButton(
-                              key: const Key('consent_cancel_button'),
-                              onPressed: _submitting ? null : _cancel,
-                              child: Text(
-                                context.tr('Anuluj rejestrację'),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textHint,
+                          if (!mobile) ...[
+                            const SizedBox(height: 8),
+                            Center(
+                              child: TextButton(
+                                key: const Key('consent_cancel_button'),
+                                onPressed: _submitting ? null : _cancel,
+                                child: Text(
+                                  context.tr('Anuluj rejestrację'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textHint,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
