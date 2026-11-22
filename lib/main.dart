@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -36,6 +38,7 @@ import 'services/e2e_session_service.dart';
 import 'services/analytics/analytics_navigator_observer.dart';
 import 'services/analytics/analytics_service.dart';
 import 'services/cookie_consent/cookie_consent_controller.dart';
+import 'services/push/push_registration_service.dart';
 import 'utils/app_browser_back.dart';
 import 'utils/client_platform.dart';
 import 'utils/reset_password_url.dart';
@@ -81,6 +84,7 @@ Future<void> main() async {
   );
   final consentRepository = ConsentRepository(apiClient: apiClient);
   final billingRepository = BillingRepository(apiClient: apiClient);
+  final pushRegistrationService = PushRegistrationService(apiClient: apiClient);
 
   runApp(
     CoparentesApp(
@@ -103,6 +107,7 @@ Future<void> main() async {
       preferences: preferences,
       e2eSessionService: e2eSessionService,
       cookieConsentController: cookieConsentController,
+      pushRegistrationService: pushRegistrationService,
     ),
   );
 }
@@ -123,6 +128,7 @@ class CoparentesApp extends StatelessWidget {
   final SharedPreferences preferences;
   final E2eSessionService e2eSessionService;
   final CookieConsentController cookieConsentController;
+  final PushRegistrationService pushRegistrationService;
 
   const CoparentesApp({
     super.key,
@@ -141,12 +147,16 @@ class CoparentesApp extends StatelessWidget {
     required this.preferences,
     required this.e2eSessionService,
     required this.cookieConsentController,
+    required this.pushRegistrationService,
   });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider<PushRegistrationService>.value(
+          value: pushRegistrationService,
+        ),
         ChangeNotifierProvider<CookieConsentController>.value(
           value: cookieConsentController,
         ),
@@ -358,6 +368,11 @@ class _AppGateState extends State<_AppGate> {
 
     final user = appProvider.currentUser;
     if (user == null) {
+      if (_hydratedUserId != null) {
+        unawaited(
+          context.read<PushRegistrationService>().unregisterCurrentDevice(),
+        );
+      }
       _hydratedUserId = null;
       AnalyticsService.instance.logScreen('auth');
       return const RoleSelectionScreen();
@@ -459,6 +474,11 @@ class _AppGateState extends State<_AppGate> {
           await financeProvider.load();
           await documentsProvider.load(viewerUserId: appProvider.currentUser?.id);
         }
+
+        // F2b: register FCM/sim stub token after session hydrate (mobile only).
+        unawaited(
+          context.read<PushRegistrationService>().registerForCurrentUser(),
+        );
       }
     });
   }
